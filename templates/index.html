@@ -670,8 +670,8 @@
   }
 
   function looksLikeCards(desc) {
-    // Matches "Name (SETCODE 12)" pattern on any line
-    return /\([A-Z0-9]+\s+\d+\)/.test(desc);
+    // Matches "name (SETCODE NUM)" with the space before the opening parenthesis.
+    return / \([A-Z0-9]+ \d+[A-Za-z]*\)/.test(desc);
   }
 
   function buildImagesHTML(cards) {

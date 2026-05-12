@@ -786,8 +786,9 @@ function rowHTML(t) {
 }
 
 function looksLikeCards(desc) {
-  // Must match the same literal-space format as _CARD_RE and parseCardLines
-  return /\([A-Z0-9]+ \d+[A-Za-z]*\)/.test(desc);
+  // Must match the same literal-space format as _CARD_RE and parseCardLines:
+  // "name (SETCODE NUMBER)" — note the space before the opening parenthesis.
+  return / \([A-Z0-9]+ \d+[A-Za-z]*\)/.test(desc);
 }
 
 function buildImagesHTML(cards) {
@@ -943,6 +944,12 @@ document.getElementById('xlsmFile').addEventListener('change', async function ()
   msg.className = 'form-msg';
   msg.textContent = '';
 
+  if (typeof JSZip === 'undefined') {
+    msg.className = 'form-msg error';
+    msg.textContent = 'JSZip kon niet worden geladen. Controleer uw internetverbinding.';
+    return;
+  }
+
   try {
     const txns = await parseXlsmFile(file);
     if (!txns.length) {
@@ -951,11 +958,14 @@ document.getElementById('xlsmFile').addEventListener('change', async function ()
       return;
     }
 
-    // Deduplicate: skip rows already identical in type+amount+description
-    const existingKeys = new Set(allTxns.map(t => JSON.stringify([t.type, t.amount, t.description])));
+    // Deduplicate: skip rows already identical in type+amount+description.
+    // Amounts are rounded to 2 decimal places before comparison to avoid
+    // floating-point precision mismatches between imported and stored values.
+    const roundAmt = a => Math.round(a * 100) / 100;
+    const existingKeys = new Set(allTxns.map(t => JSON.stringify([t.type, roundAmt(t.amount), t.description])));
     let added = 0;
     for (const t of txns) {
-      const key = JSON.stringify([t.type, t.amount, t.description]);
+      const key = JSON.stringify([t.type, roundAmt(t.amount), t.description]);
       if (!existingKeys.has(key)) {
         allTxns.push({ ...t, id: nextId() });
         existingKeys.add(key);
@@ -1079,7 +1089,11 @@ function getCellValue(cell, sharedStrings, ns) {
   if (!vEl) return '';
   if (t === 's') {
     const idx = parseInt(vEl.textContent, 10);
-    return (idx >= 0 && idx < sharedStrings.length) ? sharedStrings[idx] : '';
+    if (idx < 0 || idx >= sharedStrings.length) {
+      console.warn('Ongeldige sharedStrings index:', idx);
+      return '';
+    }
+    return sharedStrings[idx];
   }
   if (t === 'str') return vEl.textContent;
   return vEl.textContent;

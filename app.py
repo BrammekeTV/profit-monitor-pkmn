@@ -61,10 +61,10 @@ def append_transaction(type_: str, amount: float, description: str) -> int:
 # ------------------------------------------------------------------
 
 # Pattern matches lines like "Gyarados Lv.52 (STF 19)" or "Turtwig (MEP 040)".
-# Uses a single literal space (not \s+) before the parenthesised block to avoid
-# polynomial backtracking on pathological inputs (ReDoS).
+# [^(]+ prevents backtracking over parentheses (avoids ReDoS).
+# Single literal space before the parenthesised block avoids polynomial backtracking.
 _CARD_PATTERN = re.compile(
-    r"^(.+?) \(([A-Z0-9]+) (\d+[A-Za-z]*)\)$"
+    r"^([^(]+) \(([A-Z0-9]+) (\d+[A-Za-z]*)\)$"
 )
 
 # Maximum line length fed into the regex to prevent ReDoS on crafted input.
