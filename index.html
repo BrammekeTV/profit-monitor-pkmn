@@ -834,26 +834,56 @@ async function fetchCardImages(description) {
       // Strip leading zeros (API stores "26" not "026")
       const num = String(parseInt(card.number, 10));
       const set = card.set.toUpperCase();
-      // Promo cards store number as SET+num (e.g. "SWSH258") in the API
-      const promoNum = set + num;
+      // Promo numbers: SET+num (e.g. "SWSH21") and SET+original (e.g. "SWSH021")
+      const promoNum       = set + num;
+      const promoNumPadded = set + card.number;
+      // Lowercase set.id variants: "mcd25", "swsh", "swshp" (promo suffix)
+      const setIdLower = set.toLowerCase();
+      const setIdPromo = setIdLower + 'p';
+      // Helper: does a result card match any of our number variants?
+      const matchNum = c =>
+        c.number === num || c.number === card.number ||
+        c.number === promoNum || c.number === promoNumPadded;
 
-      // Strategy 1: name + number + set code → most precise
+      // S1: exact — name + number + ptcgoCode
       let hit = await _tcgFirst(`name:"${card.name}" number:${num} set.ptcgoCode:${set}`);
 
-      // Strategy 1b: same but with promo-style number (e.g. SWSH258)
-      if (!hit) hit = await _tcgFirst(`name:"${card.name}" number:${promoNum} set.ptcgoCode:${set}`);
+      // S2: padded promo number + ptcgoCode (e.g. SWSH021)
+      if (!hit) hit = await _tcgFirst(`name:"${card.name}" number:${promoNumPadded} set.ptcgoCode:${set}`);
 
-      // Strategy 2: name + set code, then find matching number (handles set code variants)
+      // S3: unpadded promo number + ptcgoCode (e.g. SWSH21); skip if same as S2
+      if (!hit && promoNum !== promoNumPadded)
+        hit = await _tcgFirst(`name:"${card.name}" number:${promoNum} set.ptcgoCode:${set}`);
+
+      // S4: name + ptcgoCode, scan results for number match
       if (!hit) {
         const bySet = await _tcgAll(`name:"${card.name}" set.ptcgoCode:${set}`);
-        hit = bySet.find(c => c.number === num || c.number === card.number || c.number === promoNum) || bySet[0] || null;
+        hit = bySet.find(matchNum) || bySet[0] || null;
       }
 
-      // Strategy 3: name + number only, take first result
-      if (!hit) hit = await _tcgFirst(`name:"${card.name}" number:${num}`);
+      // S5: name + set.id lowercase (handles MCD25→mcd25, MEP→mep, etc.)
+      if (!hit) {
+        const byId = await _tcgAll(`name:"${card.name}" set.id:${setIdLower}`);
+        hit = byId.find(matchNum) || byId[0] || null;
+      }
 
-      // Strategy 3b: name + promo number only
-      if (!hit) hit = await _tcgFirst(`name:"${card.name}" number:${promoNum}`);
+      // S6: name + set.id promo variant (handles SWSH→swshp Black Star Promos)
+      if (!hit) {
+        const byIdP = await _tcgAll(`name:"${card.name}" set.id:${setIdPromo}`);
+        hit = byIdP.find(matchNum) || byIdP[0] || null;
+      }
+
+      // S7: wildcard base name + ptcgoCode — catches GX/EX hyphen naming (Lunala-GX vs Lunala GX)
+      if (!hit) {
+        const baseName = card.name.replace(/ (?:GX|EX|V|VMAX|VSTAR)$/, '').trim();
+        if (baseName !== card.name) {
+          const byWild = await _tcgAll(`name:${baseName}* set.ptcgoCode:${set}`);
+          hit = byWild.find(matchNum) || null;
+        }
+      }
+
+      // S8: original number unconstrained — last resort, may return wrong card
+      if (!hit) hit = await _tcgFirst(`name:"${card.name}" number:${card.number}`);
 
       if (hit) entry.image = hit.images?.small || null;
     } catch { /* network error — image stays null */ }
