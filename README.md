@@ -15,7 +15,9 @@ A static profit tracker for Pokémon TCG trading that runs entirely in the brows
 
 ## Data storage
 
-All data is stored in your browser's `localStorage` under the key `profit-monitor-pkmn`. Nothing is sent to any server. Use the **JSON exporteren** button to download a backup, and re-import the JSON file later if needed (import also accepts JSON files).
+All transaction data is stored in your browser's `localStorage` under the key `profit-monitor-pkmn`. Use the **JSON exporteren** button to download a backup, and re-import the JSON file later if needed (import also accepts JSON files).
+
+> **Note:** Card image lookups contact external services: the [Pokémon TCG API](https://pokemontcg.io) (when using the Flask server) and [Cardmarket](https://www.cardmarket.com) as a fallback for cards not listed in that API. Only the card name, set code, and number are sent — no personal or transaction data.
 
 ## Import format (.xlsm / .xlsx)
 
