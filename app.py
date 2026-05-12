@@ -186,14 +186,15 @@ def _cardmarket_image(name: str, set_code: str, number: str) -> str | None:
         f"?searchString={requests.utils.quote(search_query)}&exactName=false"
     )
     try:
-        resp = _http.get(search_url, headers=_CM_HEADERS, timeout=10, allow_redirects=True)
+        resp = _http.get(search_url, headers=_CM_HEADERS, timeout=5, allow_redirects=True)
         if not resp.ok:
             return None
 
         html = resp.text
 
         # If Cardmarket redirected to a single product page, parse og:image directly.
-        if "/Products/Singles/" in resp.url and resp.url.rstrip("/").count("/") >= 8:
+        _product_page_re = re.compile(r"/en/Pokemon/Products/Singles/[^/?#]+/[^/?#]+$")
+        if _product_page_re.search(resp.url):
             m = _OG_IMAGE_RE.search(html)
             if m:
                 return m.group(1)
@@ -204,7 +205,7 @@ def _cardmarket_image(name: str, set_code: str, number: str) -> str | None:
             return None
 
         product_url = "https://www.cardmarket.com" + m.group(1)
-        prod_resp = _http.get(product_url, headers=_CM_HEADERS, timeout=10)
+        prod_resp = _http.get(product_url, headers=_CM_HEADERS, timeout=5)
         if not prod_resp.ok:
             return None
 
