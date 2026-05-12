@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Profit Monitor — Pokémon</title>
   <!-- JSZip for client-side .xlsm (ZIP) parsing -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHveXg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -831,20 +831,40 @@ async function fetchCardImages(description) {
         `https://www.cardmarket.com/en/Pokemon/Products/Search?searchString=${encodeURIComponent(card.name)}`,
     };
     try {
-      const q = `name:"${card.name}" number:${card.number}`;
-      const resp = await fetch(
-        `https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(q)}&pageSize=10`
-      );
-      if (resp.ok) {
-        const data = (await resp.json()).data || [];
-        const hit = data.find(c => (c.set?.ptcgoCode || '').toUpperCase() === card.set.toUpperCase())
-          || data[0];
-        if (hit) entry.image = hit.images?.small || null;
+      // Strip leading zeros (API stores "26" not "026")
+      const num = String(parseInt(card.number, 10));
+      const set = card.set.toUpperCase();
+
+      // Strategy 1: name + number + set code → most precise
+      let hit = await _tcgFirst(`name:"${card.name}" number:${num} set.ptcgoCode:${set}`);
+
+      // Strategy 2: name + set code, then find matching number (handles set code variants)
+      if (!hit) {
+        const bySet = await _tcgAll(`name:"${card.name}" set.ptcgoCode:${set}`);
+        hit = bySet.find(c => c.number === num || c.number === card.number) || bySet[0] || null;
       }
+
+      // Strategy 3: name + number only, take first result
+      if (!hit) hit = await _tcgFirst(`name:"${card.name}" number:${num}`);
+
+      if (hit) entry.image = hit.images?.small || null;
     } catch { /* network error — image stays null */ }
     results.push(entry);
   }
   return results;
+}
+
+async function _tcgFirst(q) {
+  const resp = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(q)}&pageSize=5`);
+  if (!resp.ok) return null;
+  const data = (await resp.json()).data || [];
+  return data[0] || null;
+}
+
+async function _tcgAll(q) {
+  const resp = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(q)}&pageSize=20`);
+  if (!resp.ok) return [];
+  return (await resp.json()).data || [];
 }
 
 // ── card name parsing ─────────────────────────────────────────────────
