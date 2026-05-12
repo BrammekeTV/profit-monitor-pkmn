@@ -7,6 +7,10 @@ from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
 
+# Reused session for all outbound card-image lookups (connection pooling).
+_http = requests.Session()
+_http.headers["User-Agent"] = "profit-monitor-pkmn/1.0"
+
 XLSM_PATH = os.path.join(os.path.dirname(__file__), "example", "Verdiensten.xlsm")
 
 # ------------------------------------------------------------------
@@ -57,25 +61,50 @@ def append_transaction(type_: str, amount: float, description: str) -> int:
 # Card name parsing
 # ------------------------------------------------------------------
 
+# Pattern matches lines like "Gyarados Lv.52 (STF 19)" or "Turtwig (MEP 040)".
+# Uses a single literal space (not \s+) before the parenthesised block to avoid
+# polynomial backtracking on pathological inputs (ReDoS).
 _CARD_PATTERN = re.compile(
-    r"^(.+?)\s+\(([A-Z0-9]+)\s+(\d+[A-Za-z]*)\)\s*$"
+    r"^(.+?) \(([A-Z0-9]+) (\d+[A-Za-z]*)\)$"
 )
 
+# Maximum line length fed into the regex to prevent ReDoS on crafted input.
+_MAX_CARD_LINE_LEN = 200
+
+
 def parse_card_lines(description: str) -> list[dict]:
-    """Return list of {name, set, number} parsed from description lines."""
+    """
+    Parse Pokémon card references from a multi-line description string.
+
+    Each line is expected to follow the format::
+
+        CardName [optional-suffix] (SETCODE NUMBER)
+
+    For example::
+
+        Gyarados Lv.52 (STF 19)
+        Turtwig (MEP 040)
+        Flareon [4] Lv.55 (RR 60)
+
+    Returns a list of dicts with keys ``name``, ``set``, and ``number``.
+    Lines that do not match the pattern are silently skipped.
+    """
     cards = []
     for line in description.strip().split("\n"):
         line = line.strip()
-        m = _CARD_PATTERN.match(line)
+        # Truncate pathologically long lines before matching to prevent ReDoS.
+        m = _CARD_PATTERN.match(line[:_MAX_CARD_LINE_LEN])
         if not m:
             continue
         raw_name = m.group(1).strip()
         set_code = m.group(2)
         number = m.group(3)
-        # Strip suffixes: "Lv.52", "[C]", "[4]", "δ Delta Species", etc.
-        name = re.sub(r"\s+Lv\.\d+$", "", raw_name)
-        name = re.sub(r"\s+\[[^\]]*\]$", "", name)
-        name = re.sub(r"\s+δ.*$", "", name)
+        # Strip optional suffixes from the card name:
+        name = re.sub(r" Lv\.\d+$", "", raw_name)      # level indicator, e.g. "Lv.52"
+        name = re.sub(r" \[[^\]]{0,20}\]$", "", name)   # bracketed tag, e.g. "[C]" or "[4]"
+        # δ Delta Species suffix — use string split to avoid backtracking:
+        if " δ" in name:
+            name = name[: name.index(" δ")]
         name = name.strip()
         if name:
             cards.append({"name": name, "set": set_code, "number": number})
@@ -143,8 +172,6 @@ def api_card_images():
         return jsonify([])
 
     results = []
-    session = requests.Session()
-    session.headers["User-Agent"] = "profit-monitor-pkmn/1.0"
 
     for card in cards:
         entry = {
@@ -159,7 +186,7 @@ def api_card_images():
         }
         try:
             q = f'name:"{card["name"]}" number:{card["number"]}'
-            resp = session.get(
+            resp = _http.get(
                 "https://api.pokemontcg.io/v2/cards",
                 params={"q": q, "pageSize": 10},
                 timeout=6,
@@ -187,4 +214,4 @@ def api_card_images():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)
