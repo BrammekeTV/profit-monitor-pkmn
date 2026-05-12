@@ -834,18 +834,26 @@ async function fetchCardImages(description) {
       // Strip leading zeros (API stores "26" not "026")
       const num = String(parseInt(card.number, 10));
       const set = card.set.toUpperCase();
+      // Promo cards store number as SET+num (e.g. "SWSH258") in the API
+      const promoNum = set + num;
 
       // Strategy 1: name + number + set code → most precise
       let hit = await _tcgFirst(`name:"${card.name}" number:${num} set.ptcgoCode:${set}`);
 
+      // Strategy 1b: same but with promo-style number (e.g. SWSH258)
+      if (!hit) hit = await _tcgFirst(`name:"${card.name}" number:${promoNum} set.ptcgoCode:${set}`);
+
       // Strategy 2: name + set code, then find matching number (handles set code variants)
       if (!hit) {
         const bySet = await _tcgAll(`name:"${card.name}" set.ptcgoCode:${set}`);
-        hit = bySet.find(c => c.number === num || c.number === card.number) || bySet[0] || null;
+        hit = bySet.find(c => c.number === num || c.number === card.number || c.number === promoNum) || bySet[0] || null;
       }
 
       // Strategy 3: name + number only, take first result
       if (!hit) hit = await _tcgFirst(`name:"${card.name}" number:${num}`);
+
+      // Strategy 3b: name + promo number only
+      if (!hit) hit = await _tcgFirst(`name:"${card.name}" number:${promoNum}`);
 
       if (hit) entry.image = hit.images?.small || null;
     } catch { /* network error — image stays null */ }
@@ -978,19 +986,9 @@ document.getElementById('xlsmFile').addEventListener('change', async function ()
       return;
     }
 
-    // Deduplicate: skip rows already identical in type+amount+description.
-    // Amounts are rounded to 2 decimal places before comparison to avoid
-    // floating-point precision mismatches between imported and stored values.
-    const roundAmt = a => Math.round(a * 100) / 100;
-    const existingKeys = new Set(allTxns.map(t => JSON.stringify([t.type, roundAmt(t.amount), t.description])));
-    let added = 0;
+    const added = txns.length;
     for (const t of txns) {
-      const key = JSON.stringify([t.type, roundAmt(t.amount), t.description]);
-      if (!existingKeys.has(key)) {
-        allTxns.push({ ...t, id: nextId() });
-        existingKeys.add(key);
-        added++;
-      }
+      allTxns.push({ ...t, id: nextId() });
     }
 
     saveToStorage();
@@ -998,7 +996,7 @@ document.getElementById('xlsmFile').addEventListener('change', async function ()
     renderTable();
 
     msg.className = 'form-msg success';
-    msg.textContent = `${added} rij${added !== 1 ? 'en' : ''} geïmporteerd${txns.length - added > 0 ? `, ${txns.length - added} overgeslagen (duplicaat)` : ''}.`;
+    msg.textContent = `${added} rij${added !== 1 ? 'en' : ''} geïmporteerd.`;
   } catch (err) {
     msg.className = 'form-msg error';
     msg.textContent = 'Fout bij het lezen van het bestand: ' + err.message;
