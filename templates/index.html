@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profit Monitor — Pokémon</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #18181b;
+      --surface:  #27272a;
+      --surface2: #1f1f22;
+      --border:   #3f3f46;
+      --text:     #fafafa;
+      --muted:    #a1a1aa;
+      --green:    #22c55e;
+      --red:      #ef4444;
+      --btn:      #52525b;
+      --btn-h:    #71717a;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      height: 100%;
+    }
+
+    /* ── layout ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      grid-template-rows: auto 1fr;
+      min-height: 100vh;
+    }
+
+    /* ── topbar ── */
+    .topbar {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      padding: 0 24px;
+      height: 52px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+
+    .topbar-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .topbar-divider {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+    }
+
+    .summary-row {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .stat {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .stat-value {
+      font-size: 13px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat-value.positive { color: var(--green); }
+    .stat-value.negative { color: var(--red); }
+    .stat-value.neutral  { color: var(--text); }
+
+    /* ── main content ── */
+    .main {
+      padding: 20px 24px;
+      overflow-y: auto;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      gap: 12px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* filter bar */
+    .filter-bar {
+      display: flex;
+      gap: 8px;
+    }
+
+    .filter-btn {
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 120ms, color 120ms, border-color 120ms;
+    }
+
+    .filter-btn:hover,
+    .filter-btn.active {
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--btn-h);
+    }
+
+    /* ── table ── */
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 100ms;
+    }
+
+    tbody tr:last-child {
+      border-bottom: none;
+    }
+
+    tbody tr:hover {
+      background: var(--surface);
+    }
+
+    tbody td {
+      padding: 10px 14px;
+      font-size: 13px;
+      vertical-align: top;
+    }
+
+    .type-badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .type-badge.sold {
+      background: rgba(34,197,94,0.12);
+      color: var(--green);
+      border: 1px solid rgba(34,197,94,0.25);
+    }
+
+    .type-badge.bought {
+      background: rgba(239,68,68,0.12);
+      color: var(--red);
+      border: 1px solid rgba(239,68,68,0.25);
+    }
+
+    .amount-cell {
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .amount-cell.positive { color: var(--green); }
+    .amount-cell.negative { color: var(--red); }
+
+    .desc-cell {
+      max-width: 340px;
+    }
+
+    .desc-text {
+      white-space: pre-line;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    .lookup-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 4px;
+      padding: 2px 7px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 11px;
+      cursor: pointer;
+      transition: background 120ms, color 120ms;
+    }
+
+    .lookup-btn:hover {
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    .loading-dot {
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* card images strip */
+    .card-images {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .card-img-wrap {
+      position: relative;
+    }
+
+    .card-img-wrap img {
+      height: 80px;
+      width: auto;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      display: block;
+      transition: opacity 200ms;
+    }
+
+    .card-img-wrap a {
+      display: block;
+    }
+
+    .card-img-name {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 70px;
+    }
+
+    .no-image-link {
+      font-size: 11px;
+      color: var(--muted);
+      text-decoration: underline;
+      text-decoration-color: transparent;
+      transition: color 120ms, text-decoration-color 120ms;
+    }
+
+    .no-image-link:hover {
+      color: var(--text);
+      text-decoration-color: var(--muted);
+    }
+
+    /* empty state */
+    .empty {
+      padding: 32px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* ── sidebar (form) ── */
+    .sidebar {
+      border-left: 1px solid var(--border);
+      background: var(--surface2);
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .form-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+
+    .form-input,
+    .form-select,
+    .form-textarea {
+      width: 100%;
+      padding: 7px 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 120ms;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    .form-select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a1a1aa' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 28px;
+    }
+
+    .form-input:focus,
+    .form-select:focus,
+    .form-textarea:focus {
+      border-color: var(--btn-h);
+    }
+
+    .form-textarea {
+      resize: vertical;
+      min-height: 72px;
+      line-height: 1.4;
+    }
+
+    .form-hint {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 8px 12px;
+      background: var(--btn);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 120ms;
+      font-family: inherit;
+    }
+
+    .submit-btn:hover:not(:disabled) {
+      background: var(--btn-h);
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    .form-msg {
+      margin-top: 10px;
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 4px;
+      display: none;
+    }
+
+    .form-msg.success {
+      display: block;
+      background: rgba(34,197,94,0.1);
+      color: var(--green);
+      border: 1px solid rgba(34,197,94,0.2);
+    }
+
+    .form-msg.error {
+      display: block;
+      background: rgba(239,68,68,0.1);
+      color: var(--red);
+      border: 1px solid rgba(239,68,68,0.2);
+    }
+
+    /* sidebar divider */
+    .sidebar-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 16px 0;
+    }
+
+    /* count label */
+    .count-label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* search input */
+    .search-input {
+      padding: 5px 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 12px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 120ms;
+      width: 180px;
+    }
+
+    .search-input:focus {
+      border-color: var(--btn-h);
+    }
+
+    .search-input::placeholder {
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- topbar -->
+  <header class="topbar">
+    <span class="topbar-title">Profit Monitor</span>
+    <div class="topbar-divider"></div>
+    <div class="summary-row" id="summaryRow">
+      <div class="stat">
+        <span class="stat-label">Verkocht</span>
+        <span class="stat-value positive" id="totalSold">—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Gekocht</span>
+        <span class="stat-value negative" id="totalBought">—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Winst/Verlies</span>
+        <span class="stat-value neutral" id="profit">—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Transacties</span>
+        <span class="stat-value neutral" id="txnCount">—</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- main table -->
+  <main class="main">
+    <div class="section-header">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span class="section-title">Transacties</span>
+        <span class="count-label" id="visibleCount"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input
+          type="text"
+          class="search-input"
+          id="searchInput"
+          placeholder="Zoek beschrijving…"
+          autocomplete="off"
+        />
+        <div class="filter-bar">
+          <button class="filter-btn active" data-filter="all">Alles</button>
+          <button class="filter-btn" data-filter="Verkocht">Verkocht</button>
+          <button class="filter-btn" data-filter="Gekocht">Gekocht</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Bedrag</th>
+            <th>Beschrijving</th>
+          </tr>
+        </thead>
+        <tbody id="txnBody">
+          <tr><td colspan="3" class="empty">Laden…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- sidebar form -->
+  <aside class="sidebar">
+    <div class="form-title">Nieuwe invoer</div>
+
+    <div class="form-group">
+      <label class="form-label" for="fType">Type</label>
+      <select class="form-select" id="fType">
+        <option value="Verkocht">Verkocht</option>
+        <option value="Gekocht">Gekocht</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="fAmount">Bedrag (€)</label>
+      <input
+        type="number"
+        class="form-input"
+        id="fAmount"
+        placeholder="0.00"
+        min="0.01"
+        step="0.01"
+      />
+      <div class="form-hint">Altijd positief — teken wordt automatisch bepaald.</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="fDesc">Beschrijving</label>
+      <textarea
+        class="form-textarea"
+        id="fDesc"
+        placeholder="bijv. Vinted&#10;of Pikachu (MEP 001)"
+      ></textarea>
+      <div class="form-hint">Één kaart per regel voor automatische afbeelding.</div>
+    </div>
+
+    <button class="submit-btn" id="submitBtn">Toevoegen</button>
+    <div class="form-msg" id="formMsg"></div>
+
+    <hr class="sidebar-divider" />
+
+    <div style="font-size:12px;color:var(--muted);line-height:1.6;">
+      Kaartafbeeldingen worden geladen via de Pokémon TCG API.<br/>
+      Klik op een afbeelding om de kaart op Cardmarket te bekijken.
+    </div>
+  </aside>
+
+</div>
+
+<script>
+  // ── state ──────────────────────────────────────────────────────────
+  let allTxns = [];
+  let activeFilter = 'all';
+  let searchQuery = '';
+  const imageCache = {};  // description → [{name, image, cardmarket_url}]
+
+  // ── fetch helpers ─────────────────────────────────────────────────
+  async function loadData() {
+    const [txnRes, sumRes] = await Promise.all([
+      fetch('/api/transactions'),
+      fetch('/api/summary'),
+    ]);
+    allTxns = await txnRes.json();
+    const summary = await sumRes.json();
+    renderSummary(summary);
+    renderTable();
+  }
+
+  function fmt(n) {
+    return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n);
+  }
+
+  // ── summary ────────────────────────────────────────────────────────
+  function renderSummary(s) {
+    document.getElementById('totalSold').textContent = fmt(s.total_sold);
+    document.getElementById('totalBought').textContent = fmt(s.total_bought);
+    const profEl = document.getElementById('profit');
+    profEl.textContent = fmt(s.profit);
+    profEl.className = 'stat-value ' + (s.profit >= 0 ? 'positive' : 'negative');
+    document.getElementById('txnCount').textContent = s.count;
+  }
+
+  // ── filter & search ────────────────────────────────────────────────
+  function filtered() {
+    return allTxns.filter(t => {
+      if (activeFilter !== 'all' && t.type !== activeFilter) return false;
+      if (searchQuery && !t.description.toLowerCase().includes(searchQuery)) return false;
+      return true;
+    });
+  }
+
+  // ── table render ───────────────────────────────────────────────────
+  function renderTable() {
+    const rows = filtered();
+    document.getElementById('visibleCount').textContent =
+      rows.length !== allTxns.length ? `${rows.length} van ${allTxns.length}` : `${allTxns.length} rijen`;
+
+    const tbody = document.getElementById('txnBody');
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="3" class="empty">Geen transacties gevonden.</td></tr>';
+      return;
+    }
+
+    // Render newest first
+    const reversed = [...rows].reverse();
+    tbody.innerHTML = reversed.map(t => rowHTML(t)).join('');
+
+    // Attach lookup button handlers
+    tbody.querySelectorAll('.lookup-btn').forEach(btn => {
+      btn.addEventListener('click', () => handleLookup(btn));
+    });
+  }
+
+  function rowHTML(t) {
+    const isSold = t.type === 'Verkocht';
+    const badgeCls = isSold ? 'sold' : 'bought';
+    const badgeLabel = isSold ? 'Verkocht' : 'Gekocht';
+    const amtCls = isSold ? 'positive' : 'negative';
+    const amtStr = fmt(t.amount);
+
+    const hasCards = looksLikeCards(t.description);
+    const lookupBtn = hasCards
+      ? `<button class="lookup-btn" data-desc="${escAttr(t.description)}">
+           <svg width="10" height="10" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+             <rect x="1" y="1" width="6" height="8" rx="1" stroke="currentColor" stroke-width="1.5"/>
+             <rect x="9" y="1" width="6" height="8" rx="1" stroke="currentColor" stroke-width="1.5"/>
+             <rect x="1" y="11" width="6" height="4" rx="1" stroke="currentColor" stroke-width="1.5"/>
+             <rect x="9" y="11" width="6" height="4" rx="1" stroke="currentColor" stroke-width="1.5"/>
+           </svg>
+           Kaarten
+         </button>`
+      : '';
+
+    const cached = hasCards ? imageCache[t.description] : null;
+    const imagesHTML = cached ? buildImagesHTML(cached) : '';
+
+    return `<tr>
+      <td><span class="type-badge ${badgeCls}">${badgeLabel}</span></td>
+      <td class="amount-cell ${amtCls}">${amtStr}</td>
+      <td class="desc-cell">
+        <div class="desc-text">${escHTML(t.description)}</div>
+        ${lookupBtn}
+        <div class="card-images" id="imgs-${t.id}">${imagesHTML}</div>
+      </td>
+    </tr>`;
+  }
+
+  function looksLikeCards(desc) {
+    // Matches "name (SETCODE NUM)" with the space before the opening parenthesis.
+    return / \([A-Z0-9]+ \d+[A-Za-z]*\)/.test(desc);
+  }
+
+  function buildImagesHTML(cards) {
+    return cards.map(c => {
+      if (c.image) {
+        return `<div class="card-img-wrap">
+          <a href="${escAttr(c.cardmarket_url)}" target="_blank" rel="noopener" title="${escAttr(c.name)} — Cardmarket">
+            <img src="${escAttr(c.image)}" alt="${escAttr(c.name)}" loading="lazy" />
+          </a>
+          <div class="card-img-name">${escHTML(c.name)}</div>
+        </div>`;
+      }
+      return `<div class="card-img-wrap">
+        <a class="no-image-link" href="${escAttr(c.cardmarket_url)}" target="_blank" rel="noopener">${escHTML(c.name)}</a>
+        <div class="card-img-name">geen afbeelding</div>
+      </div>`;
+    }).join('');
+  }
+
+  async function handleLookup(btn) {
+    const desc = btn.dataset.desc;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading-dot"></span>';
+
+    if (imageCache[desc]) {
+      btn.remove();
+      renderTable();
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/card-images?description=' + encodeURIComponent(desc));
+      imageCache[desc] = await res.json();
+    } catch (e) {
+      imageCache[desc] = [];
+    }
+    renderTable();
+  }
+
+  // ── add form ───────────────────────────────────────────────────────
+  document.getElementById('submitBtn').addEventListener('click', async () => {
+    const type = document.getElementById('fType').value;
+    const amountRaw = document.getElementById('fAmount').value;
+    const description = document.getElementById('fDesc').value.trim();
+    const msg = document.getElementById('formMsg');
+    const btn = document.getElementById('submitBtn');
+
+    msg.className = 'form-msg';
+    msg.textContent = '';
+
+    const amount = parseFloat(amountRaw);
+    if (!amountRaw || isNaN(amount) || amount <= 0) {
+      msg.className = 'form-msg error';
+      msg.textContent = 'Vul een geldig bedrag in (groter dan 0).';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Opslaan…';
+
+    try {
+      const res = await fetch('/api/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, amount, description }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        msg.className = 'form-msg success';
+        msg.textContent = 'Transactie toegevoegd.';
+        document.getElementById('fAmount').value = '';
+        document.getElementById('fDesc').value = '';
+        await loadData();
+      } else {
+        msg.className = 'form-msg error';
+        msg.textContent = data.error || 'Er is een fout opgetreden.';
+      }
+    } catch (e) {
+      msg.className = 'form-msg error';
+      msg.textContent = 'Netwerkfout. Probeer opnieuw.';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Toevoegen';
+    }
+  });
+
+  // ── filters ────────────────────────────────────────────────────────
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeFilter = btn.dataset.filter;
+      renderTable();
+    });
+  });
+
+  document.getElementById('searchInput').addEventListener('input', e => {
+    searchQuery = e.target.value.toLowerCase().trim();
+    renderTable();
+  });
+
+  // ── escape helpers ─────────────────────────────────────────────────
+  function escHTML(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function escAttr(s) {
+    return String(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  // ── init ──────────────────────────────────────────────────────────
+  loadData();
+</script>
+</body>
+</html>

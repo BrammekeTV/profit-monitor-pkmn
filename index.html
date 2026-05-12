@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profit Monitor — Pokémon</title>
+  <!-- JSZip for client-side .xlsm (ZIP) parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #18181b;
+      --surface:  #27272a;
+      --surface2: #1f1f22;
+      --border:   #3f3f46;
+      --text:     #fafafa;
+      --muted:    #a1a1aa;
+      --green:    #22c55e;
+      --red:      #ef4444;
+      --btn:      #52525b;
+      --btn-h:    #71717a;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      height: 100%;
+    }
+
+    /* ── layout ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      grid-template-rows: auto 1fr;
+      min-height: 100vh;
+    }
+
+    /* ── topbar ── */
+    .topbar {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      padding: 0 24px;
+      height: 52px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+
+    .topbar-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .topbar-divider {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+    }
+
+    .summary-row {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      flex: 1;
+    }
+
+    .stat {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .stat-value {
+      font-size: 13px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat-value.positive { color: var(--green); }
+    .stat-value.negative { color: var(--red); }
+    .stat-value.neutral  { color: var(--text); }
+
+    /* ── main content ── */
+    .main {
+      padding: 20px 24px;
+      overflow-y: auto;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      gap: 12px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .filter-bar {
+      display: flex;
+      gap: 8px;
+    }
+
+    .filter-btn {
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 120ms, color 120ms, border-color 120ms;
+      font-family: inherit;
+    }
+
+    .filter-btn:hover,
+    .filter-btn.active {
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--btn-h);
+    }
+
+    /* ── table ── */
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 100ms;
+    }
+
+    tbody tr:last-child {
+      border-bottom: none;
+    }
+
+    tbody tr:hover {
+      background: var(--surface);
+    }
+
+    tbody td {
+      padding: 10px 14px;
+      font-size: 13px;
+      vertical-align: top;
+    }
+
+    .type-badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .type-badge.sold {
+      background: rgba(34,197,94,0.12);
+      color: var(--green);
+      border: 1px solid rgba(34,197,94,0.25);
+    }
+
+    .type-badge.bought {
+      background: rgba(239,68,68,0.12);
+      color: var(--red);
+      border: 1px solid rgba(239,68,68,0.25);
+    }
+
+    .amount-cell {
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .amount-cell.positive { color: var(--green); }
+    .amount-cell.negative { color: var(--red); }
+
+    .desc-cell {
+      max-width: 340px;
+    }
+
+    .desc-text {
+      white-space: pre-line;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    .delete-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 11px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 120ms, color 120ms;
+    }
+
+    .delete-btn:hover {
+      background: rgba(239,68,68,0.12);
+      color: var(--red);
+      border-color: rgba(239,68,68,0.3);
+    }
+
+    .empty {
+      padding: 32px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* ── sidebar ── */
+    .sidebar {
+      border-left: 1px solid var(--border);
+      background: var(--surface2);
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .form-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+
+    .form-input,
+    .form-select,
+    .form-textarea {
+      width: 100%;
+      padding: 7px 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 120ms;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    .form-select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a1a1aa' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 28px;
+    }
+
+    .form-input:focus,
+    .form-select:focus,
+    .form-textarea:focus {
+      border-color: var(--btn-h);
+    }
+
+    .form-textarea {
+      resize: vertical;
+      min-height: 72px;
+      line-height: 1.4;
+    }
+
+    .form-hint {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 8px 12px;
+      background: var(--btn);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 120ms;
+      font-family: inherit;
+    }
+
+    .submit-btn:hover:not(:disabled) {
+      background: var(--btn-h);
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    .form-msg {
+      margin-top: 10px;
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 4px;
+      display: none;
+    }
+
+    .form-msg.success {
+      display: block;
+      background: rgba(34,197,94,0.1);
+      color: var(--green);
+      border: 1px solid rgba(34,197,94,0.2);
+    }
+
+    .form-msg.error {
+      display: block;
+      background: rgba(239,68,68,0.1);
+      color: var(--red);
+      border: 1px solid rgba(239,68,68,0.2);
+    }
+
+    .sidebar-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 16px 0;
+    }
+
+    .count-label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .search-input {
+      padding: 5px 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 12px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 120ms;
+      width: 180px;
+    }
+
+    .search-input:focus { border-color: var(--btn-h); }
+    .search-input::placeholder { color: var(--muted); }
+
+    /* import button */
+    .import-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 120ms, color 120ms, border-color 120ms;
+      width: 100%;
+    }
+
+    .import-btn:hover {
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--btn-h);
+    }
+
+    /* clear data button */
+    .danger-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 10px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 120ms, color 120ms, border-color 120ms;
+      width: 100%;
+    }
+
+    .danger-btn:hover {
+      background: rgba(239,68,68,0.1);
+      color: var(--red);
+      border-color: rgba(239,68,68,0.3);
+    }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- topbar -->
+  <header class="topbar">
+    <span class="topbar-title">Profit Monitor</span>
+    <div class="topbar-divider"></div>
+    <div class="summary-row">
+      <div class="stat">
+        <span class="stat-label">Verkocht</span>
+        <span class="stat-value positive" id="totalSold">—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Gekocht</span>
+        <span class="stat-value negative" id="totalBought">—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Winst/Verlies</span>
+        <span class="stat-value neutral" id="profit">—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Transacties</span>
+        <span class="stat-value neutral" id="txnCount">—</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- main table -->
+  <main class="main">
+    <div class="section-header">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span class="section-title">Transacties</span>
+        <span class="count-label" id="visibleCount"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input
+          type="text"
+          class="search-input"
+          id="searchInput"
+          placeholder="Zoek beschrijving…"
+          autocomplete="off"
+        />
+        <div class="filter-bar">
+          <button class="filter-btn active" data-filter="all">Alles</button>
+          <button class="filter-btn" data-filter="Verkocht">Verkocht</button>
+          <button class="filter-btn" data-filter="Gekocht">Gekocht</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Bedrag</th>
+            <th>Beschrijving</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="txnBody">
+          <tr><td colspan="4" class="empty">Geen data — voeg transacties toe of importeer een .xlsm bestand.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- sidebar -->
+  <aside class="sidebar">
+    <div class="form-title">Nieuwe invoer</div>
+
+    <div class="form-group">
+      <label class="form-label" for="fType">Type</label>
+      <select class="form-select" id="fType">
+        <option value="Verkocht">Verkocht</option>
+        <option value="Gekocht">Gekocht</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="fAmount">Bedrag (€)</label>
+      <input
+        type="number"
+        class="form-input"
+        id="fAmount"
+        placeholder="0.00"
+        min="0.01"
+        step="0.01"
+      />
+      <div class="form-hint">Altijd positief — teken wordt automatisch bepaald.</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="fDesc">Beschrijving</label>
+      <textarea
+        class="form-textarea"
+        id="fDesc"
+        placeholder="bijv. Vinted&#10;of Pikachu (MEP 001)"
+      ></textarea>
+      <div class="form-hint">Één kaart per regel voor automatische afbeelding.</div>
+    </div>
+
+    <button class="submit-btn" id="submitBtn">Toevoegen</button>
+    <div class="form-msg" id="formMsg"></div>
+
+    <hr class="sidebar-divider" />
+
+    <div class="form-title">Importeren</div>
+
+    <div class="form-group">
+      <!-- hidden file input -->
+      <input type="file" id="xlsmFile" accept=".xlsm,.xlsx" style="display:none" />
+      <button class="import-btn" id="importBtn">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 1v9M4.5 6.5L8 10l3.5-3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M2 12h12v2H2v-2z" fill="currentColor" opacity=".3"/>
+          <path d="M2 11.5h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        .xlsm / .xlsx importeren
+      </button>
+      <div class="form-hint" style="margin-top:6px;">Voeg toe aan bestaande data. Alle rijen worden geïmporteerd, inclusief duplicaten.</div>
+    </div>
+    <div class="form-msg" id="importMsg"></div>
+
+    <hr class="sidebar-divider" />
+
+    <hr class="sidebar-divider" />
+
+    <button class="import-btn" id="exportBtn" style="margin-bottom:8px;">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 11V2M4.5 7.5L8 4l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M2 11.5h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M2 12h12v2H2v-2z" fill="currentColor" opacity=".3"/>
+      </svg>
+      JSON exporteren
+    </button>
+
+    <button class="danger-btn" id="clearBtn">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 4h10M6 4V2h4v2M5 4l1 9h4l1-9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Alle data wissen
+    </button>
+
+    <hr class="sidebar-divider" />
+
+    <div style="font-size:12px;color:var(--muted);line-height:1.6;">
+      Data wordt lokaal opgeslagen in uw browser.<br/>
+      Kaartafbeeldingen via de Pokémon TCG API.
+    </div>
+  </aside>
+
+</div>
+
+<script>
+// ── constants ────────────────────────────────────────────────────────
+const STORAGE_KEY = 'profit-monitor-pkmn';
+
+// ── state ────────────────────────────────────────────────────────────
+let allTxns = [];
+let activeFilter = 'all';
+let searchQuery = '';
+
+// ── localStorage ─────────────────────────────────────────────────────
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    allTxns = raw ? JSON.parse(raw) : [];
+  } catch {
+    allTxns = [];
+  }
+}
+
+function saveToStorage() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(allTxns));
+}
+
+function nextId() {
+  return allTxns.length ? Math.max(...allTxns.map(t => t.id)) + 1 : 1;
+}
+
+// ── formatting ───────────────────────────────────────────────────────
+function fmt(n) {
+  return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n);
+}
+
+// ── summary ──────────────────────────────────────────────────────────
+function renderSummary() {
+  const totalSold  = allTxns.filter(t => t.type === 'Verkocht').reduce((s,t) => s + t.amount, 0);
+  const totalBought = allTxns.filter(t => t.type === 'Gekocht').reduce((s,t) => s + t.amount, 0);
+  const profit = totalSold + totalBought;
+
+  document.getElementById('totalSold').textContent = fmt(totalSold);
+  document.getElementById('totalBought').textContent = fmt(totalBought);
+  const profEl = document.getElementById('profit');
+  profEl.textContent = fmt(profit);
+  profEl.className = 'stat-value ' + (profit >= 0 ? 'positive' : 'negative');
+  document.getElementById('txnCount').textContent = allTxns.length;
+}
+
+// ── filtering ────────────────────────────────────────────────────────
+function filtered() {
+  return allTxns.filter(t => {
+    if (activeFilter !== 'all' && t.type !== activeFilter) return false;
+    if (searchQuery && !t.description.toLowerCase().includes(searchQuery)) return false;
+    return true;
+  });
+}
+
+// ── table ────────────────────────────────────────────────────────────
+function renderTable() {
+  const rows = filtered();
+  document.getElementById('visibleCount').textContent =
+    rows.length !== allTxns.length
+      ? `${rows.length} van ${allTxns.length}`
+      : `${allTxns.length} rijen`;
+
+  const tbody = document.getElementById('txnBody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">Geen transacties gevonden.</td></tr>';
+    return;
+  }
+
+  const reversed = [...rows].reverse();
+  tbody.innerHTML = reversed.map(t => rowHTML(t)).join('');
+
+  tbody.querySelectorAll('.delete-btn').forEach(btn =>
+    btn.addEventListener('click', () => deleteTxn(Number(btn.dataset.id)))
+  );
+}
+
+function rowHTML(t) {
+  const isSold = t.type === 'Verkocht';
+  const badgeCls = isSold ? 'sold' : 'bought';
+  const badgeLabel = isSold ? 'Verkocht' : 'Gekocht';
+  const amtCls = isSold ? 'positive' : 'negative';
+  const amtStr = fmt(t.amount);
+
+  return `<tr data-id="${t.id}">
+    <td><span class="type-badge ${badgeCls}">${badgeLabel}</span></td>
+    <td class="amount-cell ${amtCls}">${amtStr}</td>
+    <td class="desc-cell">
+      <div class="desc-text">${escHTML(t.description)}</div>
+    </td>
+    <td style="white-space:nowrap;vertical-align:middle;">
+      <button class="delete-btn" data-id="${t.id}" title="Verwijderen">
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+          <path d="M3 4h10M6 4V2h4v2M5 4l1 9h4l1-9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </td>
+  </tr>`;
+}
+
+// ── add transaction ───────────────────────────────────────────────────
+document.getElementById('submitBtn').addEventListener('click', () => {
+  const type = document.getElementById('fType').value;
+  const amountRaw = document.getElementById('fAmount').value;
+  const description = document.getElementById('fDesc').value.trim();
+  const msg = document.getElementById('formMsg');
+
+  msg.className = 'form-msg';
+
+  const amount = parseFloat(amountRaw);
+  if (!amountRaw || isNaN(amount) || amount <= 0) {
+    msg.className = 'form-msg error';
+    msg.textContent = 'Vul een geldig bedrag in (groter dan 0).';
+    return;
+  }
+
+  const finalAmount = type === 'Gekocht' ? -Math.abs(amount) : Math.abs(amount);
+  allTxns.push({ id: nextId(), type, amount: finalAmount, description });
+  saveToStorage();
+  renderSummary();
+  renderTable();
+
+  document.getElementById('fAmount').value = '';
+  document.getElementById('fDesc').value = '';
+  msg.className = 'form-msg success';
+  msg.textContent = 'Transactie toegevoegd.';
+  setTimeout(() => { msg.className = 'form-msg'; }, 3000);
+});
+
+// ── delete transaction ────────────────────────────────────────────────
+function deleteTxn(id) {
+  allTxns = allTxns.filter(t => t.id !== id);
+  saveToStorage();
+  renderSummary();
+  renderTable();
+}
+
+// ── clear all data ────────────────────────────────────────────────────
+document.getElementById('clearBtn').addEventListener('click', () => {
+  if (!confirm('Alle transacties wissen? Dit kan niet ongedaan worden gemaakt.')) return;
+  allTxns = [];
+  saveToStorage();
+  renderSummary();
+  renderTable();
+});
+
+// ── export data ───────────────────────────────────────────────────────
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const json = JSON.stringify(allTxns, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'profit-monitor-export.json';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// ── import .xlsm / .xlsx ─────────────────────────────────────────────
+document.getElementById('importBtn').addEventListener('click', () => {
+  document.getElementById('xlsmFile').click();
+});
+
+document.getElementById('xlsmFile').addEventListener('change', async function () {
+  const file = this.files[0];
+  if (!file) return;
+  this.value = '';
+
+  const msg = document.getElementById('importMsg');
+  msg.className = 'form-msg';
+  msg.textContent = '';
+
+  if (typeof JSZip === 'undefined') {
+    msg.className = 'form-msg error';
+    msg.textContent = 'JSZip kon niet worden geladen. Controleer uw internetverbinding.';
+    return;
+  }
+
+  try {
+    const txns = await parseXlsmFile(file);
+    if (!txns.length) {
+      msg.className = 'form-msg error';
+      msg.textContent = 'Geen geldige rijen gevonden in het bestand.';
+      return;
+    }
+
+    const added = txns.length;
+    for (const t of txns) {
+      allTxns.push({ ...t, id: nextId() });
+    }
+
+    saveToStorage();
+    renderSummary();
+    renderTable();
+
+    msg.className = 'form-msg success';
+    msg.textContent = `${added} rij${added !== 1 ? 'en' : ''} geïmporteerd.`;
+  } catch (err) {
+    msg.className = 'form-msg error';
+    msg.textContent = 'Fout bij het lezen van het bestand: ' + err.message;
+  }
+});
+
+// ── xlsm parser ──────────────────────────────────────────────────────
+async function parseXlsmFile(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const zip = await JSZip.loadAsync(arrayBuffer);
+
+  // 1. Shared strings
+  const sharedStrings = [];
+  const ssFile = zip.file('xl/sharedStrings.xml');
+  if (ssFile) {
+    const ssText = await ssFile.async('text');
+    const ssDoc = new DOMParser().parseFromString(ssText, 'application/xml');
+    const ns = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+    for (const si of ssDoc.getElementsByTagNameNS(ns, 'si')) {
+      // Plain text
+      const tEl = si.getElementsByTagNameNS(ns, 't')[0];
+      if (si.getElementsByTagNameNS(ns, 'r').length === 0 && tEl) {
+        sharedStrings.push(tEl.textContent);
+      } else {
+        // Rich text — concatenate all <t> fragments
+        let parts = '';
+        for (const r of si.getElementsByTagNameNS(ns, 'r')) {
+          const rt = r.getElementsByTagNameNS(ns, 't')[0];
+          if (rt) parts += rt.textContent;
+        }
+        sharedStrings.push(parts);
+      }
+    }
+  }
+
+  // 2. Find the "Gegevens" sheet (sheet1 by default; look up in workbook.xml)
+  let sheetPath = 'xl/worksheets/sheet1.xml'; // fallback
+  const wbFile = zip.file('xl/workbook.xml');
+  if (wbFile) {
+    const wbText = await wbFile.async('text');
+    const wbDoc = new DOMParser().parseFromString(wbText, 'application/xml');
+    const wbNs = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+    const relsNs = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+    const sheets = wbDoc.getElementsByTagNameNS(wbNs, 'sheet');
+    let sheetId = null;
+    // Pick "Gegevens" if present; otherwise fall back to the first sheet.
+    let firstSheetId = null;
+    for (const s of sheets) {
+      const name = s.getAttribute('name') || '';
+      const id = s.getAttributeNS(relsNs, 'id') || s.getAttribute('r:id');
+      if (!firstSheetId) firstSheetId = id;
+      if (name === 'Gegevens') { sheetId = id; break; }
+    }
+    if (!sheetId) sheetId = firstSheetId;
+    // Resolve sheetId → actual file via workbook.xml.rels
+    if (sheetId) {
+      const relsFile = zip.file('xl/_rels/workbook.xml.rels');
+      if (relsFile) {
+        const relsText = await relsFile.async('text');
+        const relsDoc = new DOMParser().parseFromString(relsText, 'application/xml');
+        const pkgNs = 'http://schemas.openxmlformats.org/package/2006/relationships';
+        for (const rel of relsDoc.getElementsByTagNameNS(pkgNs, 'Relationship')) {
+          if (rel.getAttribute('Id') === sheetId) {
+            const target = rel.getAttribute('Target') || '';
+            sheetPath = target.startsWith('/') ? target.slice(1) : 'xl/' + target;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Parse the sheet
+  const sheetFile = zip.file(sheetPath);
+  if (!sheetFile) throw new Error(`Sheet niet gevonden: ${sheetPath}`);
+  const sheetText = await sheetFile.async('text');
+  const sheetDoc = new DOMParser().parseFromString(sheetText, 'application/xml');
+  const sNs = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+
+  const txns = [];
+  for (const row of sheetDoc.getElementsByTagNameNS(sNs, 'row')) {
+    const rowNum = parseInt(row.getAttribute('r') || '0', 10);
+    if (rowNum < 3) continue; // skip header rows
+
+    const cells = {};
+    for (const cell of row.getElementsByTagNameNS(sNs, 'c')) {
+      const ref = cell.getAttribute('r') || '';
+      const col = ref.replace(/\d+$/, '');
+      cells[col] = getCellValue(cell, sharedStrings, sNs);
+    }
+
+    const type = cells['A'];
+    const amountRaw = cells['B'];
+    const description = cells['C'] || '';
+
+    if (type !== 'Gekocht' && type !== 'Verkocht') continue;
+    const amount = parseFloat(amountRaw);
+    if (isNaN(amount)) continue;
+
+    txns.push({ type, amount: Math.round(amount * 100) / 100, description });
+  }
+  return txns;
+}
+
+function getCellValue(cell, sharedStrings, ns) {
+  const t = cell.getAttribute('t');
+  const vEl = cell.getElementsByTagNameNS(ns, 'v')[0];
+  if (!vEl) return '';
+  if (t === 's') {
+    const idx = parseInt(vEl.textContent, 10);
+    if (idx < 0 || idx >= sharedStrings.length) {
+      console.warn('Ongeldige sharedStrings index:', idx);
+      return '';
+    }
+    return sharedStrings[idx];
+  }
+  if (t === 'str') return vEl.textContent;
+  return vEl.textContent;
+}
+
+// ── filters ──────────────────────────────────────────────────────────
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeFilter = btn.dataset.filter;
+    renderTable();
+  });
+});
+
+document.getElementById('searchInput').addEventListener('input', e => {
+  searchQuery = e.target.value.toLowerCase().trim();
+  renderTable();
+});
+
+// ── escape helpers ────────────────────────────────────────────────────
+function escHTML(s) {
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function escAttr(s) {
+  return String(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// ── init ─────────────────────────────────────────────────────────────
+loadFromStorage();
+renderSummary();
+renderTable();
+</script>
+</body>
+</html>
