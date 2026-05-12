@@ -665,7 +665,6 @@
 <script>
 // ── constants ────────────────────────────────────────────────────────
 const STORAGE_KEY = 'profit-monitor-pkmn';
-const MAX_CARD_LINE_LEN = 200;
 
 // ── state ────────────────────────────────────────────────────────────
 let allTxns = [];
@@ -821,132 +820,9 @@ async function handleLookup(btn) {
 }
 
 async function fetchCardImages(description) {
-  const cards = parseCardLines(description);
-  const results = [];
-  for (const card of cards) {
-    const entry = {
-      name: card.name,
-      image: null,
-      cardmarket_url:
-        `https://www.cardmarket.com/en/Pokemon/Products/Search?searchString=${encodeURIComponent(card.name)}`,
-    };
-    try {
-      // Strip leading zeros (API stores "26" not "026")
-      const num = String(parseInt(card.number, 10));
-      const set = card.set.toUpperCase();
-      // Promo numbers: SET+num (e.g. "SWSH21") and SET+original (e.g. "SWSH021")
-      const promoNum       = set + num;
-      const promoNumPadded = set + card.number;
-      // Lowercase set.id variants: "mcd25", "swsh", "swshp" (promo suffix)
-      const setIdLower = set.toLowerCase();
-      const setIdPromo = setIdLower + 'p';
-      // Helper: does a result card match any of our number variants?
-      const matchNum = c =>
-        c.number === num || c.number === card.number ||
-        c.number === promoNum || c.number === promoNumPadded;
-
-      // S1: exact — name + number + ptcgoCode
-      let hit = await _tcgFirst(`name:"${card.name}" number:${num} set.ptcgoCode:${set}`);
-
-      // S2: padded promo number + ptcgoCode (e.g. SWSH021)
-      if (!hit) hit = await _tcgFirst(`name:"${card.name}" number:${promoNumPadded} set.ptcgoCode:${set}`);
-
-      // S3: unpadded promo number + ptcgoCode (e.g. SWSH21); skip if same as S2
-      if (!hit && promoNum !== promoNumPadded)
-        hit = await _tcgFirst(`name:"${card.name}" number:${promoNum} set.ptcgoCode:${set}`);
-
-      // S4: name + ptcgoCode, scan results for number match
-      if (!hit) {
-        const bySet = await _tcgAll(`name:"${card.name}" set.ptcgoCode:${set}`);
-        hit = bySet.find(matchNum) || bySet[0] || null;
-      }
-
-      // S5: name + set.id lowercase (handles MCD25→mcd25, MEP→mep, etc.)
-      if (!hit) {
-        const byId = await _tcgAll(`name:"${card.name}" set.id:${setIdLower}`);
-        hit = byId.find(matchNum) || byId[0] || null;
-      }
-
-      // S6: name + set.id promo variant (handles SWSH→swshp Black Star Promos)
-      if (!hit) {
-        const byIdP = await _tcgAll(`name:"${card.name}" set.id:${setIdPromo}`);
-        hit = byIdP.find(matchNum) || byIdP[0] || null;
-      }
-
-      // S7: wildcard base name + ptcgoCode — catches GX/EX hyphen naming (Lunala-GX vs Lunala GX)
-      if (!hit) {
-        const baseName = card.name.replace(/ (?:GX|EX|V|VMAX|VSTAR)$/, '').trim();
-        if (baseName !== card.name) {
-          const byWild = await _tcgAll(`name:${baseName}* set.ptcgoCode:${set}`);
-          hit = byWild.find(matchNum) || null;
-        }
-      }
-
-      // S8: unconstrained by set, but only accept if the set code actually matches
-      if (!hit) {
-        const candidates = await _tcgAll(`name:"${card.name}" number:${card.number}`);
-        hit = candidates.find(c => {
-          const ptcgo = (c.set?.ptcgoCode || '').toUpperCase();
-          const sid   = (c.set?.id || '').toUpperCase();
-          return ptcgo === set || sid === setIdLower.toUpperCase() || sid === setIdPromo.toUpperCase();
-        }) || null;
-      }
-
-      if (hit) {
-        entry.image = hit.images?.small || null;
-      } else {
-        // S9: backend Cardmarket image proxy — handles sets not in pokemontcg.io
-        try {
-          const params = new URLSearchParams({ name: card.name, set: card.set, number: card.number });
-          const r = await fetch(`/api/cardmarket-image?${params}`);
-          if (r.ok) {
-            const j = await r.json();
-            if (j.image) entry.image = j.image;
-          }
-        } catch { /* ignore */ }
-      }
-    } catch { /* network error — image stays null */ }
-    results.push(entry);
-  }
-  return results;
-}
-
-async function _tcgFirst(q) {
-  const resp = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(q)}&pageSize=5`);
-  if (!resp.ok) return null;
-  const data = (await resp.json()).data || [];
-  return data[0] || null;
-}
-
-async function _tcgAll(q) {
-  const resp = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(q)}&pageSize=20`);
+  const resp = await fetch(`/api/card-images?description=${encodeURIComponent(description)}`);
   if (!resp.ok) return [];
-  return (await resp.json()).data || [];
-}
-
-// ── card name parsing ─────────────────────────────────────────────────
-// Pattern: "CardName (SETCODE NUMBER)" with optional suffixes.
-// [^(]+ prevents backtracking over parentheses (avoids ReDoS).
-const _CARD_RE = /^([^(]+) \(([A-Z0-9]+) (\d+[A-Za-z]*)\)$/;
-
-function parseCardLines(description) {
-  const cards = [];
-  for (const rawLine of description.split('\n')) {
-    const line = rawLine.trim().slice(0, MAX_CARD_LINE_LEN);
-    const m = _CARD_RE.exec(line);
-    if (!m) continue;
-    let name = m[1].trim();
-    // Strip level suffix: "Lv.52"
-    name = name.replace(/ Lv\.\d+$/, '');
-    // Strip bracketed tag: "[C]" or "[4]"
-    name = name.replace(/ \[[^\]]{0,20}\]$/, '');
-    // Strip delta species suffix
-    const dIdx = name.indexOf(' \u03b4');
-    if (dIdx !== -1) name = name.slice(0, dIdx);
-    name = name.trim();
-    if (name) cards.push({ name, set: m[2], number: m[3] });
-  }
-  return cards;
+  return (await resp.json()) || [];
 }
 
 // ── add transaction ───────────────────────────────────────────────────

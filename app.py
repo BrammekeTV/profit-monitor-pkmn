@@ -165,82 +165,200 @@ _CM_HEADERS = {
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/124.0.0.0 Safari/537.36"
     ),
-    "Accept": "text/html,application/xhtml+xml",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
 }
-_OG_IMAGE_RE = re.compile(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']')
-_PRODUCT_LINK_RE = re.compile(r'href=["\](/en/Pokemon/Products/Singles/[^"\'?#]+)["\']')
+
+_PRODUCT_LINK_RE = re.compile(
+    r'href=["\'](?P<url>/en/Pokemon/Products/Singles/[^"\'?#]+)["\']'
+)
+_PRODUCT_PAGE_RE = re.compile(
+    r"/en/Pokemon/Products/Singles/[^/?#]+/[^/?#]+$"
+)
+
+
+def _extract_og_image(html: str) -> str | None:
+    """Extract og:image URL regardless of meta attribute order."""
+    for pat in (
+        r'<meta\s[^>]*property=["\']og:image["\'][^>]*content=["\']([^"\']+)["\']',
+        r'<meta\s[^>]*content=["\']([^"\']+)["\'][^>]*property=["\']og:image["\']',
+    ):
+        m = re.search(pat, html, re.IGNORECASE)
+        if m:
+            return m.group(1)
+    return None
 
 
 def _cardmarket_image(name: str, set_code: str, number: str) -> str | None:
     """
-    Try to resolve a card image URL by scraping Cardmarket product pages.
+    Resolve a card image URL via Cardmarket.
 
-    1. Search Cardmarket for "{name} {number}" in the Pokémon singles category.
-    2. If the response is already a product page (redirect), extract og:image.
-    3. Otherwise find the first product link in the search results and fetch that page.
+    Tries two searches:
+    1. Exact name search (may redirect straight to product page).
+    2. Name + number search (broader, finds numbered promos).
+    For each search result page, follows the first product link and extracts og:image.
     """
-    search_query = f"{name} {number}".strip()
-    search_url = (
-        "https://www.cardmarket.com/en/Pokemon/Products/Singles"
-        f"?searchString={requests.utils.quote(search_query)}&exactName=false"
-    )
-    try:
-        resp = _http.get(search_url, headers=_CM_HEADERS, timeout=5, allow_redirects=True)
-        if not resp.ok:
-            return None
-
-        html = resp.text
-
-        # If Cardmarket redirected to a single product page, parse og:image directly.
-        _product_page_re = re.compile(r"/en/Pokemon/Products/Singles/[^/?#]+/[^/?#]+$")
-        if _product_page_re.search(resp.url):
-            m = _OG_IMAGE_RE.search(html)
-            if m:
-                return m.group(1)
-
-        # On a search-results page: find the first product link and follow it.
-        m = _PRODUCT_LINK_RE.search(html)
-        if not m:
-            return None
-
-        product_url = "https://www.cardmarket.com" + m.group(1)
-        prod_resp = _http.get(product_url, headers=_CM_HEADERS, timeout=5)
-        if not prod_resp.ok:
-            return None
-
-        m2 = _OG_IMAGE_RE.search(prod_resp.text)
-        if m2:
-            return m2.group(1)
-
-    except Exception:
-        pass
-
+    queries = [name, f"{name} {number}"]
+    for query in queries:
+        url = (
+            "https://www.cardmarket.com/en/Pokemon/Products/Singles"
+            f"?searchString={requests.utils.quote(query.strip())}"
+            "&exactName=false"
+        )
+        image = _cm_fetch_image(url)
+        if image:
+            return image
     return None
 
 
-@app.route("/api/cardmarket-image")
-def api_cardmarket_image():
-    """
-    Proxy endpoint: resolves a single card's image via Cardmarket scraping.
-    Query params: name, set, number.
-    Returns JSON {"image": "<url or null>"}.
-    """
-    name = request.args.get("name", "").strip()
-    set_code = request.args.get("set", "").strip()
-    number = request.args.get("number", "").strip()
-    if not name:
-        return jsonify({"image": None})
-    image_url = _cardmarket_image(name, set_code, number)
-    return jsonify({"image": image_url})
+def _cm_fetch_image(search_url: str) -> str | None:
+    """Fetch a Cardmarket search URL and return the first product's og:image."""
+    try:
+        resp = _http.get(search_url, headers=_CM_HEADERS, timeout=6, allow_redirects=True)
+        if not resp.ok:
+            return None
+        html = resp.text
 
+        # Redirected to a single product page — extract og:image directly.
+        if _PRODUCT_PAGE_RE.search(resp.url):
+            return _extract_og_image(html)
+
+        # Search results page — follow the first product link.
+        m = _PRODUCT_LINK_RE.search(html)
+        if not m:
+            return None
+        prod_resp = _http.get(
+            "https://www.cardmarket.com" + m.group("url"),
+            headers=_CM_HEADERS,
+            timeout=6,
+        )
+        if prod_resp.ok:
+            return _extract_og_image(prod_resp.text)
+    except Exception:
+        pass
+    return None
+
+
+# ------------------------------------------------------------------
+# pokemontcg.io helpers (server-side, avoids browser rate limits)
+# ------------------------------------------------------------------
+
+def _tcgq(q: str, page_size: int = 5) -> list[dict]:
+    """Query pokemontcg.io and return the data list."""
+    try:
+        resp = _http.get(
+            "https://api.pokemontcg.io/v2/cards",
+            params={"q": q, "pageSize": page_size},
+            timeout=6,
+        )
+        if resp.ok:
+            return resp.json().get("data", [])
+    except Exception:
+        pass
+    return []
+
+
+def _lookup_card(name: str, set_code: str, number: str) -> tuple[str | None, str]:
+    """
+    Full S1-S9 strategy:
+    S1-S8 try pokemontcg.io with progressively looser queries.
+    S9 falls back to Cardmarket scraping.
+
+    Returns (image_url_or_None, cardmarket_url).
+    """
+    set_upper = set_code.upper()
+    set_lower = set_code.lower()
+    set_promo = set_lower + "p"
+
+    # Strip leading zeros: "040" -> "40"
+    digits_only = re.sub(r"[^0-9]", "", number) or "0"
+    num = str(int(digits_only))
+    promo_padded = set_upper + number
+    promo_num = set_upper + num
+
+    def first_match(data: list[dict], predicate) -> dict | None:
+        return next((c for c in data if predicate(c)), None)
+
+    def num_match(c: dict) -> bool:
+        n = c.get("number", "")
+        return n in (num, number, promo_num, promo_padded)
+
+    def set_match(c: dict) -> bool:
+        s = c.get("set", {})
+        ptcgo = s.get("ptcgoCode", "").upper()
+        sid = s.get("id", "").upper()
+        return ptcgo == set_upper or sid == set_lower.upper() or sid == set_promo.upper()
+
+    hit = None
+
+    # S1: exact — name + number + ptcgoCode
+    data = _tcgq(f'name:"{name}" number:{num} set.ptcgoCode:{set_upper}')
+    if data:
+        hit = data[0]
+
+    # S2: padded promo number + ptcgoCode (e.g. SWSH021)
+    if not hit:
+        data = _tcgq(f'name:"{name}" number:{promo_padded} set.ptcgoCode:{set_upper}')
+        if data:
+            hit = data[0]
+
+    # S3: unpadded promo number + ptcgoCode (e.g. SWSH21)
+    if not hit and promo_num != promo_padded:
+        data = _tcgq(f'name:"{name}" number:{promo_num} set.ptcgoCode:{set_upper}')
+        if data:
+            hit = data[0]
+
+    # S4: by ptcgoCode, pick number match or first
+    if not hit:
+        data = _tcgq(f'name:"{name}" set.ptcgoCode:{set_upper}', page_size=20)
+        hit = first_match(data, num_match) or (data[0] if data else None)
+
+    # S5: by set.id lowercase
+    if not hit:
+        data = _tcgq(f'name:"{name}" set.id:{set_lower}', page_size=20)
+        hit = first_match(data, num_match) or (data[0] if data else None)
+
+    # S6: by set.id promo variant (e.g. swshp for SWSH promos)
+    if not hit:
+        data = _tcgq(f'name:"{name}" set.id:{set_promo}', page_size=20)
+        hit = first_match(data, num_match) or (data[0] if data else None)
+
+    # S7: wildcard base name + ptcgoCode (handles "Lunala-GX" vs "Lunala GX")
+    if not hit:
+        base = re.sub(r" (?:GX|EX|V|VMAX|VSTAR)$", "", name).strip()
+        if base != name:
+            data = _tcgq(f"name:{base}* set.ptcgoCode:{set_upper}", page_size=20)
+            hit = first_match(data, num_match)
+
+    # S8: unconstrained, but set code must match
+    if not hit:
+        data = _tcgq(f'name:"{name}" number:{number}', page_size=20)
+        hit = first_match(data, set_match)
+
+    if hit:
+        image = hit.get("images", {}).get("small") or None
+        # Build a specific Cardmarket search URL using the canonical card name
+        cm_url = (
+            "https://www.cardmarket.com/en/Pokemon/Products/Search"
+            f"?searchString={requests.utils.quote(name)}"
+        )
+        return image, cm_url
+
+    # S9: Cardmarket scraping fallback
+    cm_url = (
+        "https://www.cardmarket.com/en/Pokemon/Products/Search"
+        f"?searchString={requests.utils.quote(name)}"
+    )
+    image = _cardmarket_image(name, set_code, number)
+    return image, cm_url
 
 
 @app.route("/api/card-images")
 def api_card_images():
     """
-    Accepts ?description=... and returns a list of card image URLs.
-    Uses pokemontcg.io (free, open) and adds a Cardmarket search link per card.
+    Accepts ?description=... and returns a list of card objects with image URLs.
+    Performs full S1-S9 lookup: pokemontcg.io strategies then Cardmarket fallback.
     """
     description = request.args.get("description", "")
     cards = parse_card_lines(description)
@@ -248,44 +366,15 @@ def api_card_images():
         return jsonify([])
 
     results = []
-
     for card in cards:
-        entry = {
+        image, cm_url = _lookup_card(card["name"], card["set"], card["number"])
+        results.append({
             "name": card["name"],
             "set": card["set"],
             "number": card["number"],
-            "image": None,
-            "cardmarket_url": (
-                f"https://www.cardmarket.com/en/Pokemon/Products/Search"
-                f"?searchString={requests.utils.quote(card['name'])}"
-            ),
-        }
-        try:
-            q = f'name:"{card["name"]}" number:{card["number"]}'
-            resp = _http.get(
-                "https://api.pokemontcg.io/v2/cards",
-                params={"q": q, "pageSize": 10},
-                timeout=6,
-            )
-            if resp.ok:
-                data = resp.json().get("data", [])
-                # Prefer matching set code (ptcgoCode)
-                matched = next(
-                    (
-                        c
-                        for c in data
-                        if c.get("set", {}).get("ptcgoCode", "").upper()
-                        == card["set"].upper()
-                    ),
-                    None,
-                )
-                hit = matched or (data[0] if data else None)
-                if hit:
-                    entry["image"] = hit.get("images", {}).get("small")
-        except Exception:
-            pass
-        results.append(entry)
-
+            "image": image,
+            "cardmarket_url": cm_url,
+        })
     return jsonify(results)
 
 
