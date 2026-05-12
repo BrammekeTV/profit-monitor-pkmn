@@ -882,10 +882,29 @@ async function fetchCardImages(description) {
         }
       }
 
-      // S8: original number unconstrained — last resort, may return wrong card
-      if (!hit) hit = await _tcgFirst(`name:"${card.name}" number:${card.number}`);
+      // S8: unconstrained by set, but only accept if the set code actually matches
+      if (!hit) {
+        const candidates = await _tcgAll(`name:"${card.name}" number:${card.number}`);
+        hit = candidates.find(c => {
+          const ptcgo = (c.set?.ptcgoCode || '').toUpperCase();
+          const sid   = (c.set?.id || '').toUpperCase();
+          return ptcgo === set || sid === setIdLower.toUpperCase() || sid === setIdPromo.toUpperCase();
+        }) || null;
+      }
 
-      if (hit) entry.image = hit.images?.small || null;
+      if (hit) {
+        entry.image = hit.images?.small || null;
+      } else {
+        // S9: backend Cardmarket image proxy — handles sets not in pokemontcg.io
+        try {
+          const params = new URLSearchParams({ name: card.name, set: card.set, number: card.number });
+          const r = await fetch(`/api/cardmarket-image?${params}`);
+          if (r.ok) {
+            const j = await r.json();
+            if (j.image) entry.image = j.image;
+          }
+        } catch { /* ignore */ }
+      }
     } catch { /* network error — image stays null */ }
     results.push(entry);
   }

@@ -159,6 +159,82 @@ def api_add():
     return jsonify({"success": True, "row": row})
 
 
+_CM_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+_OG_IMAGE_RE = re.compile(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']')
+_PRODUCT_LINK_RE = re.compile(r'href=["\](/en/Pokemon/Products/Singles/[^"\'?#]+)["\']')
+
+
+def _cardmarket_image(name: str, set_code: str, number: str) -> str | None:
+    """
+    Try to resolve a card image URL by scraping Cardmarket product pages.
+
+    1. Search Cardmarket for "{name} {number}" in the Pokémon singles category.
+    2. If the response is already a product page (redirect), extract og:image.
+    3. Otherwise find the first product link in the search results and fetch that page.
+    """
+    search_query = f"{name} {number}".strip()
+    search_url = (
+        "https://www.cardmarket.com/en/Pokemon/Products/Singles"
+        f"?searchString={requests.utils.quote(search_query)}&exactName=false"
+    )
+    try:
+        resp = _http.get(search_url, headers=_CM_HEADERS, timeout=10, allow_redirects=True)
+        if not resp.ok:
+            return None
+
+        html = resp.text
+
+        # If Cardmarket redirected to a single product page, parse og:image directly.
+        if "/Products/Singles/" in resp.url and resp.url.rstrip("/").count("/") >= 8:
+            m = _OG_IMAGE_RE.search(html)
+            if m:
+                return m.group(1)
+
+        # On a search-results page: find the first product link and follow it.
+        m = _PRODUCT_LINK_RE.search(html)
+        if not m:
+            return None
+
+        product_url = "https://www.cardmarket.com" + m.group(1)
+        prod_resp = _http.get(product_url, headers=_CM_HEADERS, timeout=10)
+        if not prod_resp.ok:
+            return None
+
+        m2 = _OG_IMAGE_RE.search(prod_resp.text)
+        if m2:
+            return m2.group(1)
+
+    except Exception:
+        pass
+
+    return None
+
+
+@app.route("/api/cardmarket-image")
+def api_cardmarket_image():
+    """
+    Proxy endpoint: resolves a single card's image via Cardmarket scraping.
+    Query params: name, set, number.
+    Returns JSON {"image": "<url or null>"}.
+    """
+    name = request.args.get("name", "").strip()
+    set_code = request.args.get("set", "").strip()
+    number = request.args.get("number", "").strip()
+    if not name:
+        return jsonify({"image": None})
+    image_url = _cardmarket_image(name, set_code, number)
+    return jsonify({"image": image_url})
+
+
+
 @app.route("/api/card-images")
 def api_card_images():
     """
