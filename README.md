@@ -15,7 +15,7 @@ A static profit tracker for Pokémon TCG trading that runs entirely in the brows
 
 ## Data storage
 
-All data is stored in your browser's `localStorage` under the key `profit-monitor-pkmn`. Nothing is sent to any server. If you clear your browser data, your transactions will be lost — use the import/export workflow to back up.
+All data is stored in your browser's `localStorage` under the key `profit-monitor-pkmn`. Nothing is sent to any server. Use the **JSON exporteren** button to download a backup, and re-import the JSON file later if needed (import also accepts JSON files).
 
 ## Import format (.xlsm / .xlsx)
 

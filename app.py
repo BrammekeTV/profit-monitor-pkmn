@@ -41,11 +41,10 @@ def load_transactions():
 def append_transaction(type_: str, amount: float, description: str) -> int:
     wb = openpyxl.load_workbook(XLSM_PATH, keep_vba=True)
     ws = wb["Gegevens"]
-    # Enforce sign convention
-    if type_ == "Gekocht" and amount > 0:
-        amount = -amount
-    # Find first completely empty row starting from row 3
-    next_row = ws.max_row + 1
+    # Enforce sign convention for both types
+    amount = abs(amount) if type_ == "Verkocht" else -abs(amount)
+    # Find first completely empty row starting from row 3 (rows 1-2 are headers)
+    next_row = max(3, ws.max_row + 1)
     for r in range(3, ws.max_row + 2):
         if ws.cell(r, 1).value is None and ws.cell(r, 2).value is None:
             next_row = r

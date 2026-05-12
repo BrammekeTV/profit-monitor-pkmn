@@ -634,6 +634,17 @@
 
     <hr class="sidebar-divider" />
 
+    <hr class="sidebar-divider" />
+
+    <button class="import-btn" id="exportBtn" style="margin-bottom:8px;">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 11V2M4.5 7.5L8 4l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M2 11.5h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M2 12h12v2H2v-2z" fill="currentColor" opacity=".3"/>
+      </svg>
+      JSON exporteren
+    </button>
+
     <button class="danger-btn" id="clearBtn">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M3 4h10M6 4V2h4v2M5 4l1 9h4l1-9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -775,7 +786,8 @@ function rowHTML(t) {
 }
 
 function looksLikeCards(desc) {
-  return /\([A-Z0-9]+ \d+\)/.test(desc);
+  // Must match the same literal-space format as _CARD_RE and parseCardLines
+  return /\([A-Z0-9]+ \d+[A-Za-z]*\)/.test(desc);
 }
 
 function buildImagesHTML(cards) {
@@ -835,8 +847,9 @@ async function fetchCardImages(description) {
 }
 
 // ── card name parsing ─────────────────────────────────────────────────
-// Pattern: "CardName (SETCODE NUMBER)" with optional suffixes
-const _CARD_RE = /^(.+?) \(([A-Z0-9]+) (\d+[A-Za-z]*)\)$/;
+// Pattern: "CardName (SETCODE NUMBER)" with optional suffixes.
+// [^(]+ prevents backtracking over parentheses (avoids ReDoS).
+const _CARD_RE = /^([^(]+) \(([A-Z0-9]+) (\d+[A-Za-z]*)\)$/;
 
 function parseCardLines(description) {
   const cards = [];
@@ -904,6 +917,18 @@ document.getElementById('clearBtn').addEventListener('click', () => {
   renderTable();
 });
 
+// ── export data ───────────────────────────────────────────────────────
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const json = JSON.stringify(allTxns, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'profit-monitor-export.json';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
 // ── import .xlsm / .xlsx ─────────────────────────────────────────────
 document.getElementById('importBtn').addEventListener('click', () => {
   document.getElementById('xlsmFile').click();
@@ -927,10 +952,10 @@ document.getElementById('xlsmFile').addEventListener('change', async function ()
     }
 
     // Deduplicate: skip rows already identical in type+amount+description
-    const existingKeys = new Set(allTxns.map(t => `${t.type}|${t.amount}|${t.description}`));
+    const existingKeys = new Set(allTxns.map(t => JSON.stringify([t.type, t.amount, t.description])));
     let added = 0;
     for (const t of txns) {
-      const key = `${t.type}|${t.amount}|${t.description}`;
+      const key = JSON.stringify([t.type, t.amount, t.description]);
       if (!existingKeys.has(key)) {
         allTxns.push({ ...t, id: nextId() });
         existingKeys.add(key);
@@ -989,14 +1014,15 @@ async function parseXlsmFile(file) {
     const relsNs = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
     const sheets = wbDoc.getElementsByTagNameNS(wbNs, 'sheet');
     let sheetId = null;
-    // Prefer "Gegevens" sheet; otherwise first sheet
+    // Pick "Gegevens" if present; otherwise fall back to the first sheet.
+    let firstSheetId = null;
     for (const s of sheets) {
       const name = s.getAttribute('name') || '';
-      if (name === 'Gegevens' || !sheetId) {
-        sheetId = s.getAttributeNS(relsNs, 'id') || s.getAttribute('r:id');
-        if (name === 'Gegevens') break;
-      }
+      const id = s.getAttributeNS(relsNs, 'id') || s.getAttribute('r:id');
+      if (!firstSheetId) firstSheetId = id;
+      if (name === 'Gegevens') { sheetId = id; break; }
     }
+    if (!sheetId) sheetId = firstSheetId;
     // Resolve sheetId → actual file via workbook.xml.rels
     if (sheetId) {
       const relsFile = zip.file('xl/_rels/workbook.xml.rels');
@@ -1051,7 +1077,10 @@ function getCellValue(cell, sharedStrings, ns) {
   const t = cell.getAttribute('t');
   const vEl = cell.getElementsByTagNameNS(ns, 'v')[0];
   if (!vEl) return '';
-  if (t === 's') return sharedStrings[parseInt(vEl.textContent, 10)] ?? '';
+  if (t === 's') {
+    const idx = parseInt(vEl.textContent, 10);
+    return (idx >= 0 && idx < sharedStrings.length) ? sharedStrings[idx] : '';
+  }
   if (t === 'str') return vEl.textContent;
   return vEl.textContent;
 }
