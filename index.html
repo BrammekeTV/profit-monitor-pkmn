@@ -220,14 +220,6 @@
       line-height: 1.4;
     }
 
-    .row-actions {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-top: 4px;
-    }
-
-    .lookup-btn,
     .delete-btn {
       display: inline-flex;
       align-items: center;
@@ -243,71 +235,10 @@
       transition: background 120ms, color 120ms;
     }
 
-    .lookup-btn:hover {
-      background: var(--surface);
-      color: var(--text);
-    }
-
     .delete-btn:hover {
       background: rgba(239,68,68,0.12);
       color: var(--red);
       border-color: rgba(239,68,68,0.3);
-    }
-
-    .loading-dot {
-      display: inline-block;
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--muted);
-      animation: pulse 1s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
-
-    /* card images strip */
-    .card-images {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 8px;
-    }
-
-    .card-img-wrap img {
-      height: 80px;
-      width: auto;
-      border-radius: 4px;
-      border: 1px solid var(--border);
-      display: block;
-    }
-
-    .card-img-wrap a {
-      display: block;
-    }
-
-    .card-img-name {
-      font-size: 10px;
-      color: var(--muted);
-      margin-top: 2px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 70px;
-    }
-
-    .no-image-link {
-      font-size: 11px;
-      color: var(--muted);
-      text-decoration: underline;
-      text-decoration-color: transparent;
-      transition: color 120ms, text-decoration-color 120ms;
-    }
-
-    .no-image-link:hover {
-      color: var(--text);
-      text-decoration-color: var(--muted);
     }
 
     .empty {
@@ -665,13 +596,11 @@
 <script>
 // ── constants ────────────────────────────────────────────────────────
 const STORAGE_KEY = 'profit-monitor-pkmn';
-const MAX_CARD_LINE_LEN = 200;
 
 // ── state ────────────────────────────────────────────────────────────
 let allTxns = [];
 let activeFilter = 'all';
 let searchQuery = '';
-const imageCache = {};  // description → [{name, image, cardmarket_url}]
 
 // ── localStorage ─────────────────────────────────────────────────────
 function loadFromStorage() {
@@ -736,9 +665,6 @@ function renderTable() {
   const reversed = [...rows].reverse();
   tbody.innerHTML = reversed.map(t => rowHTML(t)).join('');
 
-  tbody.querySelectorAll('.lookup-btn').forEach(btn =>
-    btn.addEventListener('click', () => handleLookup(btn))
-  );
   tbody.querySelectorAll('.delete-btn').forEach(btn =>
     btn.addEventListener('click', () => deleteTxn(Number(btn.dataset.id)))
   );
@@ -751,29 +677,11 @@ function rowHTML(t) {
   const amtCls = isSold ? 'positive' : 'negative';
   const amtStr = fmt(t.amount);
 
-  const hasCards = looksLikeCards(t.description);
-  const cached = hasCards ? imageCache[t.description] : null;
-  const imagesHTML = cached ? buildImagesHTML(cached) : '';
-
-  const lookupBtn = hasCards && !cached
-    ? `<button class="lookup-btn" data-desc="${escAttr(t.description)}">
-         <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
-           <rect x="1" y="1" width="6" height="8" rx="1" stroke="currentColor" stroke-width="1.5"/>
-           <rect x="9" y="1" width="6" height="8" rx="1" stroke="currentColor" stroke-width="1.5"/>
-           <rect x="1" y="11" width="6" height="4" rx="1" stroke="currentColor" stroke-width="1.5"/>
-           <rect x="9" y="11" width="6" height="4" rx="1" stroke="currentColor" stroke-width="1.5"/>
-         </svg>
-         Kaarten
-       </button>`
-    : '';
-
   return `<tr data-id="${t.id}">
     <td><span class="type-badge ${badgeCls}">${badgeLabel}</span></td>
     <td class="amount-cell ${amtCls}">${amtStr}</td>
     <td class="desc-cell">
       <div class="desc-text">${escHTML(t.description)}</div>
-      <div class="row-actions">${lookupBtn}</div>
-      <div class="card-images">${imagesHTML}</div>
     </td>
     <td style="white-space:nowrap;vertical-align:middle;">
       <button class="delete-btn" data-id="${t.id}" title="Verwijderen">
@@ -783,161 +691,6 @@ function rowHTML(t) {
       </button>
     </td>
   </tr>`;
-}
-
-function looksLikeCards(desc) {
-  // Must match the same literal-space format as _CARD_RE and parseCardLines:
-  // "name (SETCODE NUMBER)" — note the space before the opening parenthesis.
-  return / \([A-Z0-9]+ \d+[A-Za-z]*\)/.test(desc);
-}
-
-function buildImagesHTML(cards) {
-  return cards.map(c => {
-    if (c.image) {
-      return `<div class="card-img-wrap">
-        <a href="${escAttr(c.cardmarket_url)}" target="_blank" rel="noopener" title="${escAttr(c.name)} — Cardmarket">
-          <img src="${escAttr(c.image)}" alt="${escAttr(c.name)}" loading="lazy" />
-        </a>
-        <div class="card-img-name">${escHTML(c.name)}</div>
-      </div>`;
-    }
-    return `<div class="card-img-wrap">
-      <a class="no-image-link" href="${escAttr(c.cardmarket_url)}" target="_blank" rel="noopener">${escHTML(c.name)}</a>
-      <div class="card-img-name">geen afbeelding</div>
-    </div>`;
-  }).join('');
-}
-
-// ── card image lookup ─────────────────────────────────────────────────
-async function handleLookup(btn) {
-  const desc = btn.dataset.desc;
-  if (imageCache[desc]) { renderTable(); return; }
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="loading-dot"></span>';
-
-  imageCache[desc] = await fetchCardImages(desc);
-  renderTable();
-}
-
-async function fetchCardImages(description) {
-  // Try Flask backend first (server-side S1-S9 strategy including Cardmarket fallback).
-  // Falls back to direct pokemontcg.io calls when running as a static site (GitHub Pages).
-  try {
-    const resp = await fetch(`/api/card-images?description=${encodeURIComponent(description)}`);
-    if (resp.ok) return (await resp.json()) || [];
-  } catch { /* no server — continue to client-side fallback */ }
-
-  // Client-side fallback: S1-S8 via pokemontcg.io (no Cardmarket proxy available).
-  const cards = parseCardLines(description);
-  const results = [];
-  for (const card of cards) {
-    const entry = {
-      name: card.name,
-      set: card.set,
-      number: card.number,
-      image: null,
-      cardmarket_url:
-        `https://www.cardmarket.com/en/Pokemon/Products/Search?searchString=${encodeURIComponent(card.name)}`,
-    };
-    try {
-      const num = String(parseInt(card.number, 10));
-      const set = card.set.toUpperCase();
-      const promoNum       = set + num;
-      const promoNumPadded = set + card.number;
-      const setIdLower = set.toLowerCase();
-      const setIdPromo = setIdLower + 'p';
-      const matchNum = c =>
-        c.number === num || c.number === card.number ||
-        c.number === promoNum || c.number === promoNumPadded;
-
-      // S1: exact — name + number + ptcgoCode
-      let hit = await _tcgFirst(`name:"${card.name}" number:${num} set.ptcgoCode:${set}`);
-
-      // S2: padded promo number + ptcgoCode (e.g. SWSH021)
-      if (!hit) hit = await _tcgFirst(`name:"${card.name}" number:${promoNumPadded} set.ptcgoCode:${set}`);
-
-      // S3: unpadded promo number + ptcgoCode (e.g. SWSH21)
-      if (!hit && promoNum !== promoNumPadded)
-        hit = await _tcgFirst(`name:"${card.name}" number:${promoNum} set.ptcgoCode:${set}`);
-
-      // S4: name + ptcgoCode, pick number match or first
-      if (!hit) {
-        const bySet = await _tcgAll(`name:"${card.name}" set.ptcgoCode:${set}`);
-        hit = bySet.find(matchNum) || bySet[0] || null;
-      }
-
-      // S5: name + set.id lowercase (handles MCD25→mcd25, MEP→mep, etc.)
-      if (!hit) {
-        const byId = await _tcgAll(`name:"${card.name}" set.id:${setIdLower}`);
-        hit = byId.find(matchNum) || byId[0] || null;
-      }
-
-      // S6: name + set.id promo variant (handles SWSH→swshp Black Star Promos)
-      if (!hit) {
-        const byIdP = await _tcgAll(`name:"${card.name}" set.id:${setIdPromo}`);
-        hit = byIdP.find(matchNum) || byIdP[0] || null;
-      }
-
-      // S7: wildcard base name + ptcgoCode (handles "Lunala-GX" vs "Lunala GX")
-      if (!hit) {
-        const baseName = card.name.replace(/ (?:GX|EX|V|VMAX|VSTAR)$/, '').trim();
-        if (baseName !== card.name) {
-          const byWild = await _tcgAll(`name:${baseName}* set.ptcgoCode:${set}`);
-          hit = byWild.find(matchNum) || null;
-        }
-      }
-
-      // S8: unconstrained by set, only accept if set code matches
-      if (!hit) {
-        const candidates = await _tcgAll(`name:"${card.name}" number:${card.number}`);
-        hit = candidates.find(c => {
-          const ptcgo = (c.set?.ptcgoCode || '').toUpperCase();
-          const sid   = (c.set?.id || '').toUpperCase();
-          return ptcgo === set || sid === setIdLower.toUpperCase() || sid === setIdPromo.toUpperCase();
-        }) || null;
-      }
-
-      if (hit) entry.image = hit.images?.small || null;
-    } catch { /* network error — image stays null */ }
-    results.push(entry);
-  }
-  return results;
-}
-
-async function _tcgFirst(q) {
-  const resp = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(q)}&pageSize=5`);
-  if (!resp.ok) return null;
-  const data = (await resp.json()).data || [];
-  return data[0] || null;
-}
-
-async function _tcgAll(q) {
-  const resp = await fetch(`https://api.pokemontcg.io/v2/cards?q=${encodeURIComponent(q)}&pageSize=20`);
-  if (!resp.ok) return [];
-  return (await resp.json()).data || [];
-}
-
-// ── card name parsing ─────────────────────────────────────────────────
-// Pattern: "CardName (SETCODE NUMBER)" with optional suffixes.
-// [^(]+ prevents backtracking over parentheses (avoids ReDoS).
-const _CARD_RE = /^([^(]+) \(([A-Z0-9]+) (\d+[A-Za-z]*)\)$/;
-
-function parseCardLines(description) {
-  const cards = [];
-  for (const rawLine of description.split('\n')) {
-    const line = rawLine.trim().slice(0, MAX_CARD_LINE_LEN);
-    const m = _CARD_RE.exec(line);
-    if (!m) continue;
-    let name = m[1].trim();
-    name = name.replace(/ Lv\.\d+$/, '');
-    name = name.replace(/ \[[^\]]{0,20}\]$/, '');
-    const dIdx = name.indexOf(' \u03b4');
-    if (dIdx !== -1) name = name.slice(0, dIdx);
-    name = name.trim();
-    if (name) cards.push({ name, set: m[2], number: m[3] });
-  }
-  return cards;
 }
 
 // ── add transaction ───────────────────────────────────────────────────
