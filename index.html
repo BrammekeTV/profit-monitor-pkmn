@@ -436,6 +436,98 @@
       color: var(--red);
       border-color: rgba(239,68,68,0.3);
     }
+
+    /* card images strip */
+    .card-images {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .card-img-wrap {
+      position: relative;
+    }
+
+    .card-img-wrap img {
+      height: 80px;
+      width: auto;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      display: block;
+      transition: opacity 200ms;
+    }
+
+    .card-img-wrap a { display: block; }
+
+    .card-img-placeholder {
+      height: 80px;
+      width: 56px;
+      border-radius: 4px;
+      border: 1px dashed var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 10px;
+      text-align: center;
+      line-height: 1.3;
+      padding: 4px;
+    }
+
+    /* PAT / connected indicator */
+    .pat-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      padding: 3px 7px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .pat-indicator.connected {
+      border-color: rgba(34,197,94,0.3);
+      color: var(--green);
+      background: rgba(34,197,94,0.08);
+    }
+
+    .pat-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* sync button */
+    .sync-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 120ms, color 120ms, border-color 120ms;
+      width: 100%;
+    }
+
+    .sync-btn:hover:not(:disabled) {
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--btn-h);
+    }
+
+    .sync-btn:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
   </style>
 </head>
 <body>
@@ -587,20 +679,122 @@
 
     <div style="font-size:12px;color:var(--muted);line-height:1.6;">
       Data wordt lokaal opgeslagen in uw browser.<br/>
-      Kaartafbeeldingen via de Pokémon TCG API.
+      Kaartafbeeldingen via Cardmarket S3.
     </div>
+
+    <hr class="sidebar-divider" />
+
+    <!-- GitHub PAT settings -->
+    <div class="form-title" style="display:flex;align-items:center;justify-content:space-between;">
+      <span>GitHub sync</span>
+      <span class="pat-indicator" id="patIndicator">
+        <span class="pat-dot"></span> niet verbonden
+      </span>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="patInput">Personal Access Token</label>
+      <input
+        type="password"
+        class="form-input"
+        id="patInput"
+        placeholder="ghp_…"
+        autocomplete="off"
+      />
+      <div class="form-hint">Token met <code>repo</code> schrijfrechten. Blijft lokaal in uw browser.</div>
+    </div>
+
+    <button class="import-btn" id="patSaveBtn" style="margin-bottom:8px;">
+      Token opslaan
+    </button>
+
+    <button class="sync-btn" id="syncBtn">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+        <path d="M13.5 8A5.5 5.5 0 0 1 3.08 10.5M2.5 8A5.5 5.5 0 0 1 12.92 5.5M1 13l2-2.5L5 13M11 3l2 2.5L15 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Sync naar GitHub
+    </button>
+    <div class="form-msg" id="syncMsg"></div>
+
   </aside>
 
 </div>
 
 <script>
 // ── constants ────────────────────────────────────────────────────────
-const STORAGE_KEY = 'profit-monitor-pkmn';
+const STORAGE_KEY    = 'profit-monitor-pkmn';
+const PAT_KEY        = 'profit-monitor-pkmn-pat';
+const GITHUB_OWNER   = 'BrammekeTV';
+const GITHUB_REPO    = 'profit-monitor-pkmn';
+const CARDS_PATH     = 'data/cards.json';
+
+// ── set abbreviation → Cardmarket slug (client-side, for URL building) ──
+const SET_SLUGS = {
+  RS:  'EX-Ruby-and-Sapphire',     SS:  'EX-Sandstorm',
+  DR:  'EX-Dragon',                MA:  'EX-Team-Magma-vs-Team-Aqua',
+  HL:  'EX-Hidden-Legends',        FR:  'EX-FireRed-and-LeafGreen',
+  TRR: 'EX-Team-Rocket-Returns',   DE:  'EX-Deoxys',
+  EM:  'EX-Emerald',               UF:  'EX-Unseen-Forces',
+  DS:  'EX-Delta-Species',         LM:  'EX-Legend-Maker',
+  HP:  'EX-Holon-Phantoms',        CG:  'EX-Crystal-Guardians',
+  DF:  'EX-Dragon-Frontiers',      PK:  'EX-Power-Keepers',
+  DP:  'Diamond-and-Pearl',        MT:  'Mysterious-Treasures',
+  SW:  'Secret-Wonders',           GE:  'Great-Encounters',
+  MD:  'Majestic-Dawn',            LA:  'Legends-Awakened',
+  SF:  'Stormfront',               PL:  'Platinum',
+  RR:  'Rising-Rivals',            SV:  'Supreme-Victors',
+  AR:  'Arceus',                   HS:  'HeartGold-and-SoulSilver',
+  UL:  'Unleashed',                UD:  'Undaunted',
+  TM:  'Triumphant',               CL:  'Call-of-Legends',
+  BS:  'Base-Set',                 JU:  'Jungle',
+  FO:  'Fossil',                   B2:  'Base-Set-2',
+  TR:  'Team-Rocket',              G1:  'Gym-Heroes',
+  G2:  'Gym-Challenge',            N1:  'Neo-Genesis',
+  N2:  'Neo-Discovery',            N3:  'Neo-Revelation',
+  N4:  'Neo-Destiny',              LC:  'Legendary-Collection',
+  EX:  'Expedition-Base-Set',      AQ:  'Aquapolis',
+  SK:  'Skyridge',                 BLW: 'Black-and-White',
+  EPO: 'Emerging-Powers',          NVI: 'Noble-Victories',
+  NXD: 'Next-Destinies',           DEX: 'Dark-Explorers',
+  BCR: 'Boundaries-Crossed',       PLS: 'Plasma-Storm',
+  PLF: 'Plasma-Freeze',            PLB: 'Plasma-Blast',
+  LTR: 'Legendary-Treasures',      XY:  'XY',
+  FLF: 'Flashfire',                FFI: 'Furious-Fists',
+  PHF: 'Phantom-Forces',           PRC: 'Primal-Clash',
+  DCR: 'Double-Crisis',            ROS: 'Roaring-Skies',
+  AOR: 'Ancient-Origins',          BKT: 'BREAKthrough',
+  BKP: 'BREAKpoint',               FCO: 'Fates-Collide',
+  STS: 'Steam-Siege',              EVO: 'Evolutions',
+  SUM: 'Sun-and-Moon',             SM:  'Sun-and-Moon',
+  GRI: 'Guardians-Rising',         BUS: 'Burning-Shadows',
+  SLG: 'Shining-Legends',          CIN: 'Crimson-Invasion',
+  UPR: 'Ultra-Prism',              FLI: 'Forbidden-Light',
+  CES: 'Celestial-Storm',          DRM: 'Dragon-Majesty',
+  LOT: 'Lost-Thunder',             TEU: 'Team-Up',
+  DET: 'Detective-Pikachu',        UNB: 'Unbroken-Bonds',
+  UNM: 'Unified-Minds',            HIF: 'Hidden-Fates',
+  CEC: 'Cosmic-Eclipse',           SSH: 'Sword-and-Shield',
+  RCL: 'Rebel-Clash',              DAA: 'Darkness-Ablaze',
+  CPA: 'Champions-Path',           VIV: 'Vivid-Voltage',
+  BST: 'Battle-Styles',            CRE: 'Chilling-Reign',
+  EVS: 'Evolving-Skies',           CEL: 'Celebrations',
+  FST: 'Fusion-Strike',            BRS: 'Brilliant-Stars',
+  ASR: 'Astral-Radiance',          PGO: 'Pokemon-GO',
+  LOR: 'Lost-Origin',              SIT: 'Silver-Tempest',
+  CRZ: 'Crown-Zenith',             SVI: 'Scarlet-and-Violet',
+  PAL: 'Paldea-Evolved',           OBF: 'Obsidian-Flames',
+  MEW: '151',                      PAR: 'Paradox-Rift',
+  PAF: 'Paldean-Fates',            TEF: 'Temporal-Forces',
+  TWM: 'Twilight-Masquerade',      SFA: 'Shrouded-Fable',
+  SCR: 'Stellar-Crown',            SSP: 'Surging-Sparks',
+  PRE: 'Prismatic-Evolutions',
+};
 
 // ── state ────────────────────────────────────────────────────────────
 let allTxns = [];
 let activeFilter = 'all';
 let searchQuery = '';
+let imageLookup = {};   // { "DF-71": 277276, ... }
 
 // ── localStorage ─────────────────────────────────────────────────────
 function loadFromStorage() {
@@ -614,6 +808,47 @@ function loadFromStorage() {
 
 function saveToStorage() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(allTxns));
+}
+
+// ── image lookup ──────────────────────────────────────────────────────
+async function loadImageLookup() {
+  try {
+    const resp = await fetch('data/image-lookup.json?_=' + Date.now());
+    if (resp.ok) imageLookup = await resp.json();
+  } catch {
+    // Not on GitHub Pages yet, or file missing — silent fail
+  }
+}
+
+// ── card parsing helpers ──────────────────────────────────────────────
+const CARD_LINE_RE = /^(.*?)\s*\(([A-Z0-9]+)\s+(\d+[A-Za-z]*)\)\s*$/;
+
+function parseCardLine(line) {
+  const m = CARD_LINE_RE.exec(line.trim());
+  if (!m) return null;
+  return { name: m[1].trim(), setAbbr: m[2], cardNum: m[3] };
+}
+
+function slugifyCardName(name) {
+  return name
+    .replace(/[^\x00-\x7F]/g, '')      // strip non-ASCII (δ etc.)
+    .replace(/[^A-Za-z0-9 \-]/g, '')   // keep only safe chars
+    .trim()
+    .replace(/[\s_]+/g, '-')           // spaces → hyphens
+    .replace(/-{2,}/g, '-');           // collapse double hyphens
+}
+
+function buildCardImageUrl(setAbbr, cardNum) {
+  const cardId = imageLookup[`${setAbbr}-${cardNum}`];
+  if (!cardId) return null;
+  return `https://product-images.s3.cardmarket.com/51/${setAbbr}/${cardId}/${cardId}.jpg`;
+}
+
+function buildCardmarketUrl(name, setAbbr, cardNum) {
+  const setSlug = SET_SLUGS[setAbbr];
+  if (!setSlug) return null;
+  const cardSlug = `${slugifyCardName(name)}-${setAbbr}${cardNum}`;
+  return `https://www.cardmarket.com/en/Pokemon/Products/Singles/${setSlug}/${cardSlug}`;
 }
 
 function nextId() {
@@ -677,11 +912,15 @@ function rowHTML(t) {
   const amtCls = isSold ? 'positive' : 'negative';
   const amtStr = fmt(t.amount);
 
+  // Build card image strip from description lines
+  const cardImagesHTML = buildCardImagesHTML(t.description || '');
+
   return `<tr data-id="${t.id}">
     <td><span class="type-badge ${badgeCls}">${badgeLabel}</span></td>
     <td class="amount-cell ${amtCls}">${amtStr}</td>
     <td class="desc-cell">
       <div class="desc-text">${escHTML(t.description)}</div>
+      ${cardImagesHTML ? `<div class="card-images">${cardImagesHTML}</div>` : ''}
     </td>
     <td style="white-space:nowrap;vertical-align:middle;">
       <button class="delete-btn" data-id="${t.id}" title="Verwijderen">
@@ -691,6 +930,29 @@ function rowHTML(t) {
       </button>
     </td>
   </tr>`;
+}
+
+function buildCardImagesHTML(description) {
+  const parts = [];
+  for (const line of description.split('\n')) {
+    const parsed = parseCardLine(line.trim());
+    if (!parsed) continue;
+    const { name, setAbbr, cardNum } = parsed;
+    const imgUrl = buildCardImageUrl(setAbbr, cardNum);
+    const cmUrl  = buildCardmarketUrl(name, setAbbr, cardNum);
+
+    if (imgUrl) {
+      const linkStart = cmUrl ? `<a href="${escAttr(cmUrl)}" target="_blank" rel="noopener" title="${escAttr(name)} — Cardmarket">` : '';
+      const linkEnd   = cmUrl ? '</a>' : '';
+      parts.push(`<div class="card-img-wrap">${linkStart}<img src="${escAttr(imgUrl)}" alt="${escAttr(name)}" loading="lazy" />${linkEnd}</div>`);
+    } else {
+      // Placeholder while image lookup is pending
+      const linkStart = cmUrl ? `<a href="${escAttr(cmUrl)}" target="_blank" rel="noopener" style="text-decoration:none;">` : '';
+      const linkEnd   = cmUrl ? '</a>' : '';
+      parts.push(`<div class="card-img-wrap">${linkStart}<div class="card-img-placeholder">⏳<br/>pending</div>${linkEnd}</div>`);
+    }
+  }
+  return parts.join('');
 }
 
 // ── add transaction ───────────────────────────────────────────────────
@@ -936,10 +1198,117 @@ function escAttr(s) {
   return String(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+// ── PAT management ────────────────────────────────────────────────────
+function getPat() {
+  return localStorage.getItem(PAT_KEY) || '';
+}
+
+function updatePatIndicator() {
+  const pat = getPat();
+  const el = document.getElementById('patIndicator');
+  if (pat) {
+    el.className = 'pat-indicator connected';
+    el.innerHTML = '<span class="pat-dot"></span> verbonden';
+  } else {
+    el.className = 'pat-indicator';
+    el.innerHTML = '<span class="pat-dot"></span> niet verbonden';
+  }
+}
+
+document.getElementById('patSaveBtn').addEventListener('click', () => {
+  const val = document.getElementById('patInput').value.trim();
+  if (val) {
+    localStorage.setItem(PAT_KEY, val);
+    document.getElementById('patInput').value = '';
+  } else {
+    localStorage.removeItem(PAT_KEY);
+  }
+  updatePatIndicator();
+});
+
+// ── GitHub API helpers ────────────────────────────────────────────────
+async function githubGetFileSha(pat, path) {
+  const resp = await fetch(
+    `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}`,
+    { headers: { Authorization: `token ${pat}`, Accept: 'application/vnd.github.v3+json' } }
+  );
+  if (resp.status === 404) return null;
+  if (!resp.ok) throw new Error(`GitHub API ${resp.status}: ${resp.statusText}`);
+  const data = await resp.json();
+  return data.sha || null;
+}
+
+async function githubPutFile(pat, path, content, message, sha) {
+  const body = {
+    message,
+    content: btoa(unescape(encodeURIComponent(content))),
+  };
+  if (sha) body.sha = sha;
+
+  const resp = await fetch(
+    `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `token ${pat}`,
+        Accept: 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    }
+  );
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.message || `HTTP ${resp.status}`);
+  }
+  return resp.json();
+}
+
+// ── sync to GitHub ────────────────────────────────────────────────────
+document.getElementById('syncBtn').addEventListener('click', async () => {
+  const pat = getPat();
+  const syncMsg = document.getElementById('syncMsg');
+  const syncBtn = document.getElementById('syncBtn');
+
+  syncMsg.className = 'form-msg';
+
+  if (!pat) {
+    syncMsg.className = 'form-msg error';
+    syncMsg.textContent = 'Geen PAT ingesteld. Voer eerst uw GitHub token in.';
+    return;
+  }
+
+  syncBtn.disabled = true;
+  syncMsg.className = 'form-msg';
+  syncMsg.textContent = '';
+
+  try {
+    const content = JSON.stringify(allTxns, null, 2);
+    const sha = await githubGetFileSha(pat, CARDS_PATH);
+    await githubPutFile(
+      pat,
+      CARDS_PATH,
+      content,
+      'chore: sync cards.json from browser',
+      sha
+    );
+    syncMsg.className = 'form-msg success';
+    syncMsg.textContent = `${allTxns.length} transacties gesynchroniseerd. GitHub Actions start de afbeeldingen op te halen.`;
+  } catch (err) {
+    syncMsg.className = 'form-msg error';
+    syncMsg.textContent = 'Synchronisatie mislukt: ' + err.message;
+  } finally {
+    syncBtn.disabled = false;
+  }
+});
+
 // ── init ─────────────────────────────────────────────────────────────
 loadFromStorage();
-renderSummary();
-renderTable();
+updatePatIndicator();
+loadImageLookup().then(() => {
+  renderSummary();
+  renderTable();
+});
 </script>
 </body>
 </html>
