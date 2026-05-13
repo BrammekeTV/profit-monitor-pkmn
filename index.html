@@ -831,8 +831,8 @@ function parseCardLine(line) {
 
 function slugifyCardName(name) {
   return name
-    .replace(/[^\x00-\x7F]/g, '')      // strip non-ASCII (δ etc.)
-    .replace(/[^A-Za-z0-9 \-]/g, '')   // keep only safe chars
+    .replace(/[^\x00-\x7F]/g, '')      // strip all non-ASCII chars (δ, accented letters, etc.)
+    .replace(/[^A-Za-z0-9 \-]/g, '')   // keep only URL-safe chars
     .trim()
     .replace(/[\s_]+/g, '-')           // spaces → hyphens
     .replace(/-{2,}/g, '-');           // collapse double hyphens
@@ -1230,7 +1230,7 @@ document.getElementById('patSaveBtn').addEventListener('click', () => {
 async function githubGetFileSha(pat, path) {
   const resp = await fetch(
     `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}`,
-    { headers: { Authorization: `token ${pat}`, Accept: 'application/vnd.github.v3+json' } }
+    { headers: { Authorization: `Bearer ${pat}`, Accept: 'application/vnd.github.v3+json' } }
   );
   if (resp.status === 404) return null;
   if (!resp.ok) throw new Error(`GitHub API ${resp.status}: ${resp.statusText}`);
@@ -1241,7 +1241,7 @@ async function githubGetFileSha(pat, path) {
 async function githubPutFile(pat, path, content, message, sha) {
   const body = {
     message,
-    content: btoa(unescape(encodeURIComponent(content))),
+    content: btoa(String.fromCharCode(...new TextEncoder().encode(content))),
   };
   if (sha) body.sha = sha;
 
@@ -1250,7 +1250,7 @@ async function githubPutFile(pat, path, content, message, sha) {
     {
       method: 'PUT',
       headers: {
-        Authorization: `token ${pat}`,
+        Authorization: `Bearer ${pat}`,
         Accept: 'application/vnd.github.v3+json',
         'Content-Type': 'application/json',
       },

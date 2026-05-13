@@ -166,9 +166,10 @@ def parse_card_line(line: str):
 
 
 def slugify_card_name(name: str) -> str:
-    """Strip non-ASCII, replace spaces/underscores with hyphens, collapse repeats."""
-    # Remove characters that are not ASCII letters, digits, spaces or hyphens
-    cleaned = re.sub(r"[^\x00-\x7F]", "", name)          # strip non-ASCII (δ etc.)
+    """Strip non-ASCII characters (accented letters, symbols like δ, etc.),
+    then replace spaces/underscores with hyphens and collapse repeats."""
+    # Remove all characters outside the printable ASCII range
+    cleaned = re.sub(r"[^\x00-\x7F]", "", name)
     cleaned = re.sub(r"[^A-Za-z0-9 \-]", "", cleaned)    # keep only safe chars
     cleaned = re.sub(r"[\s_]+", "-", cleaned.strip())     # spaces → hyphens
     cleaned = re.sub(r"-{2,}", "-", cleaned)              # collapse double hyphens
@@ -195,7 +196,7 @@ def fetch_card_id(set_abbr: str, card_num: str, card_name: str) -> int | None:
     try:
         resp = requests.get(
             url,
-            headers={"User-Agent": "Mozilla/5.0 (compatible; profit-monitor-bot/1.0)"},
+            headers={"User-Agent": "Mozilla/5.0 (compatible; profit-monitor-pkmn/1.0)"},
             timeout=20,
         )
     except requests.RequestException as exc:
@@ -253,7 +254,6 @@ def main():
                 continue
 
             set_abbr, card_num, card_name = parsed
-            # Strip trailing letters from number for the key (e.g. "71a" → "71")
             key = f"{set_abbr}-{card_num}"
 
             if key in lookup:
