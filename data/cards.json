@@ -1,0 +1,458 @@
+[
+  {
+    "type": "Gekocht",
+    "amount": -25.99,
+    "description": "Inkoop Accessoires",
+    "id": 1
+  },
+  {
+    "type": "Gekocht",
+    "amount": -22.66,
+    "description": "Inkoop Accessoires",
+    "id": 2
+  },
+  {
+    "type": "Gekocht",
+    "amount": -43.9,
+    "description": "Inkoop Accessoires",
+    "id": 3
+  },
+  {
+    "type": "Gekocht",
+    "amount": -13.95,
+    "description": "Inkoop Accessoires",
+    "id": 4
+  },
+  {
+    "type": "Gekocht",
+    "amount": -1.39,
+    "description": "Inkoop Accessoires",
+    "id": 5
+  },
+  {
+    "type": "Gekocht",
+    "amount": -75.94,
+    "description": "Inkoop Accessoires",
+    "id": 6
+  },
+  {
+    "type": "Gekocht",
+    "amount": -12.94,
+    "description": "Inkoop Accessoires",
+    "id": 7
+  },
+  {
+    "type": "Verkocht",
+    "amount": 6.5,
+    "description": "Vinted",
+    "id": 8
+  },
+  {
+    "type": "Verkocht",
+    "amount": 30,
+    "description": "Vinted",
+    "id": 9
+  },
+  {
+    "type": "Verkocht",
+    "amount": 3,
+    "description": "Vinted",
+    "id": 10
+  },
+  {
+    "type": "Verkocht",
+    "amount": 4.5,
+    "description": "Vinted",
+    "id": 11
+  },
+  {
+    "type": "Verkocht",
+    "amount": 40,
+    "description": "Vinted",
+    "id": 12
+  },
+  {
+    "type": "Verkocht",
+    "amount": 42,
+    "description": "Vinted",
+    "id": 13
+  },
+  {
+    "type": "Verkocht",
+    "amount": 9,
+    "description": "Vinted",
+    "id": 14
+  },
+  {
+    "type": "Verkocht",
+    "amount": 15,
+    "description": "Vinted",
+    "id": 15
+  },
+  {
+    "type": "Verkocht",
+    "amount": 2.5,
+    "description": "Vinted",
+    "id": 16
+  },
+  {
+    "type": "Gekocht",
+    "amount": -59.49,
+    "description": "Vinted Inkoop",
+    "id": 17
+  },
+  {
+    "type": "Verkocht",
+    "amount": 15,
+    "description": "Vinted",
+    "id": 18
+  },
+  {
+    "type": "Verkocht",
+    "amount": 8,
+    "description": "Chloe",
+    "id": 19
+  },
+  {
+    "type": "Verkocht",
+    "amount": 22.5,
+    "description": "Vinted",
+    "id": 20
+  },
+  {
+    "type": "Gekocht",
+    "amount": -32.45,
+    "description": "Marktplaats Inkoop",
+    "id": 21
+  },
+  {
+    "type": "Verkocht",
+    "amount": 3.8,
+    "description": "Vinted",
+    "id": 22
+  },
+  {
+    "type": "Verkocht",
+    "amount": 23.8,
+    "description": "Vinted",
+    "id": 23
+  },
+  {
+    "type": "Verkocht",
+    "amount": 6.3,
+    "description": "Vinted",
+    "id": 24
+  },
+  {
+    "type": "Verkocht",
+    "amount": 15,
+    "description": "Vinted (telefoon)",
+    "id": 25
+  },
+  {
+    "type": "Verkocht",
+    "amount": 25,
+    "description": "Vinted",
+    "id": 26
+  },
+  {
+    "type": "Gekocht",
+    "amount": -60.54,
+    "description": "Vinted Inkoop",
+    "id": 27
+  },
+  {
+    "type": "Verkocht",
+    "amount": 21.67,
+    "description": "Vinted",
+    "id": 28
+  },
+  {
+    "type": "Gekocht",
+    "amount": -7.5,
+    "description": "Verrekening",
+    "id": 29
+  },
+  {
+    "type": "Verkocht",
+    "amount": 20,
+    "description": "Koen",
+    "id": 30
+  },
+  {
+    "type": "Verkocht",
+    "amount": 5,
+    "description": "Koen",
+    "id": 31
+  },
+  {
+    "type": "Gekocht",
+    "amount": -40,
+    "description": "Vinted Inkoop",
+    "id": 32
+  },
+  {
+    "type": "Verkocht",
+    "amount": 6.65,
+    "description": "Vinted",
+    "id": 33
+  },
+  {
+    "type": "Gekocht",
+    "amount": -7.2,
+    "description": "Vinted Inkoop",
+    "id": 34
+  },
+  {
+    "type": "Verkocht",
+    "amount": 8,
+    "description": "Vinted",
+    "id": 35
+  },
+  {
+    "type": "Verkocht",
+    "amount": 20.4,
+    "description": "Vinted",
+    "id": 36
+  },
+  {
+    "type": "Gekocht",
+    "amount": -28.69,
+    "description": "Vinted Inkoop",
+    "id": 37
+  },
+  {
+    "type": "Gekocht",
+    "amount": -217.69,
+    "description": "Vinted Inkoop",
+    "id": 38
+  },
+  {
+    "type": "Verkocht",
+    "amount": 18,
+    "description": "Vinted",
+    "id": 39
+  },
+  {
+    "type": "Verkocht",
+    "amount": 12,
+    "description": "Vinted",
+    "id": 40
+  },
+  {
+    "type": "Verkocht",
+    "amount": 4,
+    "description": "Vinted",
+    "id": 41
+  },
+  {
+    "type": "Verkocht",
+    "amount": 13,
+    "description": "Vinted",
+    "id": 42
+  },
+  {
+    "type": "Verkocht",
+    "amount": 2,
+    "description": "Koen",
+    "id": 43
+  },
+  {
+    "type": "Verkocht",
+    "amount": 3,
+    "description": "Vinted",
+    "id": 44
+  },
+  {
+    "type": "Verkocht",
+    "amount": 3,
+    "description": "Vinted",
+    "id": 45
+  },
+  {
+    "type": "Verkocht",
+    "amount": 30,
+    "description": "Koen",
+    "id": 46
+  },
+  {
+    "type": "Verkocht",
+    "amount": 60,
+    "description": "Koen",
+    "id": 47
+  },
+  {
+    "type": "Verkocht",
+    "amount": 8,
+    "description": "Vinted",
+    "id": 48
+  },
+  {
+    "type": "Verkocht",
+    "amount": 45,
+    "description": "Vinted",
+    "id": 49
+  },
+  {
+    "type": "Verkocht",
+    "amount": 100,
+    "description": "Inruil A2Toys",
+    "id": 50
+  },
+  {
+    "type": "Gekocht",
+    "amount": -36.96,
+    "description": "Vinted Inkoop",
+    "id": 51
+  },
+  {
+    "type": "Gekocht",
+    "amount": -10.94,
+    "description": "Vinted Inkoop",
+    "id": 52
+  },
+  {
+    "type": "Gekocht",
+    "amount": -16.72,
+    "description": "Vinted Inkoop",
+    "id": 53
+  },
+  {
+    "type": "Gekocht",
+    "amount": -300,
+    "description": "Inkoop Delano",
+    "id": 54
+  },
+  {
+    "type": "Verkocht",
+    "amount": 244.4,
+    "description": "Trade-in Coevorden",
+    "id": 55
+  },
+  {
+    "type": "Gekocht",
+    "amount": -60,
+    "description": "Bulk Inkoop Koningsdag",
+    "id": 56
+  },
+  {
+    "type": "Gekocht",
+    "amount": -17.5,
+    "description": "Turtwig (MEP 040)\nChimchar (MEP 041)\nPiplup (MEP 042)",
+    "id": 57
+  },
+  {
+    "type": "Verkocht",
+    "amount": 40,
+    "description": "Contant Coevorden",
+    "id": 58
+  },
+  {
+    "type": "Verkocht",
+    "amount": 32,
+    "description": "Turtwig (MEP 040)\nChimchar (MEP 041)\nPiplup (MEP 042)",
+    "id": 59
+  },
+  {
+    "type": "Verkocht",
+    "amount": 10,
+    "description": "Koen",
+    "id": 60
+  },
+  {
+    "type": "Verkocht",
+    "amount": 10,
+    "description": "Ryan",
+    "id": 61
+  },
+  {
+    "type": "Verkocht",
+    "amount": 16,
+    "description": "Tharma",
+    "id": 62
+  },
+  {
+    "type": "Verkocht",
+    "amount": 40,
+    "description": "Koen",
+    "id": 63
+  },
+  {
+    "type": "Verkocht",
+    "amount": 35,
+    "description": "Koen",
+    "id": 64
+  },
+  {
+    "type": "Verkocht",
+    "amount": 24,
+    "description": "Gyarados Lv.52 (STF 19)\nPsyduck Lv.19 (PL 87)",
+    "id": 65
+  },
+  {
+    "type": "Gekocht",
+    "amount": -57.5,
+    "description": "5x 123inkt huismerk DK-11202 verzendlabel",
+    "id": 66
+  },
+  {
+    "type": "Gekocht",
+    "amount": -100.5,
+    "description": "Brother QL-700 labelprinter bundel met 5 rollen ",
+    "id": 67
+  },
+  {
+    "type": "Verkocht",
+    "amount": 4,
+    "description": "Piplup Lv.6 (POP9 16)",
+    "id": 68
+  },
+  {
+    "type": "Verkocht",
+    "amount": 9.9,
+    "description": "Budew Lv.8 (STF 33)\nHappiny Lv.8 (POP8 14)\nHoppip (AQ 83)",
+    "id": 69
+  },
+  {
+    "type": "Verkocht",
+    "amount": 2,
+    "description": "Magikarp (HS 72)",
+    "id": 70
+  },
+  {
+    "type": "Verkocht",
+    "amount": 18.5,
+    "description": "Flareon Lv.38 (RR 19)\nNidoking Lv.59 (RR 29)\nIgglybuff (CG 21)\nPsyduck δ Delta Species (HP 81)\nFlareon [4] Lv.55 (RR 60)",
+    "id": 71
+  },
+  {
+    "type": "Gekocht",
+    "amount": -58.73,
+    "description": "Vinted Inkoop",
+    "id": 72
+  },
+  {
+    "type": "Verkocht",
+    "amount": 2,
+    "description": "Pikachu (MCD25 25)",
+    "id": 73
+  },
+  {
+    "type": "Verkocht",
+    "amount": 8,
+    "description": "Roserade [C] Lv.58 (SV 40)\nSpiritomb [C] Lv.58 (SV 84)",
+    "id": 74
+  },
+  {
+    "id": 75,
+    "type": "Verkocht",
+    "amount": 22,
+    "description": "Tsareena ex (PAR 220)\nBlitzle (MCD11 6)\nMaractus (MCD11 2)\nHoundour (DR 59)\nLunala GX (SUM 66)\nAppletun V (FST 026)\nCrobat V (DAA 104)\nGallade V (SWSH 258)\nKleavor V (SWSH 248)\nKleavor VSTAR (Sword & Shield 249)\nHisuian Sneasler V (ASR 094)\nPolteageist V (SWSH 021)"
+  },
+  {
+    "id": 76,
+    "type": "Verkocht",
+    "amount": 5,
+    "description": "Wooper δ Delta Species (DF 71)\nCharmander δ Delta Species (CG 49)"
+  }
+]
