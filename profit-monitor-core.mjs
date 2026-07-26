@@ -45,9 +45,7 @@ export function inferCardName(description = '') {
   const line = lines[0].replace(/\s+#\d+\s*$/g, '').trim();
   // Strip optional quantity prefix like "2 x", "2x", "2 X"
   const stripped = line.replace(/^\d+\s*[xX×]\s*/, '');
-  // Set codes may be one or two words before the number, e.g. "SFA 038" or "PPS7 SCR 131"
-  const match = stripped.match(/^(.*?)\s+\([A-Z0-9]+(?:\s+[A-Z][A-Z0-9]*)?\s+\d+[A-Za-z]*\)$/);
-  return match ? match[1].trim() : '';
+  return stripped.trim();
 }
 
 export function inferQuantity(description = '') {
