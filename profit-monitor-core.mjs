@@ -405,24 +405,79 @@ function compareTransactionsForFifo(left, right) {
 }
 
 function resolveTransactionCardName(transaction) {
-  return normalizeTabName(transaction.cardName) || inferCardName(transaction.description);
+  // If cardName is explicitly set (even to ''), use it as-is without inference.
+  // Only fall back to description inference when cardName is null/undefined.
+  if (transaction.cardName !== null && transaction.cardName !== undefined) {
+    return normalizeTabName(transaction.cardName);
+  }
+  return inferCardName(transaction.description);
+}
+
+// Parse a multi-line description into per-card entries with proportional amounts.
+// Returns null if description is single-line (no splitting needed).
+export function splitMultiLineDescription(description, amount) {
+  const lines = String(description).split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  if (lines.length <= 1) return null;
+
+  const parsedLines = lines.map(line => {
+    const match = line.match(/^(\d+)\s*[xX×]\s*/);
+    const qty = match ? Number.parseInt(match[1], 10) : 1;
+    const cardName = line.replace(/^\d+\s*[xX×]\s*/, '').replace(/\s+#\d+\s*$/g, '').trim();
+    return { cardName, qty };
+  }).filter(entry => entry.cardName);
+
+  if (!parsedLines.length) return null;
+
+  const totalQty = parsedLines.reduce((sum, entry) => sum + entry.qty, 0);
+  const absAmount = Math.abs(amount);
+  const sign = amount < 0 ? -1 : 1;
+
+  return parsedLines.map(entry => ({
+    cardName: entry.cardName,
+    quantity: entry.qty,
+    amount: roundMoney(sign * absAmount * entry.qty / totalQty),
+    description: entry.cardName,
+  }));
 }
 
 export function computeProfitByCard(transactions) {
   const groups = new Map();
 
+  function addRecord(record) {
+    const key = normalizeCardKey(record.cardName);
+    if (!groups.has(key)) {
+      groups.set(key, { cardName: record.cardName, records: [] });
+    }
+    groups.get(key).records.push(record);
+  }
+
   transactions.forEach((transaction, index) => {
     const normalized = normalizeTransaction(transaction);
     const cardName = resolveTransactionCardName(normalized);
-    if (!cardName) return;
 
-    const key = normalizeCardKey(cardName);
-    if (!groups.has(key)) {
-      groups.set(key, { cardName, records: [] });
+    if (cardName) {
+      // Has an explicit (or single-line-inferred) card name
+      addRecord({ ...normalized, cardName, index });
+      return;
     }
 
-    const group = groups.get(key);
-    group.records.push({ ...normalized, cardName, index });
+    // cardName is '': no explicit card name was stored.
+    // For backward compatibility, try splitting a multi-line description into
+    // per-card virtual records (handles entries imported or added before the
+    // per-line splitting was introduced).
+    const split = splitMultiLineDescription(normalized.description, normalized.amount);
+    if (!split) return;
+
+    for (const part of split) {
+      addRecord({
+        ...normalized,
+        cardName: part.cardName,
+        quantity: part.quantity,
+        amount: part.amount,
+        description: part.description,
+        index,
+      });
+    }
   });
 
   const rows = [];

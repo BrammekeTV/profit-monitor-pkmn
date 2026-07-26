@@ -6,6 +6,8 @@
   <title>Profit Monitor — Pokémon</title>
   <!-- JSZip for client-side .xlsm (ZIP) parsing -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- Chart.js for profit graph -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -565,6 +567,42 @@
       margin-top: 24px;
     }
 
+    .view-toggle-bar {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 16px;
+    }
+
+    .view-toggle-btn {
+      padding: 6px 14px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 120ms, color 120ms, border-color 120ms;
+    }
+
+    .view-toggle-btn.active,
+    .view-toggle-btn:hover {
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--btn-h);
+    }
+
+    .chart-wrap {
+      margin-top: 20px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      position: relative;
+      min-height: 240px;
+    }
+
     .toggle-switch {
       display: flex;
       align-items: center;
@@ -702,48 +740,56 @@
     </div>
     <div class="form-msg panel-message" id="tabMsg"></div>
 
-    <div class="section-header">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <span class="section-title">Transacties</span>
-        <span class="count-label" id="visibleCount"></span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <input
-          type="text"
-          class="search-input"
-          id="searchInput"
-          placeholder="Zoek beschrijving…"
-          autocomplete="off"
-        />
-        <div class="filter-bar">
-          <button class="filter-btn active" data-filter="all">Alles</button>
-          <button class="filter-btn" data-filter="Verkocht">Verkocht</button>
-          <button class="filter-btn" data-filter="Gekocht">Gekocht</button>
-        </div>
-      </div>
+    <!-- View toggle -->
+    <div class="view-toggle-bar">
+      <button class="view-toggle-btn active" id="viewTransactions">Transacties</button>
+      <button class="view-toggle-btn" id="viewProfit">Winst per kaart</button>
     </div>
 
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Type</th>
-            <th>Bedrag</th>
-            <th>Beschrijving</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="txnBody">
-          <tr><td colspan="4" class="empty">Geen data — voeg transacties toe of importeer een .xlsm bestand.</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <section class="profit-section">
+    <!-- Transactions view -->
+    <div id="transactionsView">
       <div class="section-header">
         <div style="display:flex;align-items:center;gap:12px;">
-          <span class="section-title">Winst per kaart</span>
+          <span class="section-title">Transacties</span>
+          <span class="count-label" id="visibleCount"></span>
         </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input
+            type="text"
+            class="search-input"
+            id="searchInput"
+            placeholder="Zoek beschrijving…"
+            autocomplete="off"
+          />
+          <div class="filter-bar">
+            <button class="filter-btn active" data-filter="all">Alles</button>
+            <button class="filter-btn" data-filter="Verkocht">Verkocht</button>
+            <button class="filter-btn" data-filter="Gekocht">Gekocht</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Bedrag</th>
+              <th>Beschrijving</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="txnBody">
+            <tr><td colspan="4" class="empty">Geen data — voeg transacties toe of importeer een .xlsm bestand.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Profit per card view -->
+    <div id="profitView" style="display:none;">
+      <div class="section-header">
+        <span class="section-title">Winst per kaart</span>
       </div>
 
       <div class="table-wrap">
@@ -764,7 +810,11 @@
           </tbody>
         </table>
       </div>
-    </section>
+
+      <div class="chart-wrap" id="profitChartWrap" style="display:none;">
+        <canvas id="profitChart"></canvas>
+      </div>
+    </div>
   </main>
 
   <!-- sidebar -->
@@ -905,10 +955,12 @@ import {
   getActiveTransactions,
   getCardmarketOrderLinks,
   inferQuantity,
+  normalizeDate,
   normalizeQuantity,
   normalizeTransaction,
   renameTab,
   setActiveTab,
+  splitMultiLineDescription,
   todayISO,
   updateTransaction as updateStoredTransaction,
   validateTabName,
@@ -918,6 +970,8 @@ let appState = ensureAppState(null);
 let activeFilter = 'all';
 let searchQuery = '';
 let editingId = null;
+let activeView = 'transactions'; // 'transactions' | 'profit'
+let profitChart = null;
 
 const tabMsg = document.getElementById('tabMsg');
 const formMsg = document.getElementById('formMsg');
@@ -1088,12 +1142,74 @@ function rowHTML(transaction) {
   </tr>`;
 }
 
+function renderProfitChart(rows) {
+  const wrap = document.getElementById('profitChartWrap');
+  if (!rows.length) {
+    wrap.style.display = 'none';
+    if (profitChart) { profitChart.destroy(); profitChart = null; }
+    return;
+  }
+
+  // Show top 20 cards by absolute realized profit
+  const sorted = rows.slice().sort((a, b) => Math.abs(b.realizedProfit) - Math.abs(a.realizedProfit)).slice(0, 20);
+  const labels = sorted.map(r => r.cardName);
+  const values = sorted.map(r => r.realizedProfit);
+  const colors = values.map(v => v >= 0 ? 'rgba(34,197,94,0.75)' : 'rgba(239,68,68,0.75)');
+  const borderColors = values.map(v => v >= 0 ? 'rgba(34,197,94,1)' : 'rgba(239,68,68,1)');
+
+  wrap.style.display = '';
+
+  if (profitChart) { profitChart.destroy(); profitChart = null; }
+
+  const ctx = document.getElementById('profitChart').getContext('2d');
+  profitChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Gerealiseerde winst (€)',
+        data: values,
+        backgroundColor: colors,
+        borderColor: borderColors,
+        borderWidth: 1,
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: context => fmt(context.parsed.y),
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: '#a1a1aa', font: { size: 11 }, maxRotation: 45 },
+          grid: { color: '#3f3f46' },
+        },
+        y: {
+          ticks: {
+            color: '#a1a1aa',
+            font: { size: 11 },
+            callback: value => fmt(value),
+          },
+          grid: { color: '#3f3f46' },
+        },
+      },
+    },
+  });
+}
+
 function renderProfitTable() {
   const rows = computeProfitByCard(activeTransactions());
   const tbody = document.getElementById('profitBody');
 
   if (!rows.length) {
     tbody.innerHTML = '<tr><td colspan="7" class="empty">Nog geen kaartgegevens beschikbaar.</td></tr>';
+    renderProfitChart([]);
     return;
   }
 
@@ -1108,14 +1224,43 @@ function renderProfitTable() {
       <td>${row.remainingQty} / ${fmt(row.remainingCost)}</td>
     </tr>
   `).join('');
+
+  renderProfitChart(rows);
 }
+
+function setActiveView(view) {
+  activeView = view;
+  const txnView = document.getElementById('transactionsView');
+  const profView = document.getElementById('profitView');
+  const txnBtn = document.getElementById('viewTransactions');
+  const profBtn = document.getElementById('viewProfit');
+
+  if (view === 'transactions') {
+    txnView.style.display = '';
+    profView.style.display = 'none';
+    txnBtn.classList.add('active');
+    profBtn.classList.remove('active');
+  } else {
+    txnView.style.display = 'none';
+    profView.style.display = '';
+    txnBtn.classList.remove('active');
+    profBtn.classList.add('active');
+    // Re-render chart when switching to profit view (canvas needs to be visible)
+    renderProfitTable();
+  }
+}
+
+document.getElementById('viewTransactions').addEventListener('click', () => setActiveView('transactions'));
+document.getElementById('viewProfit').addEventListener('click', () => setActiveView('profit'));
 
 function refreshView() {
   syncTopbarTitle();
   renderTabs();
   renderSummary();
   renderTable();
-  renderProfitTable();
+  if (activeView === 'profit') {
+    renderProfitTable();
+  }
   if (!dateInput.value) {
     dateInput.value = todayISO();
   }
@@ -1175,23 +1320,22 @@ document.getElementById('submitBtn').addEventListener('click', () => {
   const amountRaw = document.getElementById('fAmount').value;
   const description = document.getElementById('fDesc').value.trim();
   const hasCardName = document.getElementById('fHasCardName').checked;
-  // null → let normalizeTransaction infer from description
-  // '' → explicitly no card name (no inference)
-  const cardName = hasCardName ? null : '';
   const quantity = normalizeQuantity(document.getElementById('fQuantity').value);
   const date = document.getElementById('fDate').value || todayISO();
 
   showMessage(formMsg);
 
-  const amount = Number.parseFloat(amountRaw);
+  const amount = Number.parseFloat(amountRaw.replace(',', '.'));
   if (!amountRaw || Number.isNaN(amount) || amount <= 0) {
     showMessage(formMsg, 'error', 'Vul een geldig bedrag in (groter dan 0).');
     return;
   }
 
-  const txnData = { type, amount, description, cardName, quantity, date };
-
   if (editingId !== null) {
+    // null → let normalizeTransaction infer from description
+    // '' → explicitly no card name (no inference)
+    const cardName = hasCardName ? null : '';
+    const txnData = { type, amount, description, cardName, quantity, date };
     appState = updateStoredTransaction(appState, editingId, txnData);
     saveToStorage();
     cancelEdit();
@@ -1199,7 +1343,22 @@ document.getElementById('submitBtn').addEventListener('click', () => {
     showMessage(formMsg, 'success', 'Transactie bijgewerkt.');
     setTimeout(() => showMessage(formMsg), 3000);
   } else {
-    appState = appendTransaction(appState, txnData);
+    // When toggle is ON and description is multi-line, split into per-card transactions
+    const parts = hasCardName ? splitMultiLineDescription(description, amount) : null;
+    if (parts) {
+      const txns = parts.map(part => ({
+        type,
+        amount: part.amount,
+        description: part.description,
+        cardName: part.cardName,
+        quantity: part.quantity,
+        date,
+      }));
+      appState = appendTransactions(appState, txns);
+    } else {
+      const cardName = hasCardName ? null : '';
+      appState = appendTransaction(appState, { type, amount, description, cardName, quantity, date });
+    }
     saveToStorage();
     refreshView();
     document.getElementById('fAmount').value = '';
@@ -1390,20 +1549,38 @@ async function parseXlsmFile(file) {
       cells[col] = getCellValue(cell, sharedStrings, sheetNs);
     }
 
-    const type = cells.A;
-    const amount = Number.parseFloat(cells.B);
+    const type = cells.A ? cells.A.trim() : '';
+    const rawAmount = cells.B ? String(cells.B).replace(',', '.') : '';
+    const amount = Number.parseFloat(rawAmount);
     const description = cells.C || '';
 
     if (type !== TYPE_BUY && type !== TYPE_SELL) continue;
     if (Number.isNaN(amount)) continue;
 
-    transactions.push(normalizeTransaction({
-      type,
-      amount,
-      description,
-      quantity: 1,
-      date: todayISO(),
-    }));
+    const dateValue = cells.D ? normalizeDate(cells.D) : todayISO();
+
+    // Split multi-line descriptions into per-card transactions
+    const parts = splitMultiLineDescription(description, amount);
+    if (parts) {
+      for (const part of parts) {
+        transactions.push(normalizeTransaction({
+          type,
+          amount: part.amount,
+          description: part.description,
+          cardName: part.cardName,
+          quantity: part.quantity,
+          date: dateValue,
+        }));
+      }
+    } else {
+      transactions.push(normalizeTransaction({
+        type,
+        amount,
+        description,
+        quantity: 1,
+        date: dateValue,
+      }));
+    }
   }
 
   return transactions;
@@ -1411,6 +1588,18 @@ async function parseXlsmFile(file) {
 
 function getCellValue(cell, sharedStrings, namespace) {
   const type = cell.getAttribute('t');
+
+  // inlineStr: text is in <is><t>…</t></is>, not in <v>
+  if (type === 'inlineStr') {
+    const isNode = cell.getElementsByTagNameNS(namespace, 'is')[0];
+    if (!isNode) return '';
+    let text = '';
+    for (const tNode of isNode.getElementsByTagNameNS(namespace, 't')) {
+      text += tNode.textContent;
+    }
+    return text;
+  }
+
   const valueNode = cell.getElementsByTagNameNS(namespace, 'v')[0];
   if (!valueNode) return '';
 
