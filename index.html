@@ -339,6 +339,28 @@
       border-color: rgba(239,68,68,0.3);
     }
 
+    .edit-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 11px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 120ms, color 120ms;
+      margin-right: 4px;
+    }
+
+    .edit-btn:hover {
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--btn-h);
+    }
+
     .empty {
       padding: 32px;
       text-align: center;
@@ -543,6 +565,80 @@
       margin-top: 24px;
     }
 
+    .toggle-switch {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .toggle-switch input[type="checkbox"] {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+      pointer-events: none;
+    }
+
+    .toggle-track {
+      width: 32px;
+      height: 18px;
+      background: var(--border);
+      border-radius: 9px;
+      position: relative;
+      flex-shrink: 0;
+      transition: background 120ms;
+    }
+
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 12px;
+      height: 12px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 120ms;
+    }
+
+    .toggle-switch input[type="checkbox"]:checked + .toggle-track {
+      background: var(--green);
+    }
+
+    .toggle-switch input[type="checkbox"]:checked + .toggle-track::after {
+      transform: translateX(14px);
+    }
+
+    .form-btn-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .form-btn-row .submit-btn {
+      flex: 1;
+    }
+
+    .cancel-btn {
+      padding: 8px 12px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 120ms, color 120ms;
+      white-space: nowrap;
+    }
+
+    .cancel-btn:hover {
+      background: var(--surface);
+      color: var(--text);
+    }
+
     @media (max-width: 980px) {
       .layout {
         grid-template-columns: 1fr;
@@ -673,7 +769,7 @@
 
   <!-- sidebar -->
   <aside class="sidebar">
-    <div class="form-title">Nieuwe invoer</div>
+    <div class="form-title" id="formTitle">Nieuwe invoer</div>
 
     <div class="form-group">
       <label class="form-label" for="fType">Type</label>
@@ -707,14 +803,12 @@
     </div>
 
     <div class="form-group">
-      <label class="form-label" for="fCardName">Kaartnaam</label>
-      <input
-        type="text"
-        class="form-input"
-        id="fCardName"
-        placeholder="optioneel"
-      />
-      <div class="form-hint">Laat leeg voor algemene kosten of om de naam uit de beschrijving af te leiden.</div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="fHasCardName" />
+        <span class="toggle-track"></span>
+        <span class="form-label" style="margin:0;">Beschrijving bevat kaartnaam</span>
+      </label>
+      <div class="form-hint">Kaartnaam en hoeveelheid worden automatisch uit de beschrijving afgeleid.</div>
     </div>
 
     <div class="form-group">
@@ -738,7 +832,10 @@
       />
     </div>
 
-    <button class="submit-btn" id="submitBtn">Toevoegen</button>
+    <div class="form-btn-row">
+      <button class="submit-btn" id="submitBtn">Toevoegen</button>
+      <button class="cancel-btn" id="cancelEditBtn" style="display:none;">Annuleren</button>
+    </div>
     <div class="form-msg" id="formMsg"></div>
 
     <hr class="sidebar-divider" />
@@ -807,17 +904,20 @@ import {
   getActiveTab as getActiveTabState,
   getActiveTransactions,
   getCardmarketOrderLinks,
+  inferQuantity,
   normalizeQuantity,
   normalizeTransaction,
   renameTab,
   setActiveTab,
   todayISO,
+  updateTransaction as updateStoredTransaction,
   validateTabName,
 } from './profit-monitor-core.mjs';
 
 let appState = ensureAppState(null);
 let activeFilter = 'all';
 let searchQuery = '';
+let editingId = null;
 
 const tabMsg = document.getElementById('tabMsg');
 const formMsg = document.getElementById('formMsg');
@@ -918,6 +1018,13 @@ function renderTable() {
   }
 
   tbody.innerHTML = [...rows].reverse().map(rowHTML).join('');
+  tbody.querySelectorAll('.edit-btn').forEach(button => {
+    button.addEventListener('click', () => {
+      const id = Number(button.dataset.id);
+      const transaction = activeTransactions().find(txn => txn.id === id);
+      if (transaction) startEdit(transaction);
+    });
+  });
   tbody.querySelectorAll('.delete-btn').forEach(button => {
     button.addEventListener('click', () => {
       appState = deleteStoredTransaction(appState, Number(button.dataset.id));
@@ -967,6 +1074,11 @@ function rowHTML(transaction) {
       </div>
     </td>
     <td style="white-space:nowrap;vertical-align:middle;">
+      <button class="edit-btn" data-id="${normalized.id}" title="Bewerken" aria-label="Bewerk transactie">
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+          <path d="M11.5 1.5l3 3-9 9H2.5v-3l9-9z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
       <button class="delete-btn" data-id="${normalized.id}" title="Verwijderen" aria-label="Verwijder transactie">
         <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
           <path d="M3 4h10M6 4V2h4v2M5 4l1 9h4l1-9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1062,7 +1174,10 @@ document.getElementById('submitBtn').addEventListener('click', () => {
   const type = document.getElementById('fType').value;
   const amountRaw = document.getElementById('fAmount').value;
   const description = document.getElementById('fDesc').value.trim();
-  const cardName = document.getElementById('fCardName').value.trim();
+  const hasCardName = document.getElementById('fHasCardName').checked;
+  // null → let normalizeTransaction infer from description
+  // '' → explicitly no card name (no inference)
+  const cardName = hasCardName ? null : '';
   const quantity = normalizeQuantity(document.getElementById('fQuantity').value);
   const date = document.getElementById('fDate').value || todayISO();
 
@@ -1074,25 +1189,59 @@ document.getElementById('submitBtn').addEventListener('click', () => {
     return;
   }
 
-  appState = appendTransaction(appState, {
-    type,
-    amount,
-    description,
-    cardName,
-    quantity,
-    date,
-  });
-  saveToStorage();
-  refreshView();
+  const txnData = { type, amount, description, cardName, quantity, date };
 
+  if (editingId !== null) {
+    appState = updateStoredTransaction(appState, editingId, txnData);
+    saveToStorage();
+    cancelEdit();
+    refreshView();
+    showMessage(formMsg, 'success', 'Transactie bijgewerkt.');
+    setTimeout(() => showMessage(formMsg), 3000);
+  } else {
+    appState = appendTransaction(appState, txnData);
+    saveToStorage();
+    refreshView();
+    document.getElementById('fAmount').value = '';
+    document.getElementById('fDesc').value = '';
+    document.getElementById('fHasCardName').checked = false;
+    document.getElementById('fQuantity').value = '1';
+    document.getElementById('fDate').value = todayISO();
+    showMessage(formMsg, 'success', 'Transactie toegevoegd.');
+    setTimeout(() => showMessage(formMsg), 3000);
+  }
+});
+
+function startEdit(transaction) {
+  editingId = transaction.id;
+  document.getElementById('formTitle').textContent = 'Bewerken';
+  document.getElementById('submitBtn').textContent = 'Bijwerken';
+  document.getElementById('cancelEditBtn').style.display = '';
+  document.getElementById('fType').value = transaction.type;
+  document.getElementById('fAmount').value = Math.abs(transaction.amount);
+  document.getElementById('fDesc').value = transaction.description;
+  document.getElementById('fHasCardName').checked = Boolean(transaction.cardName);
+  document.getElementById('fQuantity').value = transaction.quantity;
+  document.getElementById('fDate').value = transaction.date;
+  document.querySelector('.sidebar').scrollTop = 0;
+  showMessage(formMsg);
+}
+
+function cancelEdit() {
+  editingId = null;
+  document.getElementById('formTitle').textContent = 'Nieuwe invoer';
+  document.getElementById('submitBtn').textContent = 'Toevoegen';
+  document.getElementById('cancelEditBtn').style.display = 'none';
+  document.getElementById('fType').value = TYPE_SELL;
   document.getElementById('fAmount').value = '';
   document.getElementById('fDesc').value = '';
-  document.getElementById('fCardName').value = '';
+  document.getElementById('fHasCardName').checked = false;
   document.getElementById('fQuantity').value = '1';
   document.getElementById('fDate').value = todayISO();
-  showMessage(formMsg, 'success', 'Transactie toegevoegd.');
-  setTimeout(() => showMessage(formMsg), 3000);
-});
+  showMessage(formMsg);
+}
+
+document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit);
 
 document.getElementById('clearBtn').addEventListener('click', () => {
   if (!confirm('Alle tabs en transacties wissen? Dit kan niet ongedaan worden gemaakt.')) return;
@@ -1287,6 +1436,18 @@ document.getElementById('searchInput').addEventListener('input', event => {
   searchQuery = event.target.value.toLowerCase().trim();
   renderTable();
 });
+
+function syncDescriptionParsing() {
+  if (!document.getElementById('fHasCardName').checked) return;
+  const desc = document.getElementById('fDesc').value;
+  const qty = inferQuantity(desc);
+  if (qty !== null) {
+    document.getElementById('fQuantity').value = qty;
+  }
+}
+
+document.getElementById('fDesc').addEventListener('input', syncDescriptionParsing);
+document.getElementById('fHasCardName').addEventListener('change', syncDescriptionParsing);
 
 function escHTML(value) {
   return String(value)

@@ -43,8 +43,23 @@ export function inferCardName(description = '') {
   if (lines.length !== 1) return '';
 
   const line = lines[0].replace(/\s+#\d+\s*$/g, '').trim();
-  const match = line.match(/^(.*?)\s+\([A-Z0-9]+\s+\d+[A-Za-z]*\)$/);
-  return match ? match[1].trim() : '';
+  // Strip optional quantity prefix like "2 x", "2x", "2 X"
+  const stripped = line.replace(/^\d+\s*[xX×]\s*/, '');
+  return stripped.trim();
+}
+
+export function inferQuantity(description = '') {
+  const lines = String(description)
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  if (lines.length !== 1) return null;
+
+  const match = lines[0].match(/^(\d+)\s*[xX×]\s*/);
+  if (!match) return null;
+  const qty = Number.parseInt(match[1], 10);
+  return Number.isFinite(qty) && qty > 0 ? qty : null;
 }
 
 export function normalizeAmount(type, amount) {
@@ -55,7 +70,11 @@ export function normalizeAmount(type, amount) {
 export function normalizeTransaction(transaction = {}, options = {}) {
   const type = transaction.type === TYPE_BUY ? TYPE_BUY : TYPE_SELL;
   const description = String(transaction.description ?? '').trim();
-  const cardName = normalizeTabName(transaction.cardName) || inferCardName(description);
+  // Only auto-infer card name when cardName is absent (null/undefined).
+  // An explicitly empty string means "no card name" (user chose not to associate one).
+  const cardName = transaction.cardName != null
+    ? normalizeTabName(transaction.cardName)
+    : inferCardName(description);
 
   return {
     id: transaction.id ?? null,
@@ -336,6 +355,25 @@ export function deleteTransaction(state, transactionId) {
     tabs: state.tabs.map(tab => (
       tab.id === activeTab.id
         ? { ...tab, transactions: tab.transactions.filter(transaction => transaction.id !== transactionId) }
+        : tab
+    )),
+  };
+}
+
+export function updateTransaction(state, transactionId, transaction, options = {}) {
+  const activeTab = getActiveTab(state);
+  const normalized = normalizeTransaction(transaction, { now: options.now });
+
+  return {
+    ...state,
+    tabs: state.tabs.map(tab => (
+      tab.id === activeTab.id
+        ? {
+            ...tab,
+            transactions: tab.transactions.map(txn =>
+              txn.id === transactionId ? { ...normalized, id: transactionId } : txn
+            ),
+          }
         : tab
     )),
   };
