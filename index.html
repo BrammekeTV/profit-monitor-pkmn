@@ -861,7 +861,7 @@
       <div class="form-hint">Kaartnaam en hoeveelheid worden automatisch uit de beschrijving afgeleid.</div>
     </div>
 
-    <div class="form-group">
+    <div class="form-group" id="fQuantityGroup">
       <label class="form-label" for="fQuantity">Aantal</label>
       <input
         type="number"
@@ -1097,8 +1097,10 @@ function rowHTML(transaction) {
   const orderLinks = getCardmarketOrderLinks(normalized);
 
   const metaItems = [];
-  if (normalized.cardName) metaItems.push(`<span class="meta-item">Kaart: ${escHTML(normalized.cardName)}</span>`);
-  metaItems.push(`<span class="meta-item">Aantal: ${normalized.quantity}</span>`);
+  if (normalized.cardName) {
+    metaItems.push(`<span class="meta-item">Kaart: ${escHTML(normalized.cardName)}</span>`);
+    metaItems.push(`<span class="meta-item">Aantal: ${normalized.quantity}</span>`);
+  }
   metaItems.push(`<span class="meta-item">Datum: ${escHTML(formatDate(normalized.date))}</span>`);
 
   const orderLinksHTML = orderLinks.length ? `
@@ -1320,7 +1322,9 @@ document.getElementById('submitBtn').addEventListener('click', () => {
   const amountRaw = document.getElementById('fAmount').value;
   const description = document.getElementById('fDesc').value.trim();
   const hasCardName = document.getElementById('fHasCardName').checked;
-  const quantity = normalizeQuantity(document.getElementById('fQuantity').value);
+  const quantity = hasCardName
+    ? normalizeQuantity(document.getElementById('fQuantity').value)
+    : 1;
   const date = document.getElementById('fDate').value || todayISO();
 
   showMessage(formMsg);
@@ -1366,6 +1370,7 @@ document.getElementById('submitBtn').addEventListener('click', () => {
     document.getElementById('fHasCardName').checked = false;
     document.getElementById('fQuantity').value = '1';
     document.getElementById('fDate').value = todayISO();
+    syncDescriptionParsing();
     showMessage(formMsg, 'success', 'Transactie toegevoegd.');
     setTimeout(() => showMessage(formMsg), 3000);
   }
@@ -1382,6 +1387,7 @@ function startEdit(transaction) {
   document.getElementById('fHasCardName').checked = Boolean(transaction.cardName);
   document.getElementById('fQuantity').value = transaction.quantity;
   document.getElementById('fDate').value = transaction.date;
+  syncDescriptionParsing();
   document.querySelector('.sidebar').scrollTop = 0;
   showMessage(formMsg);
 }
@@ -1397,6 +1403,7 @@ function cancelEdit() {
   document.getElementById('fHasCardName').checked = false;
   document.getElementById('fQuantity').value = '1';
   document.getElementById('fDate').value = todayISO();
+  syncDescriptionParsing();
   showMessage(formMsg);
 }
 
@@ -1627,7 +1634,12 @@ document.getElementById('searchInput').addEventListener('input', event => {
 });
 
 function syncDescriptionParsing() {
-  if (!document.getElementById('fHasCardName').checked) return;
+  const hasCardName = document.getElementById('fHasCardName').checked;
+  document.getElementById('fQuantityGroup').style.display = hasCardName ? '' : 'none';
+  if (!hasCardName) {
+    document.getElementById('fQuantity').value = '1';
+    return;
+  }
   const desc = document.getElementById('fDesc').value;
   const qty = inferQuantity(desc);
   if (qty !== null) {
@@ -1656,6 +1668,7 @@ function escAttr(value) {
 }
 
 dateInput.value = todayISO();
+syncDescriptionParsing();
 loadFromStorage();
 refreshView();
 </script>
