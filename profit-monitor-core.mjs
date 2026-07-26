@@ -404,15 +404,6 @@ function compareTransactionsForFifo(left, right) {
   return left.index - right.index;
 }
 
-function resolveTransactionCardName(transaction) {
-  // If cardName is explicitly set (even to ''), use it as-is without inference.
-  // Only fall back to description inference when cardName is null/undefined.
-  if (transaction.cardName !== null && transaction.cardName !== undefined) {
-    return normalizeTabName(transaction.cardName);
-  }
-  return inferCardName(transaction.description);
-}
-
 // Parse a multi-line description into per-card entries with proportional amounts.
 // Returns null if description is single-line (no splitting needed).
 export function splitMultiLineDescription(description, amount) {
@@ -453,13 +444,20 @@ export function computeProfitByCard(transactions) {
 
   transactions.forEach((transaction, index) => {
     const normalized = normalizeTransaction(transaction);
-    const cardName = resolveTransactionCardName(normalized);
+    const hasExplicitCardName = transaction.cardName !== null && transaction.cardName !== undefined;
+    const cardName = hasExplicitCardName
+      ? normalizeTabName(transaction.cardName)
+      : inferCardName(normalized.description);
 
     if (cardName) {
       // Has an explicit (or single-line-inferred) card name
       addRecord({ ...normalized, cardName, index });
       return;
     }
+
+    // cardName was explicitly set to '' by the user (no card association).
+    // Do not try to extract virtual per-card records in this case.
+    if (hasExplicitCardName) return;
 
     // cardName is '': no explicit card name was stored.
     // For backward compatibility, try splitting a multi-line description into
