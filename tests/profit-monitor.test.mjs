@@ -93,6 +93,28 @@ test('profit per card uses FIFO matching and handles partial sales case-insensit
   });
 });
 
+test('profit per card respects explicit no-card entries while keeping legacy multiline splitting', () => {
+  const rows = computeProfitByCard([
+    {
+      type: TYPE_BUY,
+      amount: 10,
+      description: 'Toploader\nSleeve',
+      cardName: '',
+      quantity: 1,
+      date: '2026-01-01',
+    },
+    {
+      type: TYPE_BUY,
+      amount: 10,
+      description: 'Charmander\nBulbasaur',
+      date: '2026-01-02',
+    },
+  ]);
+
+  assert.equal(rows.length, 2);
+  assert.deepEqual(rows.map(row => row.cardName), ['Bulbasaur', 'Charmander']);
+});
+
 test('Cardmarket order ids and links are generated only for sold transactions', () => {
   const description = 'Lot verkocht via Cardmarket #1289784654 en #1289784655, dubbele #1289784654';
 
