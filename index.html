@@ -225,6 +225,31 @@
       white-space: nowrap;
     }
 
+    .sort-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: none;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .sort-btn::after {
+      content: '↕';
+      color: var(--border);
+      font-size: 11px;
+    }
+
+    .sort-btn.active::after {
+      color: var(--text);
+    }
+
+    .sort-btn.active[data-direction="asc"]::after { content: '↑'; }
+    .sort-btn.active[data-direction="desc"]::after { content: '↓'; }
+
     tbody tr {
       border-bottom: 1px solid var(--border);
       transition: background 100ms;
@@ -593,6 +618,30 @@
       border-color: var(--btn-h);
     }
 
+    .section-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .collapse-btn {
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .collapse-btn:hover {
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--btn-h);
+    }
+
     .chart-wrap {
       margin-top: 20px;
       background: var(--surface2);
@@ -601,6 +650,12 @@
       padding: 16px;
       position: relative;
       min-height: 240px;
+    }
+
+    .chart-title {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 10px;
     }
 
     .toggle-switch {
@@ -753,7 +808,7 @@
           <span class="section-title">Transacties</span>
           <span class="count-label" id="visibleCount"></span>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;">
+        <div class="section-controls">
           <input
             type="text"
             class="search-input"
@@ -766,23 +821,26 @@
             <button class="filter-btn" data-filter="Verkocht">Verkocht</button>
             <button class="filter-btn" data-filter="Gekocht">Gekocht</button>
           </div>
+          <button class="collapse-btn" id="toggleTransactionsSection">Inklappen</button>
         </div>
       </div>
 
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Type</th>
-              <th>Bedrag</th>
-              <th>Beschrijving</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="txnBody">
-            <tr><td colspan="4" class="empty">Geen data — voeg transacties toe of importeer een .xlsm bestand.</td></tr>
-          </tbody>
-        </table>
+      <div id="transactionsContent">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th><button type="button" class="sort-btn" data-table="transactions" data-sort-key="type">Type</button></th>
+                <th><button type="button" class="sort-btn" data-table="transactions" data-sort-key="amount">Bedrag</button></th>
+                <th><button type="button" class="sort-btn" data-table="transactions" data-sort-key="description">Beschrijving</button></th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="txnBody">
+              <tr><td colspan="4" class="empty">Geen data — voeg transacties toe of importeer een .xlsm bestand.</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -790,29 +848,38 @@
     <div id="profitView" style="display:none;">
       <div class="section-header">
         <span class="section-title">Winst per kaart</span>
+        <button class="collapse-btn" id="toggleProfitSection">Inklappen</button>
       </div>
 
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Kaart</th>
-              <th>Gekocht</th>
-              <th>Verkocht</th>
-              <th>Inkoop verkocht</th>
-              <th>Omzet</th>
-              <th>Winst</th>
-              <th>Voorraad</th>
-            </tr>
-          </thead>
-          <tbody id="profitBody">
-            <tr><td colspan="7" class="empty">Nog geen kaartgegevens beschikbaar.</td></tr>
-          </tbody>
-        </table>
-      </div>
+      <div id="profitContent">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th><button type="button" class="sort-btn" data-table="profit" data-sort-key="cardName">Kaart</button></th>
+                <th><button type="button" class="sort-btn" data-table="profit" data-sort-key="boughtQty">Gekocht</button></th>
+                <th><button type="button" class="sort-btn" data-table="profit" data-sort-key="soldQty">Verkocht</button></th>
+                <th><button type="button" class="sort-btn" data-table="profit" data-sort-key="allocatedBuyCost">Inkoop verkocht</button></th>
+                <th><button type="button" class="sort-btn" data-table="profit" data-sort-key="soldValue">Omzet</button></th>
+                <th><button type="button" class="sort-btn" data-table="profit" data-sort-key="realizedProfit">Winst</button></th>
+                <th><button type="button" class="sort-btn" data-table="profit" data-sort-key="remainingQty">Voorraad</button></th>
+              </tr>
+            </thead>
+            <tbody id="profitBody">
+              <tr><td colspan="7" class="empty">Nog geen kaartgegevens beschikbaar.</td></tr>
+            </tbody>
+          </table>
+        </div>
 
-      <div class="chart-wrap" id="profitChartWrap" style="display:none;">
-        <canvas id="profitChart"></canvas>
+        <div class="chart-wrap" id="profitChartWrap" style="display:none;">
+          <div class="chart-title">Top kaarten op gerealiseerde winst</div>
+          <canvas id="profitChart"></canvas>
+        </div>
+
+        <div class="chart-wrap" id="monthlyChartWrap" style="display:none;">
+          <div class="chart-title">Netto resultaat per maand</div>
+          <canvas id="monthlyProfitChart"></canvas>
+        </div>
       </div>
     </div>
   </main>
@@ -959,6 +1026,7 @@ import {
   normalizeQuantity,
   normalizeTransaction,
   renameTab,
+  roundMoney,
   setActiveTab,
   splitMultiLineDescription,
   todayISO,
@@ -972,6 +1040,17 @@ let searchQuery = '';
 let editingId = null;
 let activeView = 'transactions'; // 'transactions' | 'profit'
 let profitChart = null;
+let monthlyChart = null;
+
+const collapsedSections = {
+  transactions: false,
+  profit: false,
+};
+
+const sortState = {
+  transactions: { key: 'amount', direction: 'desc' },
+  profit: { key: 'realizedProfit', direction: 'desc' },
+};
 
 const tabMsg = document.getElementById('tabMsg');
 const formMsg = document.getElementById('formMsg');
@@ -1058,8 +1137,46 @@ function filteredTransactions() {
   });
 }
 
+function compareValues(left, right) {
+  if (typeof left === 'number' && typeof right === 'number') {
+    return left - right;
+  }
+  return String(left).localeCompare(String(right), 'nl', { sensitivity: 'base' });
+}
+
+function getTransactionSortValue(transaction, key) {
+  const normalized = normalizeTransaction(transaction);
+  if (key === 'type') return normalized.type;
+  if (key === 'amount') return normalized.amount;
+  return normalized.description.toLocaleLowerCase();
+}
+
+function applyTransactionSort(rows) {
+  const { key, direction } = sortState.transactions;
+  const directionFactor = direction === 'asc' ? 1 : -1;
+  return rows.slice().sort((left, right) => (
+    compareValues(getTransactionSortValue(left, key), getTransactionSortValue(right, key)) * directionFactor
+  ));
+}
+
+function applyProfitSort(rows) {
+  const { key, direction } = sortState.profit;
+  const directionFactor = direction === 'asc' ? 1 : -1;
+  return rows.slice().sort((left, right) => compareValues(left[key], right[key]) * directionFactor);
+}
+
+function updateSortButtons() {
+  document.querySelectorAll('.sort-btn').forEach(button => {
+    const tableName = button.dataset.table;
+    const state = sortState[tableName];
+    const isActive = state.key === button.dataset.sortKey;
+    button.classList.toggle('active', isActive);
+    button.dataset.direction = isActive ? state.direction : '';
+  });
+}
+
 function renderTable() {
-  const rows = filteredTransactions();
+  const rows = applyTransactionSort(filteredTransactions());
   const total = activeTransactions().length;
   document.getElementById('visibleCount').textContent = rows.length !== total
     ? `${rows.length} van ${total}`
@@ -1071,7 +1188,7 @@ function renderTable() {
     return;
   }
 
-  tbody.innerHTML = [...rows].reverse().map(rowHTML).join('');
+  tbody.innerHTML = rows.map(rowHTML).join('');
   tbody.querySelectorAll('.edit-btn').forEach(button => {
     button.addEventListener('click', () => {
       const id = Number(button.dataset.id);
@@ -1205,13 +1322,86 @@ function renderProfitChart(rows) {
   });
 }
 
+function renderMonthlyChart(transactions) {
+  const wrap = document.getElementById('monthlyChartWrap');
+  if (!transactions.length) {
+    wrap.style.display = 'none';
+    if (monthlyChart) { monthlyChart.destroy(); monthlyChart = null; }
+    return;
+  }
+
+  const monthMap = new Map();
+  transactions.forEach(transaction => {
+    const normalized = normalizeTransaction(transaction);
+    const monthKey = normalized.date.slice(0, 7);
+    monthMap.set(monthKey, roundMoney((monthMap.get(monthKey) || 0) + normalized.amount));
+  });
+
+  const entries = Array.from(monthMap.entries()).sort(([left], [right]) => left.localeCompare(right));
+  const labels = entries.map(([month]) => month);
+  const values = entries.map(([, value]) => value);
+
+  if (!values.length) {
+    wrap.style.display = 'none';
+    if (monthlyChart) { monthlyChart.destroy(); monthlyChart = null; }
+    return;
+  }
+
+  wrap.style.display = '';
+  if (monthlyChart) { monthlyChart.destroy(); monthlyChart = null; }
+
+  const ctx = document.getElementById('monthlyProfitChart').getContext('2d');
+  monthlyChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Netto resultaat (€)',
+        data: values,
+        borderColor: 'rgba(250,250,250,0.85)',
+        backgroundColor: 'rgba(250,250,250,0.12)',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 4,
+        tension: 0.2,
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: context => fmt(context.parsed.y),
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: '#a1a1aa', font: { size: 11 } },
+          grid: { color: '#3f3f46' },
+        },
+        y: {
+          ticks: {
+            color: '#a1a1aa',
+            font: { size: 11 },
+            callback: value => fmt(value),
+          },
+          grid: { color: '#3f3f46' },
+        },
+      },
+    },
+  });
+}
+
 function renderProfitTable() {
-  const rows = computeProfitByCard(activeTransactions());
+  const rows = applyProfitSort(computeProfitByCard(activeTransactions()));
   const tbody = document.getElementById('profitBody');
 
   if (!rows.length) {
     tbody.innerHTML = '<tr><td colspan="7" class="empty">Nog geen kaartgegevens beschikbaar.</td></tr>';
     renderProfitChart([]);
+    renderMonthlyChart([]);
     return;
   }
 
@@ -1228,6 +1418,7 @@ function renderProfitTable() {
   `).join('');
 
   renderProfitChart(rows);
+  renderMonthlyChart(activeTransactions());
 }
 
 function setActiveView(view) {
@@ -1252,11 +1443,53 @@ function setActiveView(view) {
   }
 }
 
+function setSectionCollapsed(section, collapsed) {
+  collapsedSections[section] = collapsed;
+  const contentId = section === 'transactions' ? 'transactionsContent' : 'profitContent';
+  const buttonId = section === 'transactions' ? 'toggleTransactionsSection' : 'toggleProfitSection';
+  const content = document.getElementById(contentId);
+  const button = document.getElementById(buttonId);
+  content.style.display = collapsed ? 'none' : '';
+  button.textContent = collapsed ? 'Uitklappen' : 'Inklappen';
+}
+
+function toggleSort(tableName, sortKey) {
+  const current = sortState[tableName];
+  if (current.key === sortKey) {
+    current.direction = current.direction === 'asc' ? 'desc' : 'asc';
+  } else {
+    current.key = sortKey;
+    current.direction = 'asc';
+  }
+  updateSortButtons();
+
+  if (tableName === 'transactions') {
+    renderTable();
+    return;
+  }
+  renderProfitTable();
+}
+
+document.querySelectorAll('.sort-btn').forEach(button => {
+  button.addEventListener('click', () => toggleSort(button.dataset.table, button.dataset.sortKey));
+});
+
+document.getElementById('toggleTransactionsSection').addEventListener('click', () => {
+  setSectionCollapsed('transactions', !collapsedSections.transactions);
+});
+
+document.getElementById('toggleProfitSection').addEventListener('click', () => {
+  setSectionCollapsed('profit', !collapsedSections.profit);
+});
+
 document.getElementById('viewTransactions').addEventListener('click', () => setActiveView('transactions'));
 document.getElementById('viewProfit').addEventListener('click', () => setActiveView('profit'));
 
 function refreshView() {
   syncTopbarTitle();
+  updateSortButtons();
+  setSectionCollapsed('transactions', collapsedSections.transactions);
+  setSectionCollapsed('profit', collapsedSections.profit);
   renderTabs();
   renderSummary();
   renderTable();
