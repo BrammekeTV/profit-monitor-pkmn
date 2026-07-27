@@ -753,6 +753,117 @@
         gap: 12px 20px;
       }
     }
+
+    /* ── period filter ── */
+    .period-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .period-label {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .period-bar { display: flex; gap: 4px; flex-wrap: wrap; }
+    .period-btn {
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 120ms, color 120ms, border-color 120ms;
+      white-space: nowrap;
+    }
+    .period-btn:hover,
+    .period-btn.active {
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--btn-h);
+    }
+    .custom-range {
+      display: none;
+      align-items: center;
+      gap: 6px;
+    }
+    .custom-range.visible { display: flex; }
+    .date-range-input {
+      padding: 4px 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 12px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 120ms;
+    }
+    .date-range-input::-webkit-calendar-picker-indicator { filter: invert(0.7); }
+    .date-range-input:focus { border-color: var(--btn-h); }
+    .date-range-sep { color: var(--muted); font-size: 12px; }
+
+    /* ── subsection headers (winst per kaart) ── */
+    .subsection-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 20px 0 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .subsection-header:first-of-type { margin-top: 0; }
+    .subsection-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    /* ── analytics (Analyse tab) ── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .kpi-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    .kpi-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+    .kpi-value {
+      font-size: 20px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.2;
+    }
+    .kpi-value.positive { color: var(--green); }
+    .kpi-value.negative { color: var(--red); }
+    .kpi-value.neutral  { color: var(--text); }
+    .kpi-sub {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .growth-positive { color: var(--green); }
+    .growth-negative { color: var(--red); }
+    .growth-neutral  { color: var(--muted); }
+    .chart-wrap + .chart-wrap { margin-top: 16px; }
   </style>
 </head>
 <body>
@@ -799,6 +910,7 @@
     <div class="view-toggle-bar">
       <button class="view-toggle-btn active" id="viewTransactions">Transacties</button>
       <button class="view-toggle-btn" id="viewProfit">Winst per kaart</button>
+      <button class="view-toggle-btn" id="viewAnalyse">Analyse</button>
     </div>
 
     <!-- Transactions view -->
@@ -825,6 +937,25 @@
         </div>
       </div>
 
+      <!-- Period filter -->
+      <div class="period-row">
+        <span class="period-label">Periode:</span>
+        <div class="period-bar">
+          <button class="period-btn active" data-period="all">Alles</button>
+          <button class="period-btn" data-period="today">Vandaag</button>
+          <button class="period-btn" data-period="week">Week</button>
+          <button class="period-btn" data-period="month">Maand</button>
+          <button class="period-btn" data-period="quarter">Kwartaal</button>
+          <button class="period-btn" data-period="year">Jaar</button>
+          <button class="period-btn" data-period="custom">Aangepast</button>
+        </div>
+        <div class="custom-range" id="customRange">
+          <input type="date" class="date-range-input" id="customFrom" />
+          <span class="date-range-sep">→</span>
+          <input type="date" class="date-range-input" id="customTo" />
+        </div>
+      </div>
+
       <div id="transactionsContent">
         <div class="table-wrap">
           <table>
@@ -832,12 +963,13 @@
               <tr>
                 <th><button type="button" class="sort-btn" data-table="transactions" data-sort-key="type">Type</button></th>
                 <th><button type="button" class="sort-btn" data-table="transactions" data-sort-key="amount">Bedrag</button></th>
+                <th><button type="button" class="sort-btn" data-table="transactions" data-sort-key="date">Datum</button></th>
                 <th><button type="button" class="sort-btn" data-table="transactions" data-sort-key="description">Beschrijving</button></th>
                 <th></th>
               </tr>
             </thead>
             <tbody id="txnBody">
-              <tr><td colspan="4" class="empty">Geen data — voeg transacties toe of importeer een .xlsm bestand.</td></tr>
+              <tr><td colspan="5" class="empty">Geen data — voeg transacties toe of importeer een .xlsm bestand.</td></tr>
             </tbody>
           </table>
         </div>
@@ -848,10 +980,14 @@
     <div id="profitView" style="display:none;">
       <div class="section-header">
         <span class="section-title">Winst per kaart</span>
-        <button class="collapse-btn" id="toggleProfitSection">Inklappen</button>
       </div>
 
-      <div id="profitContent">
+      <!-- Profit table subsection -->
+      <div class="subsection-header">
+        <span class="subsection-title">Tabel</span>
+        <button class="collapse-btn" id="toggleProfitTable">Inklappen</button>
+      </div>
+      <div id="profitTableContent">
         <div class="table-wrap">
           <table>
             <thead>
@@ -870,7 +1006,14 @@
             </tbody>
           </table>
         </div>
+      </div>
 
+      <!-- Profit charts subsection -->
+      <div class="subsection-header" style="margin-top:20px;">
+        <span class="subsection-title">Grafieken</span>
+        <button class="collapse-btn" id="toggleProfitCharts">Inklappen</button>
+      </div>
+      <div id="profitChartsContent">
         <div class="chart-wrap" id="profitChartWrap" style="display:none;">
           <div class="chart-title">Top kaarten op gerealiseerde winst</div>
           <canvas id="profitChart"></canvas>
@@ -880,6 +1023,51 @@
           <div class="chart-title">Netto resultaat per maand</div>
           <canvas id="monthlyProfitChart"></canvas>
         </div>
+      </div>
+    </div>
+
+    <!-- Analyse view -->
+    <div id="analyseView" style="display:none;">
+      <div class="section-header" style="margin-bottom:16px;">
+        <span class="section-title">Analyse</span>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Totale winst</div>
+          <div class="kpi-value neutral" id="kpiTotalProfit">—</div>
+          <div class="kpi-sub" id="kpiTotalSub">alle tijden</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Beste maand</div>
+          <div class="kpi-value positive" id="kpiBestMonth">—</div>
+          <div class="kpi-sub" id="kpiBestMonthLabel"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Gem. per maand</div>
+          <div class="kpi-value neutral" id="kpiAvgMonth">—</div>
+          <div class="kpi-sub" id="kpiAvgMonthSub"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Groei vs vorige maand</div>
+          <div class="kpi-value neutral" id="kpiGrowth">—</div>
+          <div class="kpi-sub" id="kpiGrowthSub"></div>
+        </div>
+      </div>
+
+      <div class="chart-wrap">
+        <div class="chart-title">Cumulatieve winst over tijd</div>
+        <canvas id="cumulativeChart"></canvas>
+      </div>
+
+      <div class="chart-wrap">
+        <div class="chart-title">Netto resultaat per maand</div>
+        <canvas id="monthlyCompareChart"></canvas>
+      </div>
+
+      <div class="chart-wrap">
+        <div class="chart-title">Groei per maand (%)</div>
+        <canvas id="growthChart"></canvas>
       </div>
     </div>
   </main>
@@ -976,6 +1164,24 @@
 
     <hr class="sidebar-divider" />
 
+    <div class="form-title">Importeren uit tab</div>
+
+    <div class="form-group">
+      <label class="form-label" for="importTabSelect">Brontab</label>
+      <select class="form-select" id="importTabSelect">
+        <option value="">— selecteer een tab —</option>
+      </select>
+      <div class="form-hint" style="margin-top:4px;">Transacties worden toegevoegd aan de huidige actieve tab.</div>
+    </div>
+    <button class="import-btn" id="importFromTabBtn">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 8h9M8 5l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M13 2v12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".4"/>
+      </svg>
+      Importeer transacties
+    </button>
+    <div class="form-msg" id="importTabMsg"></div>
+
     <hr class="sidebar-divider" />
 
     <button class="import-btn" id="exportBtn" style="margin-bottom:8px;">
@@ -1038,17 +1244,32 @@ let appState = ensureAppState(null);
 let activeFilter = 'all';
 let searchQuery = '';
 let editingId = null;
-let activeView = 'transactions'; // 'transactions' | 'profit'
+let activeView = 'transactions'; // 'transactions' | 'profit' | 'analyse'
 let profitChart = null;
 let monthlyChart = null;
+let cumulativeChart = null;
+let monthlyCompareChart = null;
+let growthChart = null;
+
+// Period filter state
+let periodFilter = 'all';
+let customFrom = '';
+let customTo = '';
 
 const collapsedSections = {
   transactions: false,
-  profit: false,
+  profitTable: false,
+  profitCharts: false,
+};
+
+const SECTION_CONFIG = {
+  transactions: { contentId: 'transactionsContent', buttonId: 'toggleTransactionsSection' },
+  profitTable:  { contentId: 'profitTableContent',  buttonId: 'toggleProfitTable' },
+  profitCharts: { contentId: 'profitChartsContent', buttonId: 'toggleProfitCharts' },
 };
 
 const sortState = {
-  transactions: { key: 'amount', direction: 'desc' },
+  transactions: { key: 'date', direction: 'desc' },
   profit: { key: 'realizedProfit', direction: 'desc' },
 };
 
@@ -1094,6 +1315,11 @@ function formatDate(value) {
   return new Intl.DateTimeFormat('nl-NL').format(parsed);
 }
 
+function formatMonthLabel(monthKey) {
+  const [year, month] = monthKey.split('-');
+  return new Intl.DateTimeFormat('nl-NL', { month: 'short', year: 'numeric' }).format(new Date(Number(year), Number(month) - 1, 1));
+}
+
 function syncTopbarTitle() {
   const activeTab = getActiveTabState(appState);
   document.querySelector('.topbar-title').textContent = `Profit Monitor — ${activeTab.name}`;
@@ -1128,13 +1354,73 @@ function renderSummary() {
   document.getElementById('txnCount').textContent = summary.count;
 }
 
+// ── period filter helpers ──────────────────────────────────────────────
+function getDateRange(period) {
+  const now = new Date();
+  const today = todayISO(now);
+  switch (period) {
+    case 'today':
+      return { from: today, to: today };
+    case 'week': {
+      const d = new Date(now);
+      const day = d.getDay();
+      d.setDate(d.getDate() - (day === 0 ? 6 : day - 1)); // start Monday
+      return { from: todayISO(d), to: today };
+    }
+    case 'month': {
+      const d = new Date(now.getFullYear(), now.getMonth(), 1);
+      return { from: todayISO(d), to: today };
+    }
+    case 'quarter': {
+      const q = Math.floor(now.getMonth() / 3);
+      const d = new Date(now.getFullYear(), q * 3, 1);
+      return { from: todayISO(d), to: today };
+    }
+    case 'year': {
+      const d = new Date(now.getFullYear(), 0, 1);
+      return { from: todayISO(d), to: today };
+    }
+    case 'custom':
+      return { from: customFrom, to: customTo };
+    default:
+      return null;
+  }
+}
+
+function applyPeriodFilter(transactions) {
+  const range = getDateRange(periodFilter);
+  if (!range) return transactions;
+  return transactions.filter(t => {
+    const date = (normalizeTransaction(t)).date;
+    if (range.from && date < range.from) return false;
+    if (range.to && date > range.to) return false;
+    return true;
+  });
+}
+
+// Transactions filtered by period only (used for profit & analyse views)
+function filteredByPeriod() {
+  return applyPeriodFilter(activeTransactions());
+}
+
 function filteredTransactions() {
-  return activeTransactions().filter(transaction => {
+  return applyPeriodFilter(activeTransactions()).filter(transaction => {
     if (activeFilter !== 'all' && transaction.type !== activeFilter) return false;
     if (!searchQuery) return true;
     const haystack = `${transaction.description}\n${transaction.cardName || ''}`.toLowerCase();
     return haystack.includes(searchQuery);
   });
+}
+
+function renderImportTabSelect() {
+  const sel = document.getElementById('importTabSelect');
+  const activeTab = getActiveTabState(appState);
+  const otherTabs = appState.tabs.filter(t => t.id !== activeTab.id);
+  sel.innerHTML = otherTabs.length
+    ? ['<option value="">— selecteer een tab —</option>',
+       ...otherTabs.map(t => `<option value="${escAttr(t.id)}">${escHTML(t.name)} (${t.transactions.length} transacties)</option>`),
+      ].join('')
+    : '<option value="">Geen andere tabs beschikbaar</option>';
 }
 
 function compareValues(left, right) {
@@ -1148,6 +1434,7 @@ function getTransactionSortValue(transaction, key) {
   const normalized = normalizeTransaction(transaction);
   if (key === 'type') return normalized.type;
   if (key === 'amount') return normalized.amount;
+  if (key === 'date') return normalized.date;
   return normalized.description.toLocaleLowerCase();
 }
 
@@ -1184,7 +1471,7 @@ function renderTable() {
 
   const tbody = document.getElementById('txnBody');
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="4" class="empty">Geen transacties gevonden.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="empty">Geen transacties gevonden.</td></tr>';
     return;
   }
 
@@ -1218,7 +1505,6 @@ function rowHTML(transaction) {
     metaItems.push(`<span class="meta-item">Kaart: ${escHTML(normalized.cardName)}</span>`);
     metaItems.push(`<span class="meta-item">Aantal: ${normalized.quantity}</span>`);
   }
-  metaItems.push(`<span class="meta-item">Datum: ${escHTML(formatDate(normalized.date))}</span>`);
 
   const orderLinksHTML = orderLinks.length ? `
     <div class="order-links">
@@ -1239,6 +1525,7 @@ function rowHTML(transaction) {
   return `<tr data-id="${normalized.id}">
     <td><span class="type-badge ${badgeCls}">${badgeLabel}</span></td>
     <td class="amount-cell ${amountClass}">${fmt(normalized.amount)}</td>
+    <td style="white-space:nowrap;font-size:13px;color:var(--muted);">${escHTML(formatDate(normalized.date))}</td>
     <td class="desc-cell">
       <div class="desc-text">${escHTML(normalized.description || '—')}</div>
       <div class="txn-meta">
@@ -1395,7 +1682,8 @@ function renderMonthlyChart(transactions) {
 }
 
 function renderProfitTable() {
-  const rows = applyProfitSort(computeProfitByCard(activeTransactions()));
+  const periodTxns = filteredByPeriod();
+  const rows = applyProfitSort(computeProfitByCard(periodTxns));
   const tbody = document.getElementById('profitBody');
 
   if (!rows.length) {
@@ -1418,39 +1706,254 @@ function renderProfitTable() {
   `).join('');
 
   renderProfitChart(rows);
-  renderMonthlyChart(activeTransactions());
+  renderMonthlyChart(periodTxns);
+}
+
+// ── Analytics ─────────────────────────────────────────────────────────
+function computeMonthlyData(transactions) {
+  const monthMap = new Map();
+  transactions.forEach(t => {
+    const normalized = normalizeTransaction(t);
+    const key = normalized.date.slice(0, 7);
+    monthMap.set(key, roundMoney((monthMap.get(key) || 0) + normalized.amount));
+  });
+  return Array.from(monthMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, profit]) => ({ month, profit }));
+}
+
+function renderAnalytics() {
+  const txns = activeTransactions(); // always show full history in analytics
+  const monthly = computeMonthlyData(txns);
+  const totalProfit = roundMoney(txns.reduce((sum, t) => sum + normalizeTransaction(t).amount, 0));
+
+  // KPI: Total profit
+  const kpiTotal = document.getElementById('kpiTotalProfit');
+  kpiTotal.textContent = fmt(totalProfit);
+  kpiTotal.className = `kpi-value ${totalProfit >= 0 ? 'positive' : 'negative'}`;
+
+  // KPI: Best month
+  const bestMonthData = monthly.slice().sort((a, b) => b.profit - a.profit)[0] ?? null;
+  document.getElementById('kpiBestMonth').textContent = bestMonthData ? fmt(bestMonthData.profit) : '—';
+  document.getElementById('kpiBestMonthLabel').textContent = bestMonthData ? formatMonthLabel(bestMonthData.month) : '';
+
+  // KPI: Average per month
+  const avgProfit = monthly.length ? roundMoney(totalProfit / monthly.length) : 0;
+  const kpiAvg = document.getElementById('kpiAvgMonth');
+  kpiAvg.textContent = monthly.length ? fmt(avgProfit) : '—';
+  kpiAvg.className = `kpi-value ${avgProfit >= 0 ? 'positive' : 'negative'}`;
+  document.getElementById('kpiAvgMonthSub').textContent = monthly.length
+    ? `over ${monthly.length} maan${monthly.length !== 1 ? 'den' : 'd'}`
+    : '';
+
+  // KPI: Growth vs previous month
+  const nowKey = new Date().toISOString().slice(0, 7);
+  const prevDate = new Date(); prevDate.setMonth(prevDate.getMonth() - 1);
+  const prevKey = prevDate.toISOString().slice(0, 7);
+  const currData = monthly.find(m => m.month === nowKey);
+  const prevData = monthly.find(m => m.month === prevKey);
+  const kpiGrowth = document.getElementById('kpiGrowth');
+  const kpiGrowthSub = document.getElementById('kpiGrowthSub');
+  if (currData && prevData && prevData.profit !== 0) {
+    const pct = roundMoney(((currData.profit - prevData.profit) / Math.abs(prevData.profit)) * 100);
+    kpiGrowth.textContent = `${pct >= 0 ? '+' : ''}${pct}%`;
+    kpiGrowth.className = `kpi-value ${pct >= 0 ? 'positive' : 'negative'}`;
+    kpiGrowthSub.textContent = `${fmt(currData.profit)} vs ${fmt(prevData.profit)}`;
+  } else if (currData) {
+    kpiGrowth.textContent = fmt(currData.profit);
+    kpiGrowth.className = 'kpi-value neutral';
+    kpiGrowthSub.textContent = 'geen vorige maand';
+  } else {
+    kpiGrowth.textContent = '—';
+    kpiGrowth.className = 'kpi-value neutral';
+    kpiGrowthSub.textContent = 'geen data deze maand';
+  }
+
+  renderCumulativeChart(txns);
+  renderMonthlyCompareChart(monthly);
+  renderGrowthChart(monthly);
+}
+
+function renderCumulativeChart(transactions) {
+  const el = document.getElementById('cumulativeChart');
+  if (!el) return;
+  if (cumulativeChart) { cumulativeChart.destroy(); cumulativeChart = null; }
+  if (!transactions.length) return;
+
+  const monthMap = new Map();
+  transactions.forEach(t => {
+    const normalized = normalizeTransaction(t);
+    const key = normalized.date.slice(0, 7);
+    monthMap.set(key, roundMoney((monthMap.get(key) || 0) + normalized.amount));
+  });
+  const entries = Array.from(monthMap.entries()).sort(([a], [b]) => a.localeCompare(b));
+  let cumulative = 0;
+  const labels = [];
+  const values = [];
+  entries.forEach(([month, profit]) => {
+    cumulative = roundMoney(cumulative + profit);
+    labels.push(formatMonthLabel(month));
+    values.push(cumulative);
+  });
+
+  const ctx = el.getContext('2d');
+  cumulativeChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Cumulatieve winst',
+        data: values,
+        borderColor: 'rgba(34,197,94,0.9)',
+        backgroundColor: 'rgba(34,197,94,0.08)',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        tension: 0.3,
+        fill: true,
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => fmt(ctx.parsed.y) } },
+      },
+      scales: {
+        x: { ticks: { color: '#a1a1aa', font: { size: 11 }, maxRotation: 45 }, grid: { color: '#3f3f46' } },
+        y: { ticks: { color: '#a1a1aa', font: { size: 11 }, callback: v => fmt(v) }, grid: { color: '#3f3f46' } },
+      },
+    },
+  });
+}
+
+function renderMonthlyCompareChart(monthly) {
+  const el = document.getElementById('monthlyCompareChart');
+  if (!el) return;
+  if (monthlyCompareChart) { monthlyCompareChart.destroy(); monthlyCompareChart = null; }
+  if (!monthly.length) return;
+
+  const labels = monthly.map(m => formatMonthLabel(m.month));
+  const values = monthly.map(m => m.profit);
+  const colors = values.map(v => v >= 0 ? 'rgba(34,197,94,0.75)' : 'rgba(239,68,68,0.75)');
+  const borderColors = values.map(v => v >= 0 ? 'rgba(34,197,94,1)' : 'rgba(239,68,68,1)');
+
+  const ctx = el.getContext('2d');
+  monthlyCompareChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Netto resultaat',
+        data: values,
+        backgroundColor: colors,
+        borderColor: borderColors,
+        borderWidth: 1,
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => fmt(ctx.parsed.y) } },
+      },
+      scales: {
+        x: { ticks: { color: '#a1a1aa', font: { size: 11 }, maxRotation: 45 }, grid: { color: '#3f3f46' } },
+        y: { ticks: { color: '#a1a1aa', font: { size: 11 }, callback: v => fmt(v) }, grid: { color: '#3f3f46' } },
+      },
+    },
+  });
+}
+
+function renderGrowthChart(monthly) {
+  const el = document.getElementById('growthChart');
+  if (!el) return;
+  if (growthChart) { growthChart.destroy(); growthChart = null; }
+  if (monthly.length < 2) return;
+
+  const growthData = monthly.slice(1).map((m, i) => {
+    const prev = monthly[i].profit;
+    const pct = prev !== 0 ? roundMoney(((m.profit - prev) / Math.abs(prev)) * 100) : null;
+    return { month: m.month, growth: pct };
+  }).filter(d => d.growth !== null);
+
+  if (!growthData.length) return;
+
+  const labels = growthData.map(d => formatMonthLabel(d.month));
+  const values = growthData.map(d => d.growth);
+  const colors = values.map(v => v >= 0 ? 'rgba(34,197,94,0.75)' : 'rgba(239,68,68,0.75)');
+  const borderColors = values.map(v => v >= 0 ? 'rgba(34,197,94,1)' : 'rgba(239,68,68,1)');
+
+  const ctx = el.getContext('2d');
+  growthChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Groei (%)',
+        data: values,
+        backgroundColor: colors,
+        borderColor: borderColors,
+        borderWidth: 1,
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => `${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y}%` } },
+      },
+      scales: {
+        x: { ticks: { color: '#a1a1aa', font: { size: 11 }, maxRotation: 45 }, grid: { color: '#3f3f46' } },
+        y: {
+          ticks: { color: '#a1a1aa', font: { size: 11 }, callback: v => `${v >= 0 ? '+' : ''}${v}%` },
+          grid: { color: '#3f3f46' },
+        },
+      },
+    },
+  });
 }
 
 function setActiveView(view) {
   activeView = view;
   const txnView = document.getElementById('transactionsView');
   const profView = document.getElementById('profitView');
+  const analyseView = document.getElementById('analyseView');
   const txnBtn = document.getElementById('viewTransactions');
   const profBtn = document.getElementById('viewProfit');
+  const analyseBtn = document.getElementById('viewAnalyse');
+
+  txnView.style.display = 'none';
+  profView.style.display = 'none';
+  analyseView.style.display = 'none';
+  txnBtn.classList.remove('active');
+  profBtn.classList.remove('active');
+  analyseBtn.classList.remove('active');
 
   if (view === 'transactions') {
     txnView.style.display = '';
-    profView.style.display = 'none';
     txnBtn.classList.add('active');
-    profBtn.classList.remove('active');
-  } else {
-    txnView.style.display = 'none';
+  } else if (view === 'profit') {
     profView.style.display = '';
-    txnBtn.classList.remove('active');
     profBtn.classList.add('active');
-    // Re-render chart when switching to profit view (canvas needs to be visible)
     renderProfitTable();
+  } else {
+    analyseView.style.display = '';
+    analyseBtn.classList.add('active');
+    renderAnalytics();
   }
 }
 
 function setSectionCollapsed(section, collapsed) {
   collapsedSections[section] = collapsed;
-  const contentId = section === 'transactions' ? 'transactionsContent' : 'profitContent';
-  const buttonId = section === 'transactions' ? 'toggleTransactionsSection' : 'toggleProfitSection';
-  const content = document.getElementById(contentId);
-  const button = document.getElementById(buttonId);
-  content.style.display = collapsed ? 'none' : '';
-  button.textContent = collapsed ? 'Uitklappen' : 'Inklappen';
+  const config = SECTION_CONFIG[section];
+  if (!config) return;
+  const content = document.getElementById(config.contentId);
+  const button = document.getElementById(config.buttonId);
+  if (content) content.style.display = collapsed ? 'none' : '';
+  if (button) button.textContent = collapsed ? 'Uitklappen' : 'Inklappen';
 }
 
 function toggleSort(tableName, sortKey) {
@@ -1459,7 +1962,7 @@ function toggleSort(tableName, sortKey) {
     current.direction = current.direction === 'asc' ? 'desc' : 'asc';
   } else {
     current.key = sortKey;
-    current.direction = 'asc';
+    current.direction = 'desc';
   }
   updateSortButtons();
 
@@ -1478,24 +1981,80 @@ document.getElementById('toggleTransactionsSection').addEventListener('click', (
   setSectionCollapsed('transactions', !collapsedSections.transactions);
 });
 
-document.getElementById('toggleProfitSection').addEventListener('click', () => {
-  setSectionCollapsed('profit', !collapsedSections.profit);
+document.getElementById('toggleProfitTable').addEventListener('click', () => {
+  setSectionCollapsed('profitTable', !collapsedSections.profitTable);
+});
+
+document.getElementById('toggleProfitCharts').addEventListener('click', () => {
+  setSectionCollapsed('profitCharts', !collapsedSections.profitCharts);
 });
 
 document.getElementById('viewTransactions').addEventListener('click', () => setActiveView('transactions'));
 document.getElementById('viewProfit').addEventListener('click', () => setActiveView('profit'));
+document.getElementById('viewAnalyse').addEventListener('click', () => setActiveView('analyse'));
+
+// Period filter
+document.querySelectorAll('.period-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    periodFilter = btn.dataset.period;
+    document.getElementById('customRange').classList.toggle('visible', periodFilter === 'custom');
+    renderTable();
+    if (activeView === 'profit') renderProfitTable();
+  });
+});
+
+document.getElementById('customFrom').addEventListener('change', e => {
+  customFrom = e.target.value;
+  if (periodFilter === 'custom') {
+    renderTable();
+    if (activeView === 'profit') renderProfitTable();
+  }
+});
+
+document.getElementById('customTo').addEventListener('change', e => {
+  customTo = e.target.value;
+  if (periodFilter === 'custom') {
+    renderTable();
+    if (activeView === 'profit') renderProfitTable();
+  }
+});
+
+// Import from tab
+document.getElementById('importFromTabBtn').addEventListener('click', () => {
+  const importTabMsg = document.getElementById('importTabMsg');
+  const sel = document.getElementById('importTabSelect');
+  const sourceId = sel.value;
+  if (!sourceId) {
+    showMessage(importTabMsg, 'error', 'Selecteer een brontab.');
+    return;
+  }
+  const sourceTab = appState.tabs.find(t => t.id === sourceId);
+  if (!sourceTab || !sourceTab.transactions.length) {
+    showMessage(importTabMsg, 'error', 'Geselecteerde tab heeft geen transacties.');
+    return;
+  }
+  if (!confirm(`${sourceTab.transactions.length} transacties importeren uit "${sourceTab.name}"?`)) return;
+  appState = appendTransactions(appState, sourceTab.transactions);
+  saveToStorage();
+  refreshView();
+  showMessage(importTabMsg, 'success', `${sourceTab.transactions.length} transactie${sourceTab.transactions.length !== 1 ? 's' : ''} geïmporteerd uit "${sourceTab.name}".`);
+  setTimeout(() => showMessage(importTabMsg), 4000);
+});
 
 function refreshView() {
   syncTopbarTitle();
   updateSortButtons();
   setSectionCollapsed('transactions', collapsedSections.transactions);
-  setSectionCollapsed('profit', collapsedSections.profit);
+  setSectionCollapsed('profitTable', collapsedSections.profitTable);
+  setSectionCollapsed('profitCharts', collapsedSections.profitCharts);
   renderTabs();
+  renderImportTabSelect();
   renderSummary();
   renderTable();
-  if (activeView === 'profit') {
-    renderProfitTable();
-  }
+  if (activeView === 'profit') renderProfitTable();
+  if (activeView === 'analyse') renderAnalytics();
   if (!dateInput.value) {
     dateInput.value = todayISO();
   }
