@@ -560,9 +560,27 @@ export function buildCardmarketOrderUrl(orderId) {
 }
 
 export function getCardmarketOrderLinks(transaction) {
-  if (transaction.type !== TYPE_SELL) return [];
+  if (transaction.type !== TYPE_SELL && transaction.type !== TYPE_BUY) return [];
   return extractCardmarketOrderIds(transaction.description).map(id => ({
     id,
     url: buildCardmarketOrderUrl(id),
   }));
+}
+
+export function computeCardmarketSurplus(transactions) {
+  const filtered = transactions.filter(t =>
+    String(t.description ?? '').includes('Overschot Cardmarket')
+  );
+  const totalSold = roundMoney(filtered
+    .filter(t => t.type === TYPE_SELL)
+    .reduce((sum, t) => sum + Math.abs(t.amount), 0));
+  const totalBought = roundMoney(filtered
+    .filter(t => t.type === TYPE_BUY)
+    .reduce((sum, t) => sum + Math.abs(t.amount), 0));
+  return {
+    totalSold,
+    totalBought,
+    net: roundMoney(totalSold - totalBought),
+    count: filtered.length,
+  };
 }

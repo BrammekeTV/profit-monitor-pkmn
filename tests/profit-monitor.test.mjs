@@ -6,6 +6,7 @@ import {
   TYPE_BUY,
   TYPE_SELL,
   addTab,
+  computeCardmarketSurplus,
   computeProfitByCard,
   deleteTab,
   ensureAppState,
@@ -115,14 +116,12 @@ test('profit per card respects explicit no-card entries while keeping legacy mul
   assert.deepEqual(rows.map(row => row.cardName), ['Bulbasaur', 'Charmander']);
 });
 
-test('Cardmarket order ids and links are generated only for sold transactions', () => {
+test('Cardmarket order ids and links are generated for both sold and bought transactions', () => {
   const description = 'Lot verkocht via Cardmarket #1289784654 en #1289784655, dubbele #1289784654';
 
   assert.deepEqual(extractCardmarketOrderIds(description), ['1289784654', '1289784655']);
-  assert.deepEqual(getCardmarketOrderLinks({
-    type: TYPE_SELL,
-    description,
-  }), [
+
+  const expectedLinks = [
     {
       id: '1289784654',
       url: 'https://www.cardmarket.com/en/Pokemon/Orders/1289784654',
@@ -131,9 +130,37 @@ test('Cardmarket order ids and links are generated only for sold transactions', 
       id: '1289784655',
       url: 'https://www.cardmarket.com/en/Pokemon/Orders/1289784655',
     },
+  ];
+
+  assert.deepEqual(getCardmarketOrderLinks({ type: TYPE_SELL, description }), expectedLinks);
+  assert.deepEqual(getCardmarketOrderLinks({ type: TYPE_BUY, description }), expectedLinks);
+  assert.deepEqual(getCardmarketOrderLinks({ type: 'Other', description }), []);
+});
+
+test('computeCardmarketSurplus filters by "Overschot Cardmarket" in description', () => {
+  const transactions = [
+    { type: TYPE_SELL, amount: 50, description: 'Overschot Cardmarket mei 2026' },
+    { type: TYPE_BUY, amount: -20, description: 'Overschot Cardmarket mei 2026' },
+    { type: TYPE_SELL, amount: 30, description: 'Overschot Cardmarket april 2026' },
+    { type: TYPE_SELL, amount: 100, description: 'Vinted verkoop' },
+    { type: TYPE_BUY, amount: -10, description: 'Aankoop buiten Cardmarket' },
+  ];
+
+  const surplus = computeCardmarketSurplus(transactions);
+
+  assert.equal(surplus.totalSold, 80);
+  assert.equal(surplus.totalBought, 20);
+  assert.equal(surplus.net, 60);
+  assert.equal(surplus.count, 3);
+});
+
+test('computeCardmarketSurplus returns zero values when no matching transactions exist', () => {
+  const surplus = computeCardmarketSurplus([
+    { type: TYPE_SELL, amount: 100, description: 'Vinted' },
   ]);
-  assert.deepEqual(getCardmarketOrderLinks({
-    type: TYPE_BUY,
-    description,
-  }), []);
+
+  assert.equal(surplus.totalSold, 0);
+  assert.equal(surplus.totalBought, 0);
+  assert.equal(surplus.net, 0);
+  assert.equal(surplus.count, 0);
 });

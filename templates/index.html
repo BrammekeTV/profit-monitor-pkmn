@@ -31,15 +31,39 @@
 
     /* ── layout ── */
     .layout {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .body-area {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .txn-view {
       display: grid;
       grid-template-columns: 1fr 300px;
-      grid-template-rows: auto 1fr;
-      min-height: 100vh;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .txn-view .main,
+    .txn-view .sidebar {
+      overflow-y: auto;
+      height: 100%;
+    }
+
+    .analyse-view {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 24px;
     }
 
     /* ── topbar ── */
     .topbar {
-      grid-column: 1 / -1;
       display: flex;
       align-items: center;
       gap: 24px;
@@ -47,6 +71,7 @@
       height: 52px;
       border-bottom: 1px solid var(--border);
       background: var(--surface2);
+      flex-shrink: 0;
     }
 
     .topbar-title {
@@ -454,6 +479,179 @@
     .search-input::placeholder {
       color: var(--muted);
     }
+
+    /* ── tab nav ── */
+    .tab-nav {
+      display: flex;
+      gap: 2px;
+      margin-left: auto;
+    }
+
+    .tab-nav-btn {
+      padding: 4px 12px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 120ms, color 120ms, border-color 120ms;
+    }
+
+    .tab-nav-btn:hover {
+      color: var(--text);
+      background: var(--surface);
+    }
+
+    .tab-nav-btn.active {
+      color: var(--text);
+      background: var(--btn);
+      border-color: var(--border);
+    }
+
+    /* ── analyse ── */
+    .analyse-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      gap: 12px;
+    }
+
+    .analyse-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      align-items: start;
+    }
+
+    /* ── widgets ── */
+    .widget {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .widget.expanded {
+      grid-column: 1 / -1;
+    }
+
+    .widget-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .widget-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .widget-expand-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      border-radius: 3px;
+      font-size: 13px;
+      transition: background 120ms, color 120ms;
+      font-family: inherit;
+    }
+
+    .widget-expand-btn:hover {
+      background: var(--btn);
+      color: var(--text);
+    }
+
+    .widget-body {
+      padding: 10px 12px;
+    }
+
+    .widget-stat {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      border-bottom: 1px solid var(--border);
+      gap: 8px;
+    }
+
+    .widget-stat:last-child {
+      border-bottom: none;
+    }
+
+    .widget-stat-label {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .widget-stat-value {
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      font-size: 13px;
+      text-align: right;
+    }
+
+    .widget-stat-value.positive { color: var(--green); }
+    .widget-stat-value.negative { color: var(--red); }
+    .widget-stat-value.neutral  { color: var(--text); }
+
+    .widget-empty {
+      padding: 16px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .widget-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .widget-table th {
+      padding: 5px 8px;
+      text-align: left;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 11px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .widget-table td {
+      padding: 5px 8px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    .widget-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .widget-table tr:hover td {
+      background: var(--bg);
+    }
+
+    /* cm-order link — shares .lookup-btn base style, adds text-decoration none */
+    a.lookup-btn {
+      text-decoration: none;
+    }
   </style>
 </head>
 <body>
@@ -482,92 +680,150 @@
         <span class="stat-value neutral" id="txnCount">—</span>
       </div>
     </div>
+    <nav class="tab-nav" id="tabNav">
+      <button class="tab-nav-btn active" data-tab="transactions">Transacties</button>
+      <button class="tab-nav-btn" data-tab="analyse">Analyse</button>
+    </nav>
   </header>
 
-  <!-- main table -->
-  <main class="main">
-    <div class="section-header">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <span class="section-title">Transacties</span>
-        <span class="count-label" id="visibleCount"></span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <input
-          type="text"
-          class="search-input"
-          id="searchInput"
-          placeholder="Zoek beschrijving…"
-          autocomplete="off"
-        />
-        <div class="filter-bar">
-          <button class="filter-btn active" data-filter="all">Alles</button>
-          <button class="filter-btn" data-filter="Verkocht">Verkocht</button>
-          <button class="filter-btn" data-filter="Gekocht">Gekocht</button>
+  <div class="body-area">
+
+    <!-- transactions view -->
+    <div id="txnView" class="txn-view">
+
+      <!-- main table -->
+      <main class="main">
+        <div class="section-header">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="section-title">Transacties</span>
+            <span class="count-label" id="visibleCount"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input
+              type="text"
+              class="search-input"
+              id="searchInput"
+              placeholder="Zoek beschrijving…"
+              autocomplete="off"
+            />
+            <div class="filter-bar">
+              <button class="filter-btn active" data-filter="all">Alles</button>
+              <button class="filter-btn" data-filter="Verkocht">Verkocht</button>
+              <button class="filter-btn" data-filter="Gekocht">Gekocht</button>
+            </div>
+          </div>
         </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Bedrag</th>
+                <th>Beschrijving</th>
+              </tr>
+            </thead>
+            <tbody id="txnBody">
+              <tr><td colspan="3" class="empty">Laden…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+
+      <!-- sidebar form -->
+      <aside class="sidebar">
+        <div class="form-title">Nieuwe invoer</div>
+
+        <div class="form-group">
+          <label class="form-label" for="fType">Type</label>
+          <select class="form-select" id="fType">
+            <option value="Verkocht">Verkocht</option>
+            <option value="Gekocht">Gekocht</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="fAmount">Bedrag (€)</label>
+          <input
+            type="number"
+            class="form-input"
+            id="fAmount"
+            placeholder="0.00"
+            min="0.01"
+            step="0.01"
+          />
+          <div class="form-hint">Altijd positief — teken wordt automatisch bepaald.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="fDesc">Beschrijving</label>
+          <textarea
+            class="form-textarea"
+            id="fDesc"
+            placeholder="bijv. Vinted&#10;of Pikachu (MEP 001)"
+          ></textarea>
+          <div class="form-hint">Één kaart per regel voor automatische afbeelding.</div>
+        </div>
+
+        <button class="submit-btn" id="submitBtn">Toevoegen</button>
+        <div class="form-msg" id="formMsg"></div>
+
+        <hr class="sidebar-divider" />
+
+        <div style="font-size:12px;color:var(--muted);line-height:1.6;">
+          Kaartafbeeldingen worden geladen via de Pokémon TCG API.<br/>
+          Klik op een afbeelding om de kaart op Cardmarket te bekijken.
+        </div>
+      </aside>
+
+    </div><!-- /#txnView -->
+
+    <!-- analyse view -->
+    <div id="analyseView" class="analyse-view" hidden>
+
+      <div class="analyse-header">
+        <span class="section-title">Analyse</span>
       </div>
-    </div>
 
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Type</th>
-            <th>Bedrag</th>
-            <th>Beschrijving</th>
-          </tr>
-        </thead>
-        <tbody id="txnBody">
-          <tr><td colspan="3" class="empty">Laden…</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </main>
+      <div class="analyse-grid">
 
-  <!-- sidebar form -->
-  <aside class="sidebar">
-    <div class="form-title">Nieuwe invoer</div>
+        <!-- Widget: Overzicht -->
+        <div class="widget" id="widgetOverview">
+          <div class="widget-header">
+            <span class="widget-title">Overzicht</span>
+            <button class="widget-expand-btn" data-widget="widgetOverview" title="Vergroot">⤢</button>
+          </div>
+          <div class="widget-body" id="wbOverview">
+            <div class="widget-empty">Laden…</div>
+          </div>
+        </div>
 
-    <div class="form-group">
-      <label class="form-label" for="fType">Type</label>
-      <select class="form-select" id="fType">
-        <option value="Verkocht">Verkocht</option>
-        <option value="Gekocht">Gekocht</option>
-      </select>
-    </div>
+        <!-- Widget: Overschot Cardmarket -->
+        <div class="widget" id="widgetCMSurplus">
+          <div class="widget-header">
+            <span class="widget-title">Overschot Cardmarket</span>
+            <button class="widget-expand-btn" data-widget="widgetCMSurplus" title="Vergroot">⤢</button>
+          </div>
+          <div class="widget-body" id="wbCMSurplus">
+            <div class="widget-empty">Laden…</div>
+          </div>
+        </div>
 
-    <div class="form-group">
-      <label class="form-label" for="fAmount">Bedrag (€)</label>
-      <input
-        type="number"
-        class="form-input"
-        id="fAmount"
-        placeholder="0.00"
-        min="0.01"
-        step="0.01"
-      />
-      <div class="form-hint">Altijd positief — teken wordt automatisch bepaald.</div>
-    </div>
+        <!-- Widget: Per kanaal -->
+        <div class="widget" id="widgetByChannel">
+          <div class="widget-header">
+            <span class="widget-title">Per kanaal</span>
+            <button class="widget-expand-btn" data-widget="widgetByChannel" title="Vergroot">⤢</button>
+          </div>
+          <div class="widget-body" id="wbByChannel">
+            <div class="widget-empty">Laden…</div>
+          </div>
+        </div>
 
-    <div class="form-group">
-      <label class="form-label" for="fDesc">Beschrijving</label>
-      <textarea
-        class="form-textarea"
-        id="fDesc"
-        placeholder="bijv. Vinted&#10;of Pikachu (MEP 001)"
-      ></textarea>
-      <div class="form-hint">Één kaart per regel voor automatische afbeelding.</div>
-    </div>
+      </div><!-- /.analyse-grid -->
+    </div><!-- /#analyseView -->
 
-    <button class="submit-btn" id="submitBtn">Toevoegen</button>
-    <div class="form-msg" id="formMsg"></div>
-
-    <hr class="sidebar-divider" />
-
-    <div style="font-size:12px;color:var(--muted);line-height:1.6;">
-      Kaartafbeeldingen worden geladen via de Pokémon TCG API.<br/>
-      Klik op een afbeelding om de kaart op Cardmarket te bekijken.
-    </div>
-  </aside>
+  </div><!-- /.body-area -->
 
 </div>
 
@@ -588,6 +844,10 @@
     const summary = await sumRes.json();
     renderSummary(summary);
     renderTable();
+    // Refresh analyse if it's currently visible
+    if (!document.getElementById('analyseView').hidden) {
+      renderAnalyse();
+    }
   }
 
   function fmt(n) {
@@ -629,8 +889,8 @@
     const reversed = [...rows].reverse();
     tbody.innerHTML = reversed.map(t => rowHTML(t)).join('');
 
-    // Attach lookup button handlers
-    tbody.querySelectorAll('.lookup-btn').forEach(btn => {
+    // Attach lookup button handlers (buttons only, not anchor links)
+    tbody.querySelectorAll('button.lookup-btn').forEach(btn => {
       btn.addEventListener('click', () => handleLookup(btn));
     });
   }
@@ -655,6 +915,18 @@
          </button>`
       : '';
 
+    const orderIds = extractCMOrderIds(t.description);
+    const cmLinks = orderIds.map(id =>
+      `<a class="lookup-btn" href="${escAttr(buildCMOrderUrl(id))}" target="_blank" rel="noopener" title="Cardmarket Order #${escAttr(id)}">
+         <svg width="10" height="10" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+           <path d="M2 2h1.5l2 8h7l1.5-6H5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+           <circle cx="7" cy="13" r="1" fill="currentColor"/>
+           <circle cx="12" cy="13" r="1" fill="currentColor"/>
+         </svg>
+         Order #${escHTML(id)}
+       </a>`
+    ).join('');
+
     const cached = hasCards ? imageCache[t.description] : null;
     const imagesHTML = cached ? buildImagesHTML(cached) : '';
 
@@ -663,7 +935,7 @@
       <td class="amount-cell ${amtCls}">${amtStr}</td>
       <td class="desc-cell">
         <div class="desc-text">${escHTML(t.description)}</div>
-        ${lookupBtn}
+        ${cmLinks}${lookupBtn}
         <div class="card-images" id="imgs-${t.id}">${imagesHTML}</div>
       </td>
     </tr>`;
@@ -672,6 +944,21 @@
   function looksLikeCards(desc) {
     // Matches "name (SETCODE NUM)" with the space before the opening parenthesis.
     return / \([A-Z0-9]+ \d+[A-Za-z]*\)/.test(desc);
+  }
+
+  // ── Cardmarket order helpers ────────────────────────────────────────
+  function extractCMOrderIds(description) {
+    const ids = [];
+    const seen = new Set();
+    for (const match of String(description).matchAll(/#(\d+)/g)) {
+      const id = match[1];
+      if (!seen.has(id)) { seen.add(id); ids.push(id); }
+    }
+    return ids;
+  }
+
+  function buildCMOrderUrl(id) {
+    return `https://www.cardmarket.com/en/Pokemon/Orders/${id}`;
   }
 
   function buildImagesHTML(cards) {
@@ -784,6 +1071,156 @@
 
   function escAttr(s) {
     return String(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  // ── tab navigation ─────────────────────────────────────────────────
+  document.getElementById('tabNav').addEventListener('click', e => {
+    const btn = e.target.closest('.tab-nav-btn');
+    if (!btn) return;
+    document.querySelectorAll('.tab-nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const txnView = document.getElementById('txnView');
+    const analyseView = document.getElementById('analyseView');
+
+    if (btn.dataset.tab === 'analyse') {
+      txnView.hidden = true;
+      analyseView.hidden = false;
+      renderAnalyse();
+    } else {
+      txnView.hidden = false;
+      analyseView.hidden = true;
+    }
+  });
+
+  // ── widget expand/collapse ──────────────────────────────────────────
+  document.getElementById('analyseView').addEventListener('click', e => {
+    const btn = e.target.closest('.widget-expand-btn');
+    if (!btn) return;
+    const widget = document.getElementById(btn.dataset.widget);
+    if (!widget) return;
+    const isExpanded = widget.classList.toggle('expanded');
+    btn.title = isExpanded ? 'Verkleinen' : 'Vergroot';
+    btn.textContent = isExpanded ? '⤡' : '⤢';
+  });
+
+  // ── analyse rendering ───────────────────────────────────────────────
+  function renderAnalyse() {
+    renderOverviewWidget();
+    renderCardmarketSurplusWidget();
+    renderByChannelWidget();
+  }
+
+  function renderOverviewWidget() {
+    const totalSold = allTxns.filter(t => t.type === 'Verkocht').reduce((s, t) => s + t.amount, 0);
+    const totalBought = allTxns.filter(t => t.type === 'Gekocht').reduce((s, t) => s + t.amount, 0);
+    const profit = totalSold + totalBought;
+    const soldCount = allTxns.filter(t => t.type === 'Verkocht').length;
+    const boughtCount = allTxns.filter(t => t.type === 'Gekocht').length;
+
+    document.getElementById('wbOverview').innerHTML = `
+      <div class="widget-stat">
+        <span class="widget-stat-label">Totaal verkocht</span>
+        <span class="widget-stat-value positive">${escHTML(fmt(totalSold))}</span>
+      </div>
+      <div class="widget-stat">
+        <span class="widget-stat-label">Totaal gekocht</span>
+        <span class="widget-stat-value negative">${escHTML(fmt(totalBought))}</span>
+      </div>
+      <div class="widget-stat">
+        <span class="widget-stat-label">Winst / Verlies</span>
+        <span class="widget-stat-value ${profit >= 0 ? 'positive' : 'negative'}">${escHTML(fmt(profit))}</span>
+      </div>
+      <div class="widget-stat">
+        <span class="widget-stat-label">Verkooporders</span>
+        <span class="widget-stat-value neutral">${soldCount}</span>
+      </div>
+      <div class="widget-stat">
+        <span class="widget-stat-label">Aankooporders</span>
+        <span class="widget-stat-value neutral">${boughtCount}</span>
+      </div>
+    `;
+  }
+
+  function renderCardmarketSurplusWidget() {
+    const filtered = allTxns.filter(t => String(t.description ?? '').includes('Overschot Cardmarket'));
+    if (!filtered.length) {
+      document.getElementById('wbCMSurplus').innerHTML =
+        '<div class="widget-empty">Geen transacties met "Overschot Cardmarket".</div>';
+      return;
+    }
+
+    const totalSold = filtered.filter(t => t.type === 'Verkocht').reduce((s, t) => s + Math.abs(t.amount), 0);
+    const totalBought = filtered.filter(t => t.type === 'Gekocht').reduce((s, t) => s + Math.abs(t.amount), 0);
+    const net = totalSold - totalBought;
+
+    document.getElementById('wbCMSurplus').innerHTML = `
+      <div class="widget-stat">
+        <span class="widget-stat-label">Totaal verkocht</span>
+        <span class="widget-stat-value positive">${escHTML(fmt(totalSold))}</span>
+      </div>
+      <div class="widget-stat">
+        <span class="widget-stat-label">Totaal gekocht</span>
+        <span class="widget-stat-value negative">${escHTML(fmt(-totalBought))}</span>
+      </div>
+      <div class="widget-stat">
+        <span class="widget-stat-label">Netto overschot</span>
+        <span class="widget-stat-value ${net >= 0 ? 'positive' : 'negative'}">${escHTML(fmt(net))}</span>
+      </div>
+      <div class="widget-stat">
+        <span class="widget-stat-label">Transacties</span>
+        <span class="widget-stat-value neutral">${filtered.length}</span>
+      </div>
+    `;
+  }
+
+  function renderByChannelWidget() {
+    if (!allTxns.length) {
+      document.getElementById('wbByChannel').innerHTML = '<div class="widget-empty">Geen data.</div>';
+      return;
+    }
+
+    // Group by first line of description as "channel"
+    const channels = new Map();
+    for (const t of allTxns) {
+      const channel = String(t.description ?? '').split(/\r?\n/)[0].trim() || '(leeg)';
+      // Normalize: strip order IDs and amounts to find a channel label
+      const key = channel.replace(/#\d+/g, '').trim() || channel;
+      if (!channels.has(key)) channels.set(key, { sold: 0, bought: 0, count: 0 });
+      const g = channels.get(key);
+      g.count += 1;
+      if (t.type === 'Verkocht') g.sold += t.amount;
+      else g.bought += Math.abs(t.amount);
+    }
+
+    // Sort by total volume descending, show top 8
+    const rows = [...channels.entries()]
+      .sort(([, a], [, b]) => (b.sold + b.bought) - (a.sold + a.bought))
+      .slice(0, 8);
+
+    const rowsHTML = rows.map(([label, g]) => {
+      const net = g.sold - g.bought;
+      return `<tr>
+        <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escAttr(label)}">${escHTML(label)}</td>
+        <td class="amount-cell positive" style="font-size:12px;">${escHTML(fmt(g.sold))}</td>
+        <td class="amount-cell negative" style="font-size:12px;">${escHTML(fmt(-g.bought))}</td>
+        <td class="amount-cell ${net >= 0 ? 'positive' : 'negative'}" style="font-size:12px;">${escHTML(fmt(net))}</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('wbByChannel').innerHTML = `
+      <table class="widget-table">
+        <thead>
+          <tr>
+            <th>Omschrijving</th>
+            <th>Verkocht</th>
+            <th>Gekocht</th>
+            <th>Netto</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHTML}</tbody>
+      </table>
+    `;
   }
 
   // ── init ──────────────────────────────────────────────────────────
