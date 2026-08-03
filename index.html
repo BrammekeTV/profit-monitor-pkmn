@@ -864,6 +864,135 @@
     .growth-negative { color: var(--red); }
     .growth-neutral  { color: var(--muted); }
     .chart-wrap + .chart-wrap { margin-top: 16px; }
+
+    /* ── analyse widgets ── */
+    .analyse-widget-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      align-items: start;
+      margin-top: 24px;
+    }
+
+    .widget {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .widget.expanded {
+      grid-column: 1 / -1;
+    }
+
+    .widget-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .widget-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .widget-expand-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      border-radius: 3px;
+      font-size: 13px;
+      transition: background 120ms, color 120ms;
+      font-family: inherit;
+    }
+
+    .widget-expand-btn:hover {
+      background: var(--btn);
+      color: var(--text);
+    }
+
+    .widget-body {
+      padding: 10px 12px;
+    }
+
+    .widget-stat {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      border-bottom: 1px solid var(--border);
+      gap: 8px;
+    }
+
+    .widget-stat:last-child {
+      border-bottom: none;
+    }
+
+    .widget-stat-label {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .widget-stat-value {
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      font-size: 13px;
+      text-align: right;
+    }
+
+    .widget-stat-value.positive { color: var(--green); }
+    .widget-stat-value.negative { color: var(--red); }
+    .widget-stat-value.neutral  { color: var(--text); }
+
+    .widget-empty {
+      padding: 16px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .widget-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .widget-table th {
+      padding: 5px 8px;
+      text-align: left;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 11px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .widget-table td {
+      padding: 5px 8px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    .widget-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .widget-table tr:hover td {
+      background: var(--bg);
+    }
   </style>
 </head>
 <body>
@@ -1069,6 +1198,43 @@
         <div class="chart-title">Groei per maand (%)</div>
         <canvas id="growthChart"></canvas>
       </div>
+
+      <div class="analyse-widget-grid">
+
+        <!-- Widget: Overzicht -->
+        <div class="widget" id="widgetOverview">
+          <div class="widget-header">
+            <span class="widget-title">Overzicht</span>
+            <button class="widget-expand-btn" data-widget="widgetOverview" title="Vergroot">⤢</button>
+          </div>
+          <div class="widget-body" id="wbOverview">
+            <div class="widget-empty">Laden…</div>
+          </div>
+        </div>
+
+        <!-- Widget: Overschot Cardmarket -->
+        <div class="widget" id="widgetCMSurplus">
+          <div class="widget-header">
+            <span class="widget-title">Overschot Cardmarket</span>
+            <button class="widget-expand-btn" data-widget="widgetCMSurplus" title="Vergroot">⤢</button>
+          </div>
+          <div class="widget-body" id="wbCMSurplus">
+            <div class="widget-empty">Laden…</div>
+          </div>
+        </div>
+
+        <!-- Widget: Per kanaal -->
+        <div class="widget" id="widgetByChannel">
+          <div class="widget-header">
+            <span class="widget-title">Per kanaal</span>
+            <button class="widget-expand-btn" data-widget="widgetByChannel" title="Vergroot">⤢</button>
+          </div>
+          <div class="widget-body" id="wbByChannel">
+            <div class="widget-empty">Laden…</div>
+          </div>
+        </div>
+
+      </div><!-- /.analyse-widget-grid -->
     </div>
   </main>
 
@@ -1219,6 +1385,7 @@ import {
   appendTransaction,
   appendTransactions,
   clearAllData,
+  computeCardmarketSurplus,
   computeProfitByCard,
   computeSummary,
   deleteTab,
@@ -1772,6 +1939,105 @@ function renderAnalytics() {
   renderCumulativeChart(txns);
   renderMonthlyCompareChart(monthly);
   renderGrowthChart(monthly);
+  renderOverviewWidget(txns);
+  renderCardmarketSurplusWidget(txns);
+  renderByChannelWidget(txns);
+}
+
+// ── Analyse widgets ────────────────────────────────────────────────────
+function renderOverviewWidget(txns) {
+  const summary = computeSummary(txns);
+  document.getElementById('wbOverview').innerHTML = `
+    <div class="widget-stat">
+      <span class="widget-stat-label">Totaal verkocht</span>
+      <span class="widget-stat-value positive">${escHTML(fmt(summary.totalSold))}</span>
+    </div>
+    <div class="widget-stat">
+      <span class="widget-stat-label">Totaal gekocht</span>
+      <span class="widget-stat-value negative">${escHTML(fmt(summary.totalBought))}</span>
+    </div>
+    <div class="widget-stat">
+      <span class="widget-stat-label">Winst / Verlies</span>
+      <span class="widget-stat-value ${summary.profit >= 0 ? 'positive' : 'negative'}">${escHTML(fmt(summary.profit))}</span>
+    </div>
+    <div class="widget-stat">
+      <span class="widget-stat-label">Verkooporders</span>
+      <span class="widget-stat-value neutral">${txns.filter(t => t.type === TYPE_SELL).length}</span>
+    </div>
+    <div class="widget-stat">
+      <span class="widget-stat-label">Aankooporders</span>
+      <span class="widget-stat-value neutral">${txns.filter(t => t.type === TYPE_BUY).length}</span>
+    </div>
+  `;
+}
+
+function renderCardmarketSurplusWidget(txns) {
+  const surplus = computeCardmarketSurplus(txns);
+  if (!surplus.count) {
+    document.getElementById('wbCMSurplus').innerHTML =
+      '<div class="widget-empty">Geen transacties met "Overschot Cardmarket".</div>';
+    return;
+  }
+  document.getElementById('wbCMSurplus').innerHTML = `
+    <div class="widget-stat">
+      <span class="widget-stat-label">Totaal verkocht</span>
+      <span class="widget-stat-value positive">${escHTML(fmt(surplus.totalSold))}</span>
+    </div>
+    <div class="widget-stat">
+      <span class="widget-stat-label">Totaal gekocht</span>
+      <span class="widget-stat-value negative">${escHTML(fmt(-surplus.totalBought))}</span>
+    </div>
+    <div class="widget-stat">
+      <span class="widget-stat-label">Netto overschot</span>
+      <span class="widget-stat-value ${surplus.net >= 0 ? 'positive' : 'negative'}">${escHTML(fmt(surplus.net))}</span>
+    </div>
+    <div class="widget-stat">
+      <span class="widget-stat-label">Transacties</span>
+      <span class="widget-stat-value neutral">${surplus.count}</span>
+    </div>
+  `;
+}
+
+function renderByChannelWidget(txns) {
+  if (!txns.length) {
+    document.getElementById('wbByChannel').innerHTML = '<div class="widget-empty">Geen data.</div>';
+    return;
+  }
+  const channels = new Map();
+  for (const t of txns) {
+    const channel = String(t.description ?? '').split(/\r?\n/)[0].trim() || '(leeg)';
+    const key = channel.replace(/#\d+/g, '').trim() || channel;
+    if (!channels.has(key)) channels.set(key, { sold: 0, bought: 0, count: 0 });
+    const g = channels.get(key);
+    g.count += 1;
+    if (t.type === TYPE_SELL) g.sold += t.amount;
+    else g.bought += Math.abs(t.amount);
+  }
+  const rows = [...channels.entries()]
+    .sort(([, a], [, b]) => (b.sold + b.bought) - (a.sold + a.bought))
+    .slice(0, 8);
+  const rowsHTML = rows.map(([label, g]) => {
+    const net = g.sold - g.bought;
+    return `<tr>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escAttr(label)}">${escHTML(label)}</td>
+      <td class="amount-cell positive" style="font-size:12px;">${escHTML(fmt(g.sold))}</td>
+      <td class="amount-cell negative" style="font-size:12px;">${escHTML(fmt(-g.bought))}</td>
+      <td class="amount-cell ${net >= 0 ? 'positive' : 'negative'}" style="font-size:12px;">${escHTML(fmt(net))}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('wbByChannel').innerHTML = `
+    <table class="widget-table">
+      <thead>
+        <tr>
+          <th>Omschrijving</th>
+          <th>Verkocht</th>
+          <th>Gekocht</th>
+          <th>Netto</th>
+        </tr>
+      </thead>
+      <tbody>${rowsHTML}</tbody>
+    </table>
+  `;
 }
 
 function renderCumulativeChart(transactions) {
@@ -1992,6 +2258,17 @@ document.getElementById('toggleProfitCharts').addEventListener('click', () => {
 document.getElementById('viewTransactions').addEventListener('click', () => setActiveView('transactions'));
 document.getElementById('viewProfit').addEventListener('click', () => setActiveView('profit'));
 document.getElementById('viewAnalyse').addEventListener('click', () => setActiveView('analyse'));
+
+// Widget expand/collapse
+document.getElementById('analyseView').addEventListener('click', e => {
+  const btn = e.target.closest('.widget-expand-btn');
+  if (!btn) return;
+  const widget = document.getElementById(btn.dataset.widget);
+  if (!widget) return;
+  const isExpanded = widget.classList.toggle('expanded');
+  btn.title = isExpanded ? 'Verkleinen' : 'Vergroot';
+  btn.textContent = isExpanded ? '⤡' : '⤢';
+});
 
 // Period filter
 document.querySelectorAll('.period-btn').forEach(btn => {
