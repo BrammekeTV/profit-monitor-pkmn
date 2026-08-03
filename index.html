@@ -827,18 +827,6 @@
     }
 
     /* ── analytics (Analyse tab) ── */
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 12px;
-      margin-bottom: 24px;
-    }
-    .kpi-card {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 14px 16px;
-    }
     .kpi-label {
       font-size: 11px;
       color: var(--muted);
@@ -863,15 +851,13 @@
     .growth-positive { color: var(--green); }
     .growth-negative { color: var(--red); }
     .growth-neutral  { color: var(--muted); }
-    .chart-wrap + .chart-wrap { margin-top: 16px; }
 
     /* ── analyse widgets ── */
     .analyse-widget-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(12, 1fr);
       gap: 12px;
       align-items: start;
-      margin-top: 24px;
     }
 
     .widget {
@@ -883,6 +869,24 @@
 
     .widget.expanded {
       grid-column: 1 / -1;
+    }
+
+    /* KPI widgets: 4 per row */
+    .widget-kpi { grid-column: span 3; }
+
+    /* Chart widgets: 3 per row */
+    .widget-chart { grid-column: span 4; }
+
+    /* Info widgets: 2 per row */
+    .widget-info { grid-column: span 6; }
+
+    .widget-body-chart {
+      padding: 10px 12px;
+      min-height: 200px;
+    }
+
+    .widget-kpi .widget-body {
+      padding: 14px 16px;
     }
 
     .widget-header {
@@ -1161,48 +1165,91 @@
         <span class="section-title">Analyse</span>
       </div>
 
-      <div class="kpi-grid">
-        <div class="kpi-card">
-          <div class="kpi-label">Totale winst</div>
-          <div class="kpi-value neutral" id="kpiTotalProfit">—</div>
-          <div class="kpi-sub" id="kpiTotalSub">alle tijden</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Beste maand</div>
-          <div class="kpi-value positive" id="kpiBestMonth">—</div>
-          <div class="kpi-sub" id="kpiBestMonthLabel"></div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Gem. per maand</div>
-          <div class="kpi-value neutral" id="kpiAvgMonth">—</div>
-          <div class="kpi-sub" id="kpiAvgMonthSub"></div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Groei vs vorige maand</div>
-          <div class="kpi-value neutral" id="kpiGrowth">—</div>
-          <div class="kpi-sub" id="kpiGrowthSub"></div>
-        </div>
-      </div>
-
-      <div class="chart-wrap">
-        <div class="chart-title">Cumulatieve winst over tijd</div>
-        <canvas id="cumulativeChart"></canvas>
-      </div>
-
-      <div class="chart-wrap">
-        <div class="chart-title">Netto resultaat per maand</div>
-        <canvas id="monthlyCompareChart"></canvas>
-      </div>
-
-      <div class="chart-wrap">
-        <div class="chart-title">Groei per maand (%)</div>
-        <canvas id="growthChart"></canvas>
-      </div>
-
       <div class="analyse-widget-grid">
 
+        <!-- Widget: Totale winst (KPI) -->
+        <div class="widget widget-kpi" id="widgetKpiTotal">
+          <div class="widget-header">
+            <span class="widget-title">Totale winst</span>
+            <button class="widget-expand-btn" data-widget="widgetKpiTotal" title="Vergroot">⤢</button>
+          </div>
+          <div class="widget-body">
+            <div class="kpi-value neutral" id="kpiTotalProfit">—</div>
+            <div class="kpi-sub" id="kpiTotalSub">alle tijden</div>
+          </div>
+        </div>
+
+        <!-- Widget: Beste maand (KPI) -->
+        <div class="widget widget-kpi" id="widgetKpiBestMonth">
+          <div class="widget-header">
+            <span class="widget-title">Beste maand</span>
+            <button class="widget-expand-btn" data-widget="widgetKpiBestMonth" title="Vergroot">⤢</button>
+          </div>
+          <div class="widget-body">
+            <div class="kpi-value positive" id="kpiBestMonth">—</div>
+            <div class="kpi-sub" id="kpiBestMonthLabel"></div>
+          </div>
+        </div>
+
+        <!-- Widget: Gem. per maand (KPI) -->
+        <div class="widget widget-kpi" id="widgetKpiAvgMonth">
+          <div class="widget-header">
+            <span class="widget-title">Gem. per maand</span>
+            <button class="widget-expand-btn" data-widget="widgetKpiAvgMonth" title="Vergroot">⤢</button>
+          </div>
+          <div class="widget-body">
+            <div class="kpi-value neutral" id="kpiAvgMonth">—</div>
+            <div class="kpi-sub" id="kpiAvgMonthSub"></div>
+          </div>
+        </div>
+
+        <!-- Widget: Groei vs vorige maand (KPI) -->
+        <div class="widget widget-kpi" id="widgetKpiGrowth">
+          <div class="widget-header">
+            <span class="widget-title">Groei vs vorige maand</span>
+            <button class="widget-expand-btn" data-widget="widgetKpiGrowth" title="Vergroot">⤢</button>
+          </div>
+          <div class="widget-body">
+            <div class="kpi-value neutral" id="kpiGrowth">—</div>
+            <div class="kpi-sub" id="kpiGrowthSub"></div>
+          </div>
+        </div>
+
+        <!-- Widget: Cumulatieve winst over tijd (chart) -->
+        <div class="widget widget-chart" id="widgetCumulative">
+          <div class="widget-header">
+            <span class="widget-title">Cumulatieve winst over tijd</span>
+            <button class="widget-expand-btn" data-widget="widgetCumulative" title="Vergroot">⤢</button>
+          </div>
+          <div class="widget-body widget-body-chart">
+            <canvas id="cumulativeChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Widget: Netto resultaat per maand (chart) -->
+        <div class="widget widget-chart" id="widgetMonthly">
+          <div class="widget-header">
+            <span class="widget-title">Netto resultaat per maand</span>
+            <button class="widget-expand-btn" data-widget="widgetMonthly" title="Vergroot">⤢</button>
+          </div>
+          <div class="widget-body widget-body-chart">
+            <canvas id="monthlyCompareChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Widget: Groei per maand (%) (chart) -->
+        <div class="widget widget-chart" id="widgetGrowthChart">
+          <div class="widget-header">
+            <span class="widget-title">Groei per maand (%)</span>
+            <button class="widget-expand-btn" data-widget="widgetGrowthChart" title="Vergroot">⤢</button>
+          </div>
+          <div class="widget-body widget-body-chart">
+            <canvas id="growthChart"></canvas>
+          </div>
+        </div>
+
         <!-- Widget: Overzicht -->
-        <div class="widget" id="widgetOverview">
+        <div class="widget widget-info" id="widgetOverview">
           <div class="widget-header">
             <span class="widget-title">Overzicht</span>
             <button class="widget-expand-btn" data-widget="widgetOverview" title="Vergroot">⤢</button>
@@ -1213,23 +1260,12 @@
         </div>
 
         <!-- Widget: Overschot Cardmarket -->
-        <div class="widget" id="widgetCMSurplus">
+        <div class="widget widget-info" id="widgetCMSurplus">
           <div class="widget-header">
             <span class="widget-title">Overschot Cardmarket</span>
             <button class="widget-expand-btn" data-widget="widgetCMSurplus" title="Vergroot">⤢</button>
           </div>
           <div class="widget-body" id="wbCMSurplus">
-            <div class="widget-empty">Laden…</div>
-          </div>
-        </div>
-
-        <!-- Widget: Per kanaal -->
-        <div class="widget" id="widgetByChannel">
-          <div class="widget-header">
-            <span class="widget-title">Per kanaal</span>
-            <button class="widget-expand-btn" data-widget="widgetByChannel" title="Vergroot">⤢</button>
-          </div>
-          <div class="widget-body" id="wbByChannel">
             <div class="widget-empty">Laden…</div>
           </div>
         </div>
@@ -1941,7 +1977,6 @@ function renderAnalytics() {
   renderGrowthChart(monthly);
   renderOverviewWidget(txns);
   renderCardmarketSurplusWidget(txns);
-  renderByChannelWidget(txns);
 }
 
 // ── Analyse widgets ────────────────────────────────────────────────────
@@ -1995,48 +2030,6 @@ function renderCardmarketSurplusWidget(txns) {
       <span class="widget-stat-label">Transacties</span>
       <span class="widget-stat-value neutral">${surplus.count}</span>
     </div>
-  `;
-}
-
-function renderByChannelWidget(txns) {
-  if (!txns.length) {
-    document.getElementById('wbByChannel').innerHTML = '<div class="widget-empty">Geen data.</div>';
-    return;
-  }
-  const channels = new Map();
-  for (const t of txns) {
-    const channel = String(t.description ?? '').split(/\r?\n/)[0].trim() || '(leeg)';
-    const key = channel.replace(/#\d+/g, '').trim() || channel;
-    if (!channels.has(key)) channels.set(key, { sold: 0, bought: 0, count: 0 });
-    const g = channels.get(key);
-    g.count += 1;
-    if (t.type === TYPE_SELL) g.sold += t.amount;
-    else g.bought += Math.abs(t.amount);
-  }
-  const rows = [...channels.entries()]
-    .sort(([, a], [, b]) => (b.sold + b.bought) - (a.sold + a.bought))
-    .slice(0, 8);
-  const rowsHTML = rows.map(([label, g]) => {
-    const net = g.sold - g.bought;
-    return `<tr>
-      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escAttr(label)}">${escHTML(label)}</td>
-      <td class="amount-cell positive" style="font-size:12px;">${escHTML(fmt(g.sold))}</td>
-      <td class="amount-cell negative" style="font-size:12px;">${escHTML(fmt(-g.bought))}</td>
-      <td class="amount-cell ${net >= 0 ? 'positive' : 'negative'}" style="font-size:12px;">${escHTML(fmt(net))}</td>
-    </tr>`;
-  }).join('');
-  document.getElementById('wbByChannel').innerHTML = `
-    <table class="widget-table">
-      <thead>
-        <tr>
-          <th>Omschrijving</th>
-          <th>Verkocht</th>
-          <th>Gekocht</th>
-          <th>Netto</th>
-        </tr>
-      </thead>
-      <tbody>${rowsHTML}</tbody>
-    </table>
   `;
 }
 
@@ -2268,6 +2261,10 @@ document.getElementById('analyseView').addEventListener('click', e => {
   const isExpanded = widget.classList.toggle('expanded');
   btn.title = isExpanded ? 'Verkleinen' : 'Vergroot';
   btn.textContent = isExpanded ? '⤡' : '⤢';
+  // Resize charts if present inside this widget so Chart.js adapts to new column width
+  requestAnimationFrame(() => {
+    [cumulativeChart, monthlyCompareChart, growthChart].forEach(c => { if (c) c.resize(); });
+  });
 });
 
 // Period filter
