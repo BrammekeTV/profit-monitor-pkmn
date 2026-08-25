@@ -918,6 +918,14 @@
     .growth-neutral  { color: var(--muted); }
 
     /* ── analyse widgets ── */
+    .analyse-kpi-row {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+      align-items: start;
+    }
+
     .analyse-widget-grid {
       display: grid;
       grid-template-columns: repeat(12, 1fr);
@@ -936,14 +944,26 @@
       grid-column: 1 / -1;
     }
 
-    /* KPI widgets: 4 per row */
-    .widget-kpi { grid-column: span 3; }
+    /* KPI widgets */
+    .analyse-kpi-row .widget-kpi { grid-column: auto; }
 
     /* Chart widgets: 3 per row */
     .widget-chart { grid-column: span 4; }
 
     /* Info widgets: 2 per row */
     .widget-info { grid-column: span 6; }
+
+    @media (max-width: 1200px) {
+      .analyse-kpi-row {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 800px) {
+      .analyse-kpi-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
 
     .widget-body-chart {
       padding: 10px 12px;
@@ -1230,7 +1250,7 @@
         <span class="section-title">Analyse</span>
       </div>
 
-      <div class="analyse-widget-grid">
+      <div class="analyse-kpi-row">
 
         <!-- Widget: Totale winst (KPI) -->
         <div class="widget widget-kpi" id="widgetKpiTotal">
@@ -1291,6 +1311,10 @@
             <div class="kpi-sub" id="kpiGrowthSub"></div>
           </div>
         </div>
+
+      </div><!-- /.analyse-kpi-row -->
+
+      <div class="analyse-widget-grid">
 
         <!-- Widget: Cumulatieve winst over tijd (chart) -->
         <div class="widget widget-chart" id="widgetCumulative">
