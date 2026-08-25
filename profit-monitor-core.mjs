@@ -2,6 +2,61 @@ export const STORAGE_KEY = 'profit-monitor-pkmn';
 export const DEFAULT_TAB_NAME = 'Default';
 export const TYPE_SELL = 'Verkocht';
 export const TYPE_BUY = 'Gekocht';
+export const GRADING_COMPANY_OPTIONS = ['PSA', 'BGS', 'CGC', 'TAG'];
+export const GRADING_SCALE_BY_COMPANY = Object.freeze({
+  PSA: Object.freeze([
+    Object.freeze({ value: '10', label: 'Gem Mint' }),
+    Object.freeze({ value: '9', label: 'Mint' }),
+    Object.freeze({ value: '8', label: 'NM-MT' }),
+    Object.freeze({ value: '7', label: 'Near Mint' }),
+    Object.freeze({ value: '6', label: 'EX-MT' }),
+    Object.freeze({ value: '5', label: 'Excellent' }),
+    Object.freeze({ value: '4', label: 'VG-EX' }),
+    Object.freeze({ value: '3', label: 'Very Good' }),
+    Object.freeze({ value: '2', label: 'Good' }),
+    Object.freeze({ value: '1', label: 'Poor' }),
+  ]),
+  BGS: Object.freeze([
+    Object.freeze({ value: '10', label: 'Pristine / Black Label' }),
+    Object.freeze({ value: '9.5', label: 'Gem Mint' }),
+    Object.freeze({ value: '9', label: 'Mint' }),
+    Object.freeze({ value: '8.5', label: 'NM-MT+' }),
+    Object.freeze({ value: '8', label: 'NM-MT' }),
+    Object.freeze({ value: '7', label: 'Near Mint' }),
+    Object.freeze({ value: '6', label: 'EX-MT' }),
+    Object.freeze({ value: '5', label: 'Excellent' }),
+    Object.freeze({ value: '4', label: 'VG-EX' }),
+    Object.freeze({ value: '3', label: 'Very Good' }),
+    Object.freeze({ value: '2', label: 'Good' }),
+    Object.freeze({ value: '1', label: 'Poor' }),
+  ]),
+  CGC: Object.freeze([
+    Object.freeze({ value: '10', label: 'Pristine' }),
+    Object.freeze({ value: '9.5', label: 'Gem Mint' }),
+    Object.freeze({ value: '9', label: 'Mint' }),
+    Object.freeze({ value: '8.5', label: 'NM-MT+' }),
+    Object.freeze({ value: '8', label: 'NM-MT' }),
+    Object.freeze({ value: '7', label: 'Near Mint' }),
+    Object.freeze({ value: '6', label: 'EX-MT' }),
+    Object.freeze({ value: '5', label: 'Excellent' }),
+    Object.freeze({ value: '4', label: 'VG-EX' }),
+    Object.freeze({ value: '3', label: 'Very Good' }),
+    Object.freeze({ value: '2', label: 'Good' }),
+    Object.freeze({ value: '1', label: 'Poor' }),
+  ]),
+  TAG: Object.freeze([
+    Object.freeze({ value: '10', label: '10' }),
+    Object.freeze({ value: '9', label: '9' }),
+    Object.freeze({ value: '8', label: '8' }),
+    Object.freeze({ value: '7', label: '7' }),
+    Object.freeze({ value: '6', label: '6' }),
+    Object.freeze({ value: '5', label: '5' }),
+    Object.freeze({ value: '4', label: '4' }),
+    Object.freeze({ value: '3', label: '3' }),
+    Object.freeze({ value: '2', label: '2' }),
+    Object.freeze({ value: '1', label: '1' }),
+  ]),
+});
 
 export function roundMoney(value) {
   return Math.round((Number(value) || 0) * 100) / 100;
@@ -67,6 +122,30 @@ export function normalizeAmount(type, amount) {
   return roundMoney(type === TYPE_BUY ? -value : value);
 }
 
+export function normalizeGradingCompany(value) {
+  const company = String(value ?? '').trim().toUpperCase();
+  return GRADING_COMPANY_OPTIONS.includes(company) ? company : '';
+}
+
+export function getGradingScale(company) {
+  const normalizedCompany = normalizeGradingCompany(company);
+  return GRADING_SCALE_BY_COMPANY[normalizedCompany] ?? [];
+}
+
+export function normalizeGradingValue(company, value) {
+  const gradingValue = String(value ?? '').trim();
+  if (!gradingValue) return '';
+  const allowed = getGradingScale(company);
+  return allowed.some(option => option.value === gradingValue) ? gradingValue : '';
+}
+
+export function getGradeLabel(company, value) {
+  const normalizedValue = normalizeGradingValue(company, value);
+  if (!normalizedValue) return '';
+  const option = getGradingScale(company).find(item => item.value === normalizedValue);
+  return option?.label ?? '';
+}
+
 export function normalizeTransaction(transaction = {}, options = {}) {
   const type = transaction.type === TYPE_BUY ? TYPE_BUY : TYPE_SELL;
   const description = String(transaction.description ?? '').trim();
@@ -75,6 +154,8 @@ export function normalizeTransaction(transaction = {}, options = {}) {
   const cardName = transaction.cardName != null
     ? normalizeTabName(transaction.cardName)
     : inferCardName(description);
+  const gradingCompany = normalizeGradingCompany(transaction.gradingCompany);
+  const gradingValue = normalizeGradingValue(gradingCompany, transaction.gradingValue);
 
   return {
     id: transaction.id ?? null,
@@ -84,6 +165,9 @@ export function normalizeTransaction(transaction = {}, options = {}) {
     cardName,
     quantity: normalizeQuantity(transaction.quantity),
     date: normalizeDate(transaction.date, todayISO(options.now)),
+    gradingCompany,
+    gradingValue,
+    gradingLabel: getGradeLabel(gradingCompany, gradingValue),
   };
 }
 
