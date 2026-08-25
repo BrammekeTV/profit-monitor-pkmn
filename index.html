@@ -322,6 +322,47 @@
       white-space: nowrap;
     }
 
+    .meta-item-graded {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .grading-logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 34px;
+      height: 18px;
+      padding: 0 6px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      border: 1px solid transparent;
+      color: #fff;
+    }
+
+    .grading-logo-psa {
+      background: linear-gradient(135deg, #1d4ed8, #dc2626);
+      border-color: rgba(255,255,255,0.2);
+    }
+
+    .grading-logo-bgs {
+      background: #111827;
+      border-color: #f59e0b;
+    }
+
+    .grading-logo-cgc {
+      background: linear-gradient(135deg, #0f172a, #475569);
+      border-color: #22d3ee;
+    }
+
+    .grading-logo-tag {
+      background: #14532d;
+      border-color: #22c55e;
+    }
+
     .order-links {
       display: flex;
       gap: 6px;
@@ -386,6 +427,30 @@
       background: var(--surface);
       color: var(--text);
       border-color: var(--btn-h);
+    }
+
+    .grading-table-wrap {
+      margin-top: 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow-x: auto;
+      background: var(--surface2);
+    }
+
+    .grading-table-wrap table {
+      min-width: 360px;
+      font-size: 11px;
+    }
+
+    .grading-table-wrap th,
+    .grading-table-wrap td {
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .grading-table-wrap tbody tr:last-child td {
+      border-bottom: none;
     }
 
     .empty {
@@ -1179,6 +1244,18 @@
           </div>
         </div>
 
+        <!-- Widget: Huidige maand (KPI) -->
+        <div class="widget widget-kpi" id="widgetKpiCurrentMonth">
+          <div class="widget-header">
+            <span class="widget-title">Huidige maand</span>
+            <button class="widget-expand-btn" data-widget="widgetKpiCurrentMonth" title="Vergroot">⤢</button>
+          </div>
+          <div class="widget-body">
+            <div class="kpi-value neutral" id="kpiCurrentMonth">—</div>
+            <div class="kpi-sub" id="kpiCurrentMonthSub"></div>
+          </div>
+        </div>
+
         <!-- Widget: Beste maand (KPI) -->
         <div class="widget widget-kpi" id="widgetKpiBestMonth">
           <div class="widget-header">
@@ -1331,6 +1408,60 @@
     </div>
 
     <div class="form-group">
+      <label class="toggle-switch">
+        <input type="checkbox" id="fIsGraded" />
+        <span class="toggle-track"></span>
+        <span class="form-label" style="margin:0;">Gegradeerde kaart</span>
+      </label>
+      <div class="form-hint">Kies gradingbedrijf en grade wanneer de kaart slabbed is.</div>
+    </div>
+
+    <div class="form-group" id="fGradingCompanyGroup" style="display:none;">
+      <label class="form-label" for="fGradingCompany">Gradingbedrijf</label>
+      <select class="form-select" id="fGradingCompany">
+        <option value="">— selecteer bedrijf —</option>
+        <option value="PSA">PSA</option>
+        <option value="BGS">BGS</option>
+        <option value="CGC">CGC</option>
+        <option value="TAG">TAG</option>
+      </select>
+    </div>
+
+    <div class="form-group" id="fGradingValueGroup" style="display:none;">
+      <label class="form-label" for="fGradingValue">Grade</label>
+      <select class="form-select" id="fGradingValue" disabled>
+        <option value="">Kies eerst gradingbedrijf</option>
+      </select>
+      <div class="grading-table-wrap" id="gradingTableWrap" style="display:none;">
+        <table>
+          <thead>
+            <tr>
+              <th>Grade</th>
+              <th>PSA</th>
+              <th>BGS</th>
+              <th>CGC</th>
+              <th>TAG</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>10</strong></td><td>Gem Mint</td><td>Pristine / Black Label</td><td>Pristine</td><td>10</td></tr>
+            <tr><td><strong>9.5</strong></td><td>—</td><td>Gem Mint</td><td>Gem Mint</td><td>—</td></tr>
+            <tr><td><strong>9</strong></td><td>Mint</td><td>Mint</td><td>Mint</td><td>9</td></tr>
+            <tr><td><strong>8.5</strong></td><td>—</td><td>NM-MT+</td><td>NM-MT+</td><td>—</td></tr>
+            <tr><td><strong>8</strong></td><td>NM-MT</td><td>NM-MT</td><td>NM-MT</td><td>8</td></tr>
+            <tr><td><strong>7</strong></td><td>Near Mint</td><td>Near Mint</td><td>Near Mint</td><td>7</td></tr>
+            <tr><td><strong>6</strong></td><td>EX-MT</td><td>EX-MT</td><td>EX-MT</td><td>6</td></tr>
+            <tr><td><strong>5</strong></td><td>Excellent</td><td>Excellent</td><td>Excellent</td><td>5</td></tr>
+            <tr><td><strong>4</strong></td><td>VG-EX</td><td>VG-EX</td><td>VG-EX</td><td>4</td></tr>
+            <tr><td><strong>3</strong></td><td>Very Good</td><td>Very Good</td><td>Very Good</td><td>3</td></tr>
+            <tr><td><strong>2</strong></td><td>Good</td><td>Good</td><td>Good</td><td>2</td></tr>
+            <tr><td><strong>1</strong></td><td>Poor</td><td>Poor</td><td>Poor</td><td>1</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="form-group">
       <label class="form-label" for="fDate">Datum</label>
       <input
         type="date"
@@ -1430,6 +1561,8 @@ import {
   getActiveTab as getActiveTabState,
   getActiveTransactions,
   getCardmarketOrderLinks,
+  getGradeLabel,
+  getGradingScale,
   inferQuantity,
   normalizeDate,
   normalizeQuantity,
@@ -1708,6 +1841,16 @@ function rowHTML(transaction) {
     metaItems.push(`<span class="meta-item">Kaart: ${escHTML(normalized.cardName)}</span>`);
     metaItems.push(`<span class="meta-item">Aantal: ${normalized.quantity}</span>`);
   }
+  if (normalized.gradingCompany && normalized.gradingValue) {
+    const gradeLabel = normalized.gradingLabel || getGradeLabel(normalized.gradingCompany, normalized.gradingValue);
+    const gradeText = gradeLabel ? `${normalized.gradingValue} · ${gradeLabel}` : normalized.gradingValue;
+    metaItems.push(`
+      <span class="meta-item meta-item-graded">
+        <span class="grading-logo grading-logo-${normalized.gradingCompany.toLowerCase()}">${escHTML(normalized.gradingCompany)}</span>
+        <span>Grade: ${escHTML(gradeText)}</span>
+      </span>
+    `);
+  }
 
   const orderLinksHTML = orderLinks.length ? `
     <div class="order-links">
@@ -1929,11 +2072,26 @@ function renderAnalytics() {
   const txns = activeTransactions(); // always show full history in analytics
   const monthly = computeMonthlyData(txns);
   const totalProfit = roundMoney(txns.reduce((sum, t) => sum + normalizeTransaction(t).amount, 0));
+  const nowKey = new Date().toISOString().slice(0, 7);
 
   // KPI: Total profit
   const kpiTotal = document.getElementById('kpiTotalProfit');
   kpiTotal.textContent = fmt(totalProfit);
   kpiTotal.className = `kpi-value ${totalProfit >= 0 ? 'positive' : 'negative'}`;
+
+  // KPI: Current month
+  const currentMonthData = monthly.find(m => m.month === nowKey) ?? null;
+  const kpiCurrentMonth = document.getElementById('kpiCurrentMonth');
+  const kpiCurrentMonthSub = document.getElementById('kpiCurrentMonthSub');
+  if (currentMonthData) {
+    kpiCurrentMonth.textContent = fmt(currentMonthData.profit);
+    kpiCurrentMonth.className = `kpi-value ${currentMonthData.profit > 0 ? 'positive' : (currentMonthData.profit < 0 ? 'negative' : 'neutral')}`;
+    kpiCurrentMonthSub.textContent = formatMonthLabel(nowKey);
+  } else {
+    kpiCurrentMonth.textContent = '—';
+    kpiCurrentMonth.className = 'kpi-value neutral';
+    kpiCurrentMonthSub.textContent = `geen data voor ${formatMonthLabel(nowKey)}`;
+  }
 
   // KPI: Best month
   const bestMonthData = monthly.slice().sort((a, b) => b.profit - a.profit)[0] ?? null;
@@ -1950,7 +2108,6 @@ function renderAnalytics() {
     : '';
 
   // KPI: Growth vs previous month
-  const nowKey = new Date().toISOString().slice(0, 7);
   const prevDate = new Date(); prevDate.setMonth(prevDate.getMonth() - 1);
   const prevKey = prevDate.toISOString().slice(0, 7);
   const currData = monthly.find(m => m.month === nowKey);
@@ -2388,6 +2545,9 @@ document.getElementById('submitBtn').addEventListener('click', () => {
   const amountRaw = document.getElementById('fAmount').value;
   const description = document.getElementById('fDesc').value.trim();
   const hasCardName = document.getElementById('fHasCardName').checked;
+  const isGraded = document.getElementById('fIsGraded').checked;
+  const gradingCompany = isGraded ? document.getElementById('fGradingCompany').value : '';
+  const gradingValue = isGraded ? document.getElementById('fGradingValue').value : '';
   const quantity = hasCardName
     ? normalizeQuantity(document.getElementById('fQuantity').value)
     : 1;
@@ -2401,11 +2561,21 @@ document.getElementById('submitBtn').addEventListener('click', () => {
     return;
   }
 
+  if (isGraded && !gradingCompany) {
+    showMessage(formMsg, 'error', 'Selecteer een gradingbedrijf.');
+    return;
+  }
+
+  if (isGraded && !gradingValue) {
+    showMessage(formMsg, 'error', 'Selecteer een grade.');
+    return;
+  }
+
   if (editingId !== null) {
     // null → let normalizeTransaction infer from description
     // '' → explicitly no card name (no inference)
     const cardName = hasCardName ? null : '';
-    const txnData = { type, amount, description, cardName, quantity, date };
+    const txnData = { type, amount, description, cardName, quantity, date, gradingCompany, gradingValue };
     appState = updateStoredTransaction(appState, editingId, txnData);
     saveToStorage();
     cancelEdit();
@@ -2423,11 +2593,22 @@ document.getElementById('submitBtn').addEventListener('click', () => {
         cardName: part.cardName,
         quantity: part.quantity,
         date,
+        gradingCompany,
+        gradingValue,
       }));
       appState = appendTransactions(appState, txns);
     } else {
       const cardName = hasCardName ? null : '';
-      appState = appendTransaction(appState, { type, amount, description, cardName, quantity, date });
+      appState = appendTransaction(appState, {
+        type,
+        amount,
+        description,
+        cardName,
+        quantity,
+        date,
+        gradingCompany,
+        gradingValue,
+      });
     }
     saveToStorage();
     refreshView();
@@ -2435,8 +2616,12 @@ document.getElementById('submitBtn').addEventListener('click', () => {
     document.getElementById('fDesc').value = '';
     document.getElementById('fHasCardName').checked = false;
     document.getElementById('fQuantity').value = '1';
+    document.getElementById('fIsGraded').checked = false;
+    document.getElementById('fGradingCompany').value = '';
+    document.getElementById('fGradingValue').value = '';
     document.getElementById('fDate').value = todayISO();
     syncDescriptionParsing();
+    syncGradingParsing();
     showMessage(formMsg, 'success', 'Transactie toegevoegd.');
     setTimeout(() => showMessage(formMsg), 3000);
   }
@@ -2452,8 +2637,14 @@ function startEdit(transaction) {
   document.getElementById('fDesc').value = transaction.description;
   document.getElementById('fHasCardName').checked = Boolean(transaction.cardName);
   document.getElementById('fQuantity').value = transaction.quantity;
+  document.getElementById('fIsGraded').checked = Boolean(transaction.gradingCompany && transaction.gradingValue);
+  document.getElementById('fGradingCompany').value = transaction.gradingCompany || '';
   document.getElementById('fDate').value = transaction.date;
   syncDescriptionParsing();
+  syncGradingParsing();
+  if (transaction.gradingValue) {
+    document.getElementById('fGradingValue').value = transaction.gradingValue;
+  }
   document.querySelector('.sidebar').scrollTop = 0;
   showMessage(formMsg);
 }
@@ -2468,8 +2659,12 @@ function cancelEdit() {
   document.getElementById('fDesc').value = '';
   document.getElementById('fHasCardName').checked = false;
   document.getElementById('fQuantity').value = '1';
+  document.getElementById('fIsGraded').checked = false;
+  document.getElementById('fGradingCompany').value = '';
+  document.getElementById('fGradingValue').value = '';
   document.getElementById('fDate').value = todayISO();
   syncDescriptionParsing();
+  syncGradingParsing();
   showMessage(formMsg);
 }
 
@@ -2713,8 +2908,48 @@ function syncDescriptionParsing() {
   }
 }
 
+function syncGradingParsing() {
+  const isGraded = document.getElementById('fIsGraded').checked;
+  const companyGroup = document.getElementById('fGradingCompanyGroup');
+  const gradeGroup = document.getElementById('fGradingValueGroup');
+  const tableWrap = document.getElementById('gradingTableWrap');
+  const companySelect = document.getElementById('fGradingCompany');
+  const gradeSelect = document.getElementById('fGradingValue');
+  const selectedGrade = gradeSelect.value;
+
+  companyGroup.style.display = isGraded ? '' : 'none';
+  gradeGroup.style.display = isGraded ? '' : 'none';
+  tableWrap.style.display = isGraded ? '' : 'none';
+
+  if (!isGraded) {
+    companySelect.value = '';
+    gradeSelect.innerHTML = '<option value="">Kies eerst gradingbedrijf</option>';
+    gradeSelect.value = '';
+    gradeSelect.disabled = true;
+    return;
+  }
+
+  const company = companySelect.value;
+  const grades = getGradingScale(company);
+  if (!company || !grades.length) {
+    gradeSelect.innerHTML = '<option value="">Kies eerst gradingbedrijf</option>';
+    gradeSelect.value = '';
+    gradeSelect.disabled = true;
+    return;
+  }
+
+  gradeSelect.innerHTML = [
+    '<option value="">— selecteer grade —</option>',
+    ...grades.map(grade => `<option value="${escAttr(grade.value)}">${escHTML(`${grade.value} — ${grade.label}`)}</option>`),
+  ].join('');
+  gradeSelect.disabled = false;
+  gradeSelect.value = grades.some(grade => grade.value === selectedGrade) ? selectedGrade : '';
+}
+
 document.getElementById('fDesc').addEventListener('input', syncDescriptionParsing);
 document.getElementById('fHasCardName').addEventListener('change', syncDescriptionParsing);
+document.getElementById('fIsGraded').addEventListener('change', syncGradingParsing);
+document.getElementById('fGradingCompany').addEventListener('change', syncGradingParsing);
 
 function escHTML(value) {
   return String(value)
@@ -2735,6 +2970,7 @@ function escAttr(value) {
 
 dateInput.value = todayISO();
 syncDescriptionParsing();
+syncGradingParsing();
 loadFromStorage();
 refreshView();
 </script>

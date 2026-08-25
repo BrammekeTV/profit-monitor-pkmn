@@ -11,8 +11,12 @@ import {
   deleteTab,
   ensureAppState,
   extractCardmarketOrderIds,
+  getGradeLabel,
+  getGradingScale,
   getActiveTab,
   getCardmarketOrderLinks,
+  normalizeGradingValue,
+  normalizeTransaction,
   setActiveTab,
   validateTabName,
 } from '../profit-monitor-core.mjs';
@@ -163,4 +167,24 @@ test('computeCardmarketSurplus returns zero values when no matching transactions
   assert.equal(surplus.totalBought, 0);
   assert.equal(surplus.net, 0);
   assert.equal(surplus.count, 0);
+});
+
+test('grading normalization keeps only valid company-specific grades', () => {
+  assert.equal(normalizeGradingValue('PSA', '9.5'), '');
+  assert.equal(normalizeGradingValue('BGS', '9.5'), '9.5');
+  assert.equal(normalizeGradingValue('TAG', '9.5'), '');
+  assert.equal(getGradeLabel('CGC', '10'), 'Pristine');
+  assert.equal(getGradingScale('TAG').map(option => option.value).includes('9.5'), false);
+
+  const normalized = normalizeTransaction({
+    type: TYPE_SELL,
+    amount: 10,
+    description: 'Pikachu',
+    gradingCompany: 'bgs',
+    gradingValue: '9.5',
+  });
+
+  assert.equal(normalized.gradingCompany, 'BGS');
+  assert.equal(normalized.gradingValue, '9.5');
+  assert.equal(normalized.gradingLabel, 'Gem Mint');
 });

@@ -12,9 +12,11 @@ A static profit tracker for Pokémon TCG trading that runs entirely in the brows
 - Sort columns in both transaction and profit tables
 - Collapse/expand transaction and profit sections for a cleaner overview
 - Add new transactions — saved to browser localStorage
+- Mark cards as graded with company-specific grade options (PSA/BGS/CGC/TAG) and show grading info in transaction rows
 - Delete individual transactions
 - Track realized profit per card name with FIFO matching on buy/sell quantities
 - Profit visualizations: top-card profit chart and monthly net-result trend
+- Analyse dashboard with KPI widgets including current-month performance
 - Sold transactions with `#123456789` in the description show Cardmarket order links
 - **Import from `.xlsm` / `.xlsx`** — reads your existing spreadsheet client-side and merges the data (duplicates skipped)
 - Pokémon card image lookup: descriptions in the format `CardName (SETCODE NUMBER)` show images from the [Pokémon TCG API](https://pokemontcg.io), with links to Cardmarket
