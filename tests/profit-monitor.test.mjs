@@ -212,6 +212,13 @@ test('trade normalization calculates totals, difference and ROI', () => {
   assert.equal(trade.totalReceived, 125);
   assert.equal(trade.difference, 5);
   assert.equal(trade.roi, 4.17);
+
+  const zeroGiven = normalizeTrade({
+    date: '2026-09-02',
+    givenItems: [{ cardName: 'Gift', quantity: 1, unitValue: 0 }],
+    receivedItems: [{ cardName: 'Trade return', quantity: 1, unitValue: 10 }],
+  });
+  assert.equal(zeroGiven.roi, 100);
 });
 
 test('trade CRUD keeps trades separate from sales transactions', () => {

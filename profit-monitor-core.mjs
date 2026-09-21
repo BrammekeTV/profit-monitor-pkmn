@@ -606,7 +606,10 @@ export function computeSummary(transactions) {
 }
 
 export function computeTradeSummary(trades) {
-  const normalizedTrades = (Array.isArray(trades) ? trades : []).map(trade => normalizeTrade(trade));
+  const normalizedTrades = (Array.isArray(trades) ? trades : []).map(trade => ({
+    ...normalizeTrade(trade),
+    id: trade?.id ?? null,
+  }));
   const totalGiven = roundMoney(normalizedTrades.reduce((sum, trade) => sum + trade.totalGiven, 0));
   const totalReceived = roundMoney(normalizedTrades.reduce((sum, trade) => sum + trade.totalReceived, 0));
   const totalDifference = roundMoney(normalizedTrades.reduce((sum, trade) => sum + trade.difference, 0));
@@ -645,7 +648,10 @@ export function computeTradeSummary(trades) {
 export function computeTradeMonthlyData(trades) {
   const monthMap = new Map();
   (Array.isArray(trades) ? trades : []).forEach(trade => {
-    const normalized = normalizeTrade(trade);
+    const normalized = {
+      ...normalizeTrade(trade),
+      id: trade?.id ?? null,
+    };
     if (!isRealISODate(normalized.date)) return;
     const key = normalized.date.slice(0, 7);
     if (!monthMap.has(key)) {
