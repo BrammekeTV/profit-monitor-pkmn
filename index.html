@@ -1136,14 +1136,14 @@
 
     <!-- View toggle -->
     <div class="view-toggle-bar" role="tablist" aria-label="Hoofdweergaven">
-      <button class="view-toggle-btn active" id="viewTransactions" role="tab" aria-selected="true" aria-controls="transactionsView">Transacties</button>
-      <button class="view-toggle-btn" id="viewProfit" role="tab" aria-selected="false" aria-controls="profitView">Winst per kaart</button>
-      <button class="view-toggle-btn" id="viewAnalyse" role="tab" aria-selected="false" aria-controls="analyseView">Analyse</button>
-      <button class="view-toggle-btn" id="viewTrades" role="tab" aria-selected="false" aria-controls="tradesView">Trades</button>
+      <button class="view-toggle-btn active" id="viewTransactions" role="tab" aria-selected="true">Transacties</button>
+      <button class="view-toggle-btn" id="viewProfit" role="tab" aria-selected="false">Winst per kaart</button>
+      <button class="view-toggle-btn" id="viewAnalyse" role="tab" aria-selected="false">Analyse</button>
+      <button class="view-toggle-btn" id="viewTrades" role="tab" aria-selected="false">Trades</button>
     </div>
 
     <!-- Transactions view -->
-    <div id="transactionsView" role="tabpanel" aria-labelledby="viewTransactions">
+    <div id="transactionsView">
       <div class="section-header">
         <div style="display:flex;align-items:center;gap:12px;">
           <span class="section-title">Transacties</span>
@@ -1206,7 +1206,7 @@
     </div>
 
     <!-- Profit per card view -->
-    <div id="profitView" role="tabpanel" aria-labelledby="viewProfit" style="display:none;">
+    <div id="profitView" style="display:none;">
       <div class="section-header">
         <span class="section-title">Winst per kaart</span>
       </div>
@@ -1256,7 +1256,7 @@
     </div>
 
     <!-- Analyse view -->
-    <div id="analyseView" role="tabpanel" aria-labelledby="viewAnalyse" style="display:none;">
+    <div id="analyseView" style="display:none;">
       <div class="section-header" style="margin-bottom:16px;">
         <span class="section-title">Analyse</span>
       </div>
@@ -1386,7 +1386,7 @@
     </div>
 
     <!-- Trades view -->
-    <div id="tradesView" role="tabpanel" aria-labelledby="viewTrades" style="display:none;">
+    <div id="tradesView" style="display:none;">
       <div class="section-header" style="margin-bottom:16px;">
         <span class="section-title">Trades</span>
       </div>
