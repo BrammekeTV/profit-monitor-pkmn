@@ -1451,7 +1451,7 @@
         <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value negative" id="tradeKpiGiven">€ 0,00</div><div class="kpi-sub">Totaal gegeven</div></div></div>
         <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value positive" id="tradeKpiReceived">€ 0,00</div><div class="kpi-sub">Totaal ontvangen</div></div></div>
         <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value neutral" id="tradeKpiDifference">€ 0,00</div><div class="kpi-sub">Totaal verschil</div></div></div>
-        <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value neutral" id="tradeKpiAvgRoi">0%</div><div class="kpi-sub">Gem. ROI</div></div></div>
+        <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value neutral" id="tradeKpiAvgRoi">0%</div><div class="kpi-sub">Gewogen ROI</div></div></div>
       </div>
 
       <div class="subsection-header">
@@ -2689,7 +2689,7 @@ function renderTradesView(selectedTradeId = null) {
     return;
   }
   tbody.innerHTML = rows.map(trade => `
-    <tr data-trade-id="${trade.id}" tabindex="0" aria-label="Trade van ${escAttr(formatDate(trade.date))}">
+    <tr data-trade-id="${trade.id}">
       <td>${escHTML(formatDate(trade.date))}</td>
       <td>${escHTML(summarizeTradeItems(trade.givenItems))}</td>
       <td>${escHTML(summarizeTradeItems(trade.receivedItems))}</td>
@@ -2742,20 +2742,6 @@ function renderTradesView(selectedTradeId = null) {
       }
     });
 
-  });
-
-  tbody.querySelectorAll('tr[data-trade-id]').forEach(row => {
-    const tradeId = Number(row.dataset.tradeId);
-    row.addEventListener('click', event => {
-      if (event.target.closest('[data-trade-action]')) return;
-      renderTradeDetail(tradeId);
-    });
-    row.addEventListener('keydown', event => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        renderTradeDetail(tradeId);
-      }
-    });
   });
 
   renderTradePerformanceChart(monthly);

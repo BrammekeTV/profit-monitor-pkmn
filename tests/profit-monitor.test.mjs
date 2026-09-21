@@ -316,3 +316,20 @@ test('trade monthly analytics skips trades without valid ISO date', () => {
   assert.equal(monthly[0].month, '2026-10');
   assert.equal(monthly[0].count, 1);
 });
+
+test('trade ROI uses 100% fallback when given value is zero and received is positive', () => {
+  const trades = [
+    normalizeTrade({
+      date: '2026-11-01',
+      givenItems: [{ cardName: 'Gift', quantity: 1, unitValue: 0 }],
+      receivedItems: [{ cardName: 'Card', quantity: 1, unitValue: 25 }],
+    }),
+  ];
+
+  const summary = computeTradeSummary(trades);
+  assert.equal(summary.weightedRoi, 100);
+
+  const monthly = computeTradeMonthlyData(trades);
+  assert.equal(monthly.length, 1);
+  assert.equal(monthly[0].weightedRoi, 100);
+});
