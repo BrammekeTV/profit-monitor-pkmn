@@ -1135,11 +1135,11 @@
     <div class="form-msg panel-message" id="tabMsg"></div>
 
     <!-- View toggle -->
-    <div class="view-toggle-bar">
-      <button class="view-toggle-btn active" id="viewTransactions">Transacties</button>
-      <button class="view-toggle-btn" id="viewProfit">Winst per kaart</button>
-      <button class="view-toggle-btn" id="viewAnalyse">Analyse</button>
-      <button class="view-toggle-btn" id="viewTrades">Trades</button>
+    <div class="view-toggle-bar" role="tablist" aria-label="Hoofdweergaven">
+      <button class="view-toggle-btn active" id="viewTransactions" role="tab" aria-selected="true">Transacties</button>
+      <button class="view-toggle-btn" id="viewProfit" role="tab" aria-selected="false">Winst per kaart</button>
+      <button class="view-toggle-btn" id="viewAnalyse" role="tab" aria-selected="false">Analyse</button>
+      <button class="view-toggle-btn" id="viewTrades" role="tab" aria-selected="false">Trades</button>
     </div>
 
     <!-- Transactions view -->
@@ -2612,8 +2612,8 @@ function renderTradeDetail(tradeId) {
     <div class="widget-stat"><span class="widget-stat-label">Ontvangen</span><span class="widget-stat-value positive">${escHTML(summarizeTradeItems(normalized.receivedItems))}</span></div>
     <div class="widget-stat"><span class="widget-stat-label">Waarde gegeven</span><span class="widget-stat-value negative">${escHTML(fmt(normalized.totalGiven))}</span></div>
     <div class="widget-stat"><span class="widget-stat-label">Waarde ontvangen</span><span class="widget-stat-value positive">${escHTML(fmt(normalized.totalReceived))}</span></div>
-    <div class="widget-stat"><span class="widget-stat-label">Verschil</span><span class="widget-stat-value ${normalized.difference >= 0 ? 'positive' : 'negative'}">${escHTML(fmt(normalized.difference))}</span></div>
-    <div class="widget-stat"><span class="widget-stat-label">ROI</span><span class="widget-stat-value ${normalized.roi >= 0 ? 'positive' : 'negative'}">${escHTML(formatPercent(normalized.roi))}</span></div>
+    <div class="widget-stat"><span class="widget-stat-label">Verschil</span><span class="widget-stat-value ${normalized.difference > 0 ? 'positive' : (normalized.difference < 0 ? 'negative' : 'neutral')}">${escHTML(fmt(normalized.difference))}</span></div>
+    <div class="widget-stat"><span class="widget-stat-label">ROI</span><span class="widget-stat-value ${normalized.roi > 0 ? 'positive' : (normalized.roi < 0 ? 'negative' : 'neutral')}">${escHTML(formatPercent(normalized.roi))}</span></div>
     <div style="margin-top:10px;font-size:13px;color:var(--muted);white-space:pre-wrap;">${escHTML(normalized.notes || 'Geen notities')}</div>
   `;
 }
@@ -2776,29 +2776,29 @@ function setActiveView(view) {
   profBtn.classList.remove('active');
   analyseBtn.classList.remove('active');
   tradesBtn.classList.remove('active');
-  txnBtn.setAttribute('aria-pressed', 'false');
-  profBtn.setAttribute('aria-pressed', 'false');
-  analyseBtn.setAttribute('aria-pressed', 'false');
-  tradesBtn.setAttribute('aria-pressed', 'false');
+  txnBtn.setAttribute('aria-selected', 'false');
+  profBtn.setAttribute('aria-selected', 'false');
+  analyseBtn.setAttribute('aria-selected', 'false');
+  tradesBtn.setAttribute('aria-selected', 'false');
 
   if (view === 'transactions') {
     txnView.style.display = '';
     txnBtn.classList.add('active');
-    txnBtn.setAttribute('aria-pressed', 'true');
+    txnBtn.setAttribute('aria-selected', 'true');
   } else if (view === 'profit') {
     profView.style.display = '';
     profBtn.classList.add('active');
-    profBtn.setAttribute('aria-pressed', 'true');
+    profBtn.setAttribute('aria-selected', 'true');
     renderProfitTable();
   } else if (view === 'analyse') {
     analyseView.style.display = '';
     analyseBtn.classList.add('active');
-    analyseBtn.setAttribute('aria-pressed', 'true');
+    analyseBtn.setAttribute('aria-selected', 'true');
     renderAnalytics();
   } else {
     tradesView.style.display = '';
     tradesBtn.classList.add('active');
-    tradesBtn.setAttribute('aria-pressed', 'true');
+    tradesBtn.setAttribute('aria-selected', 'true');
     renderTradesView();
   }
 }
