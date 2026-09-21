@@ -563,9 +563,6 @@ export function appendTrade(state, trade, options = {}) {
 }
 
 export function updateTrade(state, tradeId, trade, options = {}) {
-  if (!getTrades(state).some(existing => existing.id === tradeId)) {
-    throw new Error('Trade niet gevonden.');
-  }
   const normalized = normalizeTrade(trade, { now: options.now });
   return {
     ...state,
@@ -576,9 +573,6 @@ export function updateTrade(state, tradeId, trade, options = {}) {
 }
 
 export function deleteTrade(state, tradeId) {
-  if (!getTrades(state).some(trade => trade.id === tradeId)) {
-    throw new Error('Trade niet gevonden.');
-  }
   return {
     ...state,
     trades: getTrades(state).filter(trade => trade.id !== tradeId),
