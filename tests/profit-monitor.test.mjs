@@ -267,6 +267,7 @@ test('trade summary and monthly analytics are aggregated correctly', () => {
   assert.equal(summary.totalReceived, 250);
   assert.equal(summary.totalDifference, 20);
   assert.equal(summary.averageDifference, 6.67);
+  assert.equal(summary.averageRoi, 8.7);
   assert.equal(summary.positiveCount, 2);
   assert.equal(summary.negativeCount, 1);
 
@@ -275,7 +276,9 @@ test('trade summary and monthly analytics are aggregated correctly', () => {
   assert.deepEqual(monthly.map(item => item.month), ['2026-08', '2026-09']);
   assert.equal(monthly[0].count, 2);
   assert.equal(monthly[0].totalDifference, 10);
+  assert.equal(monthly[0].averageRoi, 5.26);
   assert.equal(monthly[1].totalDifference, 10);
+  assert.equal(monthly[1].averageRoi, 25);
 });
 
 test('trade monthly analytics skips trades without valid ISO date', () => {
