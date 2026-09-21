@@ -626,10 +626,8 @@ export function computeTradeSummary(trades) {
 export function computeTradeMonthlyData(trades) {
   const monthMap = new Map();
   (Array.isArray(trades) ? trades : []).forEach(trade => {
-    const rawDate = typeof trade?.date === 'string' ? trade.date.trim() : '';
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) return;
     const normalized = normalizeTrade(trade);
-    const key = rawDate.slice(0, 7);
+    const key = normalized.date.slice(0, 7);
     if (!monthMap.has(key)) {
       monthMap.set(key, { month: key, count: 0, totalGiven: 0, totalReceived: 0, totalDifference: 0, totalRoi: 0 });
     }
