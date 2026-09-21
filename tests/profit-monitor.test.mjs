@@ -277,3 +277,26 @@ test('trade summary and monthly analytics are aggregated correctly', () => {
   assert.equal(monthly[0].totalDifference, 10);
   assert.equal(monthly[1].totalDifference, 10);
 });
+
+test('trade monthly analytics skips trades without valid ISO date', () => {
+  const monthly = computeTradeMonthlyData([
+    {
+      date: 'not-a-date',
+      givenItems: [{ cardName: 'A', quantity: 1, unitValue: 10 }],
+      receivedItems: [{ cardName: 'B', quantity: 1, unitValue: 15 }],
+    },
+    {
+      givenItems: [{ cardName: 'C', quantity: 1, unitValue: 20 }],
+      receivedItems: [{ cardName: 'D', quantity: 1, unitValue: 25 }],
+    },
+    {
+      date: '2026-10-02',
+      givenItems: [{ cardName: 'E', quantity: 1, unitValue: 30 }],
+      receivedItems: [{ cardName: 'F', quantity: 1, unitValue: 40 }],
+    },
+  ]);
+
+  assert.equal(monthly.length, 1);
+  assert.equal(monthly[0].month, '2026-10');
+  assert.equal(monthly[0].count, 1);
+});

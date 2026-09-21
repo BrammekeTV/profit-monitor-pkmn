@@ -2684,9 +2684,9 @@ function renderTradesView(selectedTradeId = null) {
       <td class="amount-cell ${trade.difference >= 0 ? 'positive' : 'negative'}">${escHTML(fmt(trade.difference))}</td>
       <td class="amount-cell ${trade.roi >= 0 ? 'positive' : 'negative'}">${escHTML(formatPercent(trade.roi))}</td>
       <td style="white-space:nowrap;">
-        <button class="edit-btn" type="button" data-trade-action="view" data-trade-id="${trade.id}" title="Details">👁</button>
-        <button class="edit-btn" type="button" data-trade-action="edit" data-trade-id="${trade.id}" title="Bewerken">✎</button>
-        <button class="delete-btn" type="button" data-trade-action="delete" data-trade-id="${trade.id}" title="Verwijderen">✕</button>
+        <button class="edit-btn" type="button" data-trade-action="view" data-trade-id="${trade.id}" title="Details" aria-label="Bekijk trade details">👁</button>
+        <button class="edit-btn" type="button" data-trade-action="edit" data-trade-id="${trade.id}" title="Bewerken" aria-label="Bewerk trade">✎</button>
+        <button class="delete-btn" type="button" data-trade-action="delete" data-trade-id="${trade.id}" title="Verwijderen" aria-label="Verwijder trade">✕</button>
       </td>
     </tr>
   `).join('');
