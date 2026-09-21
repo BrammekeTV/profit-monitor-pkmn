@@ -286,6 +286,11 @@ test('trade monthly analytics skips trades without valid ISO date', () => {
       receivedItems: [{ cardName: 'B', quantity: 1, unitValue: 15 }],
     },
     {
+      date: '2026-13-40',
+      givenItems: [{ cardName: 'X', quantity: 1, unitValue: 10 }],
+      receivedItems: [{ cardName: 'Y', quantity: 1, unitValue: 20 }],
+    },
+    {
       givenItems: [{ cardName: 'C', quantity: 1, unitValue: 20 }],
       receivedItems: [{ cardName: 'D', quantity: 1, unitValue: 25 }],
     },
