@@ -2663,7 +2663,7 @@ function renderTradesView(selectedTradeId = null) {
   const diffEl = document.getElementById('tradeKpiDifference');
   diffEl.textContent = fmt(summary.totalDifference);
   diffEl.className = `kpi-value ${summary.totalDifference > 0 ? 'positive' : (summary.totalDifference < 0 ? 'negative' : 'neutral')}`;
-  document.getElementById('tradeKpiAvgRoi').textContent = formatPercent(summary.averageRoi);
+  document.getElementById('tradeKpiAvgRoi').textContent = formatPercent(summary.weightedRoi);
 
   const rows = getSortedTrades();
   const tbody = document.getElementById('tradeBody');
@@ -2684,9 +2684,9 @@ function renderTradesView(selectedTradeId = null) {
       <td class="amount-cell ${trade.difference >= 0 ? 'positive' : 'negative'}">${escHTML(fmt(trade.difference))}</td>
       <td class="amount-cell ${trade.roi >= 0 ? 'positive' : 'negative'}">${escHTML(formatPercent(trade.roi))}</td>
       <td style="white-space:nowrap;">
-        <button class="edit-btn" type="button" data-trade-action="view" data-trade-id="${trade.id}" title="Details" aria-label="Bekijk trade details">👁</button>
-        <button class="edit-btn" type="button" data-trade-action="edit" data-trade-id="${trade.id}" title="Bewerken" aria-label="Bewerk trade">✎</button>
-        <button class="delete-btn" type="button" data-trade-action="delete" data-trade-id="${trade.id}" title="Verwijderen" aria-label="Verwijder trade">✕</button>
+        <button class="edit-btn" type="button" data-trade-action="view" data-trade-id="${trade.id}" title="Details" aria-label="Bekijk trade details">Details</button>
+        <button class="edit-btn" type="button" data-trade-action="edit" data-trade-id="${trade.id}" title="Bewerken" aria-label="Bewerk trade">Bewerken</button>
+        <button class="delete-btn" type="button" data-trade-action="delete" data-trade-id="${trade.id}" title="Verwijderen" aria-label="Verwijder trade">Verwijder</button>
       </td>
     </tr>
   `).join('');
