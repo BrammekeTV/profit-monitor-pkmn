@@ -71,7 +71,7 @@ export function normalizeDate(value, fallback = todayISO()) {
   if (typeof value !== 'string') return fallback;
   const trimmed = value.trim();
   if (!trimmed) return fallback;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return isRealISODate(trimmed) ? trimmed : fallback;
   const parsed = new Date(trimmed);
   return Number.isNaN(parsed.getTime()) ? fallback : parsed.toISOString().slice(0, 10);
 }
@@ -645,10 +645,9 @@ export function computeTradeSummary(trades) {
 export function computeTradeMonthlyData(trades) {
   const monthMap = new Map();
   (Array.isArray(trades) ? trades : []).forEach(trade => {
-    const rawDate = typeof trade?.date === 'string' ? trade.date.trim() : '';
-    if (!isRealISODate(rawDate)) return;
     const normalized = normalizeTrade(trade);
-    const key = rawDate.slice(0, 7);
+    if (!isRealISODate(normalized.date)) return;
+    const key = normalized.date.slice(0, 7);
     if (!monthMap.has(key)) {
       monthMap.set(key, { month: key, count: 0, totalGiven: 0, totalReceived: 0, totalDifference: 0 });
     }

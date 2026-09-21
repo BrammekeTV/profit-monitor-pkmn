@@ -289,22 +289,18 @@ test('trade summary and monthly analytics are aggregated correctly', () => {
   assert.equal(monthly[1].weightedRoi, 25);
 });
 
-test('trade monthly analytics skips trades without valid ISO date', () => {
+test('trade monthly analytics follows normalized trade dates', () => {
   const monthly = computeTradeMonthlyData([
-    {
+    normalizeTrade({
       date: 'not-a-date',
       givenItems: [{ cardName: 'A', quantity: 1, unitValue: 10 }],
       receivedItems: [{ cardName: 'B', quantity: 1, unitValue: 15 }],
-    },
-    {
+    }, { now: '2026-12-31' }),
+    normalizeTrade({
       date: '2026-13-40',
       givenItems: [{ cardName: 'X', quantity: 1, unitValue: 10 }],
       receivedItems: [{ cardName: 'Y', quantity: 1, unitValue: 20 }],
-    },
-    {
-      givenItems: [{ cardName: 'C', quantity: 1, unitValue: 20 }],
-      receivedItems: [{ cardName: 'D', quantity: 1, unitValue: 25 }],
-    },
+    }, { now: '2026-12-31' }),
     {
       date: '2026-10-02',
       givenItems: [{ cardName: 'E', quantity: 1, unitValue: 30 }],
@@ -312,9 +308,11 @@ test('trade monthly analytics skips trades without valid ISO date', () => {
     },
   ]);
 
-  assert.equal(monthly.length, 1);
+  assert.equal(monthly.length, 2);
   assert.equal(monthly[0].month, '2026-10');
   assert.equal(monthly[0].count, 1);
+  assert.equal(monthly[1].month, '2026-12');
+  assert.equal(monthly[1].count, 2);
 });
 
 test('trade ROI uses 100% fallback when given value is zero and received is positive', () => {
