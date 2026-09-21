@@ -1437,11 +1437,12 @@
         </div>
       </div>
 
-      <div class="analyse-widget-grid" style="margin-bottom:16px;">
-        <div class="widget widget-info">
-          <div class="widget-header"><span class="widget-title">Trade details</span></div>
-          <div class="widget-body" id="tradeDetailPanel"><div class="widget-empty">Selecteer een trade om details te bekijken.</div></div>
-        </div>
+      <div class="analyse-kpi-row" style="margin-bottom:16px;">
+        <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value neutral" id="tradeKpiCount">0</div><div class="kpi-sub">Aantal trades</div></div></div>
+        <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value negative" id="tradeKpiGiven">€ 0,00</div><div class="kpi-sub">Totaal gegeven</div></div></div>
+        <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value positive" id="tradeKpiReceived">€ 0,00</div><div class="kpi-sub">Totaal ontvangen</div></div></div>
+        <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value neutral" id="tradeKpiDifference">€ 0,00</div><div class="kpi-sub">Totaal verschil</div></div></div>
+        <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value neutral" id="tradeKpiAvgRoi">0%</div><div class="kpi-sub">Gewogen ROI</div></div></div>
       </div>
 
       <div class="subsection-header">
@@ -1476,19 +1477,19 @@
           </tbody>
         </table>
       </div>
+
+      <div class="analyse-widget-grid" style="margin-top:16px;">
+        <div class="widget widget-info">
+          <div class="widget-header"><span class="widget-title">Trade details</span></div>
+          <div class="widget-body" id="tradeDetailPanel"><div class="widget-empty">Selecteer een trade om details te bekijken.</div></div>
+        </div>
+      </div>
     </div>
 
     <!-- Trades analytics view -->
     <div id="tradesAnalyseView" role="tabpanel" aria-labelledby="viewTradesAnalyse" style="display:none;" hidden>
       <div class="section-header" style="margin-bottom:16px;">
         <span class="section-title">Trades - Analyse</span>
-      </div>
-      <div class="analyse-kpi-row" style="margin-bottom:16px;">
-        <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value neutral" id="tradeKpiCount">0</div><div class="kpi-sub">Aantal trades</div></div></div>
-        <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value negative" id="tradeKpiGiven">€ 0,00</div><div class="kpi-sub">Totaal gegeven</div></div></div>
-        <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value positive" id="tradeKpiReceived">€ 0,00</div><div class="kpi-sub">Totaal ontvangen</div></div></div>
-        <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value neutral" id="tradeKpiDifference">€ 0,00</div><div class="kpi-sub">Totaal verschil</div></div></div>
-        <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value neutral" id="tradeKpiAvgRoi">0%</div><div class="kpi-sub">Gewogen ROI</div></div></div>
       </div>
       <div class="analyse-widget-grid">
         <div class="widget widget-chart">
@@ -2665,7 +2666,8 @@ function renderTradeAnalytics(summary, monthly) {
   `;
 }
 
-function renderTradeSummaryKpis(summary) {
+function renderTradesView(preferredTradeId = selectedTradeId) {
+  const summary = computeTradeSummary(getTrades(appState));
   document.getElementById('tradeKpiCount').textContent = summary.count;
   document.getElementById('tradeKpiGiven').textContent = fmt(summary.totalGiven);
   document.getElementById('tradeKpiReceived').textContent = fmt(summary.totalReceived);
@@ -2673,11 +2675,6 @@ function renderTradeSummaryKpis(summary) {
   diffEl.textContent = fmt(summary.totalDifference);
   diffEl.className = `kpi-value ${summary.totalDifference > 0 ? 'positive' : (summary.totalDifference < 0 ? 'negative' : 'neutral')}`;
   document.getElementById('tradeKpiAvgRoi').textContent = formatPercent(summary.weightedRoi);
-}
-
-function renderTradesView(preferredTradeId = selectedTradeId) {
-  const summary = computeTradeSummary(getTrades(appState));
-  renderTradeSummaryKpis(summary);
 
   const rows = getSortedTrades();
   const tbody = document.getElementById('tradeBody');
@@ -2754,7 +2751,7 @@ function renderTradesAnalyseView() {
   const trades = getTrades(appState);
   const summary = computeTradeSummary(trades);
   const monthly = computeTradeMonthlyData(trades);
-  renderTradeSummaryKpis(summary);
+  renderTradeDetail(null);
   renderTradePerformanceChart(monthly);
   renderTradeAnalytics(summary, monthly);
 }
@@ -3452,7 +3449,6 @@ document.getElementById('saveTradeBtn').addEventListener('click', () => {
   const message = document.getElementById('tradeFormMsg');
   showMessage(message);
   const draft = normalizeTrade(currentTradeDraft());
-  let savedTradeId = editingTradeId;
   if (!draft.givenItems.length) {
     showMessage(message, 'error', 'Vul bij "Ik geef" minimaal één rij in met een kaartnaam.');
     return;
@@ -3471,10 +3467,8 @@ document.getElementById('saveTradeBtn').addEventListener('click', () => {
     }
   } else {
     appState = appendTrade(appState, draft);
-    savedTradeId = getTrades(appState).at(-1)?.id ?? null;
     showMessage(message, 'success', 'Trade toegevoegd.');
   }
-  selectedTradeId = savedTradeId;
   saveToStorage();
   resetTradeForm();
   refreshView();
