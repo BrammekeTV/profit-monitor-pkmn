@@ -1490,7 +1490,10 @@
       <div class="analyse-widget-grid" style="margin-top:16px;">
         <div class="widget widget-chart">
           <div class="widget-header"><span class="widget-title">Trade performance per maand</span></div>
-          <div class="widget-body widget-body-chart"><canvas id="tradePerformanceChart" role="img" aria-label="Grafiek met trade performance per maand"></canvas></div>
+          <div class="widget-body widget-body-chart">
+            <canvas id="tradePerformanceChart" role="img" aria-label="Grafiek met trade performance per maand"></canvas>
+            <div id="tradeMonthlySummary" style="margin-top:10px;font-size:12px;color:var(--muted);"></div>
+          </div>
         </div>
         <div class="widget widget-info">
           <div class="widget-header"><span class="widget-title">Trade analytics</span></div>
@@ -2616,9 +2619,13 @@ function renderTradeDetail(tradeId) {
 
 function renderTradePerformanceChart(monthly) {
   const el = document.getElementById('tradePerformanceChart');
+  const summaryEl = document.getElementById('tradeMonthlySummary');
   if (!el) return;
   if (tradePerformanceChart) { tradePerformanceChart.destroy(); tradePerformanceChart = null; }
-  if (!monthly.length) return;
+  if (!monthly.length) {
+    if (summaryEl) summaryEl.textContent = 'Geen maanddata beschikbaar.';
+    return;
+  }
   const labels = monthly.map(item => formatMonthLabel(item.month));
   const values = monthly.map(item => item.totalDifference);
   const colors = values.map(v => v >= 0 ? 'rgba(34,197,94,0.75)' : 'rgba(239,68,68,0.75)');
@@ -2635,6 +2642,11 @@ function renderTradePerformanceChart(monthly) {
       },
     },
   });
+  if (summaryEl) {
+    summaryEl.innerHTML = monthly.map(item => (
+      `${escHTML(formatMonthLabel(item.month))}: ${escHTML(fmt(item.totalDifference))} (${escHTML(formatPercent(item.weightedRoi))})`
+    )).join('<br/>');
+  }
 }
 
 function renderTradeAnalytics(summary, monthly) {
@@ -2675,7 +2687,7 @@ function renderTradesView(selectedTradeId = null) {
     return;
   }
   tbody.innerHTML = rows.map(trade => `
-    <tr data-trade-id="${trade.id}">
+    <tr data-trade-id="${trade.id}" tabindex="0" aria-label="Trade van ${escAttr(formatDate(trade.date))}">
       <td>${escHTML(formatDate(trade.date))}</td>
       <td>${escHTML(summarizeTradeItems(trade.givenItems))}</td>
       <td>${escHTML(summarizeTradeItems(trade.receivedItems))}</td>
@@ -2718,10 +2730,28 @@ function renderTradesView(selectedTradeId = null) {
         return;
       }
       if (confirm('Deze trade verwijderen?')) {
-        appState = deleteTrade(appState, tradeId);
+        try {
+          appState = deleteTrade(appState, tradeId);
+        } catch {
+          return;
+        }
         saveToStorage();
         refreshView();
       }
+    });
+
+    tbody.querySelectorAll('tr[data-trade-id]').forEach(row => {
+      const tradeId = Number(row.dataset.tradeId);
+      row.addEventListener('click', event => {
+        if (event.target.closest('[data-trade-action]')) return;
+        renderTradeDetail(tradeId);
+      });
+      row.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          renderTradeDetail(tradeId);
+        }
+      });
     });
   });
 
@@ -3400,8 +3430,13 @@ document.getElementById('saveTradeBtn').addEventListener('click', () => {
     return;
   }
   if (editingTradeId !== null) {
-    appState = updateTrade(appState, editingTradeId, draft);
-    showMessage(message, 'success', 'Trade bijgewerkt.');
+    try {
+      appState = updateTrade(appState, editingTradeId, draft);
+      showMessage(message, 'success', 'Trade bijgewerkt.');
+    } catch (error) {
+      showMessage(message, 'error', error.message);
+      return;
+    }
   } else {
     appState = appendTrade(appState, draft);
     showMessage(message, 'success', 'Trade toegevoegd.');
