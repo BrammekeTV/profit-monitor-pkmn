@@ -605,7 +605,7 @@ export function computeTradeSummary(trades) {
   const totalReceived = roundMoney(normalizedTrades.reduce((sum, trade) => sum + trade.totalReceived, 0));
   const totalDifference = roundMoney(normalizedTrades.reduce((sum, trade) => sum + trade.difference, 0));
   const averageDifference = normalizedTrades.length ? roundMoney(totalDifference / normalizedTrades.length) : 0;
-  const weightedRoi = totalGiven > 0
+  const averageRoi = totalGiven > 0
     ? roundMoney((totalDifference / totalGiven) * 100)
     : (totalReceived > 0 ? 100 : 0);
   const totalTradeValue = roundMoney(totalGiven + totalReceived);
@@ -625,7 +625,7 @@ export function computeTradeSummary(trades) {
     totalReceived,
     totalDifference,
     averageDifference,
-    weightedRoi,
+    averageRoi,
     totalTradeValue,
     averageTradeValue,
     positiveCount,
@@ -656,7 +656,7 @@ export function computeTradeMonthlyData(trades) {
     .sort((left, right) => left.month.localeCompare(right.month))
     .map(item => ({
       ...item,
-      weightedRoi: item.totalGiven > 0
+      averageRoi: item.totalGiven > 0
         ? roundMoney((item.totalDifference / item.totalGiven) * 100)
         : (item.totalReceived > 0 ? 100 : 0),
     }));
