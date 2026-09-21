@@ -1450,7 +1450,7 @@
         <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value neutral" id="tradeKpiCount">0</div><div class="kpi-sub">Aantal trades</div></div></div>
         <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value negative" id="tradeKpiGiven">€ 0,00</div><div class="kpi-sub">Totaal gegeven</div></div></div>
         <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value positive" id="tradeKpiReceived">€ 0,00</div><div class="kpi-sub">Totaal ontvangen</div></div></div>
-        <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value neutral" id="tradeKpiDifference">€ 0,00</div><div class="kpi-sub">Totaal difference</div></div></div>
+        <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value neutral" id="tradeKpiDifference">€ 0,00</div><div class="kpi-sub">Totaal verschil</div></div></div>
         <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value neutral" id="tradeKpiAvgRoi">0%</div><div class="kpi-sub">Gem. ROI</div></div></div>
       </div>
 
@@ -1461,8 +1461,8 @@
           <select id="tradeSortMode" class="form-select" style="width:auto;min-width:220px;">
             <option value="newest">Nieuwste trade</option>
             <option value="oldest">Oudste trade</option>
-            <option value="best">Hoogste positieve difference</option>
-            <option value="worst">Laagste difference</option>
+            <option value="best">Hoogste positieve verschil</option>
+            <option value="worst">Laagste verschil</option>
           </select>
         </div>
       </div>
@@ -2625,7 +2625,7 @@ function renderTradePerformanceChart(monthly) {
   const borderColors = values.map(v => v >= 0 ? 'rgba(34,197,94,1)' : 'rgba(239,68,68,1)');
   tradePerformanceChart = new Chart(el.getContext('2d'), {
     type: 'bar',
-    data: { labels, datasets: [{ label: 'Trade difference', data: values, backgroundColor: colors, borderColor: borderColors, borderWidth: 1, borderRadius: 4 }] },
+    data: { labels, datasets: [{ label: 'Tradeverschil', data: values, backgroundColor: colors, borderColor: borderColors, borderWidth: 1, borderRadius: 4 }] },
     options: {
       responsive: true,
       plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.parsed.y) } } },
@@ -2644,9 +2644,9 @@ function renderTradeAnalytics(summary, monthly) {
     return;
   }
   body.innerHTML = `
-    <div class="widget-stat"><span class="widget-stat-label">Totale trade value</span><span class="widget-stat-value neutral">${escHTML(fmt(summary.totalTradeValue))}</span></div>
+    <div class="widget-stat"><span class="widget-stat-label">Totale tradewaarde</span><span class="widget-stat-value neutral">${escHTML(fmt(summary.totalTradeValue))}</span></div>
     <div class="widget-stat"><span class="widget-stat-label">Gem. waarde per trade</span><span class="widget-stat-value neutral">${escHTML(fmt(summary.averageTradeValue))}</span></div>
-    <div class="widget-stat"><span class="widget-stat-label">Gem. difference</span><span class="widget-stat-value ${summary.averageDifference >= 0 ? 'positive' : 'negative'}">${escHTML(fmt(summary.averageDifference))}</span></div>
+    <div class="widget-stat"><span class="widget-stat-label">Gem. verschil</span><span class="widget-stat-value ${summary.averageDifference >= 0 ? 'positive' : 'negative'}">${escHTML(fmt(summary.averageDifference))}</span></div>
     <div class="widget-stat"><span class="widget-stat-label">Positief / Negatief</span><span class="widget-stat-value neutral">${summary.positiveCount} / ${summary.negativeCount}</span></div>
     <div class="widget-stat"><span class="widget-stat-label">Trades over tijd</span><span class="widget-stat-value neutral">${monthly.length} maanden</span></div>
     <div class="widget-stat"><span class="widget-stat-label">Beste trade</span><span class="widget-stat-value positive">${summary.bestTrade ? escHTML(fmt(summary.bestTrade.difference)) : '—'}</span></div>
