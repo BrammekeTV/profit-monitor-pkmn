@@ -76,15 +76,6 @@ export function normalizeDate(value, fallback = todayISO()) {
   return Number.isNaN(parsed.getTime()) ? fallback : parsed.toISOString().slice(0, 10);
 }
 
-function isRealISODate(value) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const [year, month, day] = value.split('-').map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  return date.getUTCFullYear() === year
-    && date.getUTCMonth() + 1 === month
-    && date.getUTCDate() === day;
-}
-
 export function normalizeQuantity(value) {
   const quantity = Number.parseInt(value, 10);
   return Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
@@ -613,12 +604,8 @@ export function computeTradeSummary(trades) {
   const positiveCount = normalizedTrades.filter(trade => trade.difference > 0).length;
   const negativeCount = normalizedTrades.filter(trade => trade.difference < 0).length;
   const neutralCount = normalizedTrades.length - positiveCount - negativeCount;
-  let bestTrade = null;
-  let worstTrade = null;
-  normalizedTrades.forEach(trade => {
-    if (!bestTrade || trade.difference > bestTrade.difference) bestTrade = trade;
-    if (!worstTrade || trade.difference < worstTrade.difference) worstTrade = trade;
-  });
+  const bestTrade = normalizedTrades.slice().sort((a, b) => b.difference - a.difference)[0] ?? null;
+  const worstTrade = normalizedTrades.slice().sort((a, b) => a.difference - b.difference)[0] ?? null;
   return {
     count: normalizedTrades.length,
     totalGiven,
@@ -640,7 +627,7 @@ export function computeTradeMonthlyData(trades) {
   const monthMap = new Map();
   (Array.isArray(trades) ? trades : []).forEach(trade => {
     const rawDate = typeof trade?.date === 'string' ? trade.date.trim() : '';
-    if (!isRealISODate(rawDate)) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) return;
     const normalized = normalizeTrade(trade);
     const key = rawDate.slice(0, 7);
     if (!monthMap.has(key)) {
