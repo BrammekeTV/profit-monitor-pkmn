@@ -605,9 +605,9 @@ export function computeTradeSummary(trades) {
   const totalReceived = roundMoney(normalizedTrades.reduce((sum, trade) => sum + trade.totalReceived, 0));
   const totalDifference = roundMoney(normalizedTrades.reduce((sum, trade) => sum + trade.difference, 0));
   const averageDifference = normalizedTrades.length ? roundMoney(totalDifference / normalizedTrades.length) : 0;
-  const averageRoi = totalGiven > 0
-    ? roundMoney((totalDifference / totalGiven) * 100)
-    : (totalReceived > 0 ? 100 : 0);
+  const averageRoi = normalizedTrades.length
+    ? roundMoney(normalizedTrades.reduce((sum, trade) => sum + trade.roi, 0) / normalizedTrades.length)
+    : 0;
   const totalTradeValue = roundMoney(totalGiven + totalReceived);
   const averageTradeValue = normalizedTrades.length ? roundMoney(totalTradeValue / normalizedTrades.length) : 0;
   const positiveCount = normalizedTrades.filter(trade => trade.difference > 0).length;
@@ -644,21 +644,20 @@ export function computeTradeMonthlyData(trades) {
     const normalized = normalizeTrade(trade);
     const key = rawDate.slice(0, 7);
     if (!monthMap.has(key)) {
-      monthMap.set(key, { month: key, count: 0, totalGiven: 0, totalReceived: 0, totalDifference: 0 });
+      monthMap.set(key, { month: key, count: 0, totalGiven: 0, totalReceived: 0, totalDifference: 0, totalRoi: 0 });
     }
     const item = monthMap.get(key);
     item.count += 1;
     item.totalGiven = roundMoney(item.totalGiven + normalized.totalGiven);
     item.totalReceived = roundMoney(item.totalReceived + normalized.totalReceived);
     item.totalDifference = roundMoney(item.totalDifference + normalized.difference);
+    item.totalRoi = roundMoney(item.totalRoi + normalized.roi);
   });
   return Array.from(monthMap.values())
     .sort((left, right) => left.month.localeCompare(right.month))
     .map(item => ({
       ...item,
-      averageRoi: item.totalGiven > 0
-        ? roundMoney((item.totalDifference / item.totalGiven) * 100)
-        : (item.totalReceived > 0 ? 100 : 0),
+      averageRoi: item.count ? roundMoney(item.totalRoi / item.count) : 0,
     }));
 }
 
