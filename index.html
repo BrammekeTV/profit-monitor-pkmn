@@ -1199,29 +1199,49 @@
 
     .trade-analysis-grid {
       display: grid;
-      gap: 10px;
-      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 12px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       margin-bottom: 16px;
     }
 
-    .trade-kpi {
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px;
-      background: var(--surface2);
+    .trade-analysis-grid .widget-kpi .widget-body {
+      padding: 12px 14px;
     }
 
-    .trade-kpi-label {
+    .trade-kpi-title {
       display: block;
-      font-size: 12px;
       color: var(--muted);
-      margin-bottom: 4px;
+      font-size: 12px;
+      margin-bottom: 8px;
     }
 
-    .trade-kpi-value {
-      font-size: 15px;
+    .trade-kpi-number {
+      font-size: 22px;
       font-weight: 600;
       font-variant-numeric: tabular-nums;
+      line-height: 1.2;
+    }
+
+    .trade-kpi-number.positive { color: var(--green); }
+    .trade-kpi-number.negative { color: var(--red); }
+    .trade-kpi-number.neutral  { color: var(--text); }
+
+    .trade-kpi-hint {
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 1200px) {
+      .trade-analysis-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 800px) {
+      .trade-analysis-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     .trade-detail-backdrop {
@@ -2859,20 +2879,63 @@ function renderTradesAnalysis() {
   const analytics = computeTradeAnalytics(getTrades());
   const grid = document.getElementById('tradeAnalysisGrid');
   const items = [
-    ['Totaal aantal trades', analytics.totalTrades],
-    ['Totale waarde gegeven', fmt(analytics.totalGiven)],
-    ['Totale waarde ontvangen', fmt(analytics.totalReceived)],
-    ['Totale value difference', `${analytics.totalDifference > 0 ? '+' : ''}${fmt(analytics.totalDifference)}`],
-    ['Gemiddelde difference per trade', `${analytics.averageDifference > 0 ? '+' : ''}${fmt(analytics.averageDifference)}`],
-    ['Gemiddelde ROI', fmtPercent(analytics.averageRoi)],
-    ['Positieve trades', analytics.positiveTrades],
-    ['Negatieve trades', analytics.negativeTrades],
+    {
+      title: 'Totaal aantal trades',
+      value: String(analytics.totalTrades),
+      tone: 'neutral',
+      hint: 'alle geregistreerde trades',
+    },
+    {
+      title: 'Totale waarde gegeven',
+      value: fmt(analytics.totalGiven),
+      tone: 'negative',
+      hint: 'som van IK GEEF',
+    },
+    {
+      title: 'Totale waarde ontvangen',
+      value: fmt(analytics.totalReceived),
+      tone: 'positive',
+      hint: 'som van IK ONTVANG',
+    },
+    {
+      title: 'Totale value difference',
+      value: `${analytics.totalDifference > 0 ? '+' : ''}${fmt(analytics.totalDifference)}`,
+      tone: analytics.totalDifference > 0 ? 'positive' : (analytics.totalDifference < 0 ? 'negative' : 'neutral'),
+      hint: 'ontvangen minus gegeven',
+    },
+    {
+      title: 'Gemiddelde difference per trade',
+      value: `${analytics.averageDifference > 0 ? '+' : ''}${fmt(analytics.averageDifference)}`,
+      tone: analytics.averageDifference > 0 ? 'positive' : (analytics.averageDifference < 0 ? 'negative' : 'neutral'),
+      hint: 'gemiddelde waardeverschuiving',
+    },
+    {
+      title: 'Gemiddelde ROI',
+      value: fmtPercent(analytics.averageRoi),
+      tone: analytics.averageRoi > 0 ? 'positive' : (analytics.averageRoi < 0 ? 'negative' : 'neutral'),
+      hint: 'gemiddeld rendement',
+    },
+    {
+      title: 'Positieve trades',
+      value: String(analytics.positiveTrades),
+      tone: 'positive',
+      hint: 'trades met positief verschil',
+    },
+    {
+      title: 'Negatieve trades',
+      value: String(analytics.negativeTrades),
+      tone: 'negative',
+      hint: 'trades met negatief verschil',
+    },
   ];
 
-  grid.innerHTML = items.map(([label, value]) => `
-    <div class="trade-kpi">
-      <span class="trade-kpi-label">${escHTML(String(label))}</span>
-      <span class="trade-kpi-value">${escHTML(String(value))}</span>
+  grid.innerHTML = items.map(item => `
+    <div class="widget widget-kpi">
+      <div class="widget-body">
+        <span class="trade-kpi-title">${escHTML(item.title)}</span>
+        <div class="trade-kpi-number ${escAttr(item.tone)}">${escHTML(item.value)}</div>
+        <div class="trade-kpi-hint">${escHTML(item.hint)}</div>
+      </div>
     </div>
   `).join('');
 
