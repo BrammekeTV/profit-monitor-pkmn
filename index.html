@@ -1442,7 +1442,7 @@
             <button class="submit-btn" id="saveTradeBtn" type="button">Trade opslaan</button>
             <button class="cancel-btn" id="cancelTradeEditBtn" type="button" style="display:none;">Annuleren</button>
           </div>
-          <div class="form-msg" id="tradeFormMsg"></div>
+          <div class="form-msg" id="tradeFormMsg" role="status" aria-live="polite"></div>
         </div>
       </div>
 
@@ -1856,10 +1856,10 @@ function renderTradeItemRows(containerId, items) {
   const container = document.getElementById(containerId);
   container.innerHTML = items.map((item, index) => `
     <div class="trade-item-row" data-index="${index}">
-      <input type="text" class="form-input" data-field="cardName" placeholder="Kaartnaam" value="${escAttr(item.cardName || '')}" />
-      <input type="number" class="form-input" data-field="quantity" value="${escAttr(item.quantity || 1)}" min="1" step="1" />
-      <input type="number" class="form-input" data-field="unitValue" value="${escAttr(item.unitValue || 0)}" min="0" step="0.01" />
-      <button class="cancel-btn" type="button" data-remove-row="true">Verwijder</button>
+      <input type="text" class="form-input" data-field="cardName" placeholder="Kaartnaam" value="${escAttr(item.cardName || '')}" aria-label="Kaartnaam rij ${index + 1}" />
+      <input type="number" class="form-input" data-field="quantity" value="${escAttr(item.quantity || 1)}" min="1" step="1" aria-label="Aantal rij ${index + 1}" />
+      <input type="number" class="form-input" data-field="unitValue" value="${escAttr(item.unitValue || 0)}" min="0" step="0.01" aria-label="Waarde per kaart rij ${index + 1}" />
+      <button class="cancel-btn" type="button" data-remove-row="true" aria-label="Verwijder rij ${index + 1}">Verwijder</button>
     </div>
   `).join('');
 }
@@ -2729,6 +2729,8 @@ function renderTradesView(selectedTradeId = null) {
         renderTradeItemRows('tradeReceivedRows', normalized.receivedItems.length ? normalized.receivedItems : [createEmptyTradeItem()]);
         bindTradeRowListeners();
         updateTradeLiveTotals();
+        showMessage(document.getElementById('tradeFormMsg'), 'success', 'Bewerkmodus actief.');
+        document.querySelector('#tradeGivenRows .trade-item-row [data-field="cardName"]')?.focus();
         return;
       }
       if (confirm('Deze trade verwijderen?')) {
