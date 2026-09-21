@@ -773,16 +773,6 @@
       display: flex;
       gap: 8px;
     }
-    .trade-item-row {
-      display: grid;
-      grid-template-columns: minmax(140px, 2fr) 72px 110px auto;
-      gap: 8px;
-      margin-bottom: 8px;
-      align-items: center;
-    }
-    .trade-item-row .form-input {
-      padding: 8px 10px;
-    }
 
     .form-btn-row .submit-btn {
       flex: 1;
@@ -1139,7 +1129,6 @@
       <button class="view-toggle-btn active" id="viewTransactions">Transacties</button>
       <button class="view-toggle-btn" id="viewProfit">Winst per kaart</button>
       <button class="view-toggle-btn" id="viewAnalyse">Analyse</button>
-      <button class="view-toggle-btn" id="viewTrades">Trades</button>
     </div>
 
     <!-- Transactions view -->
@@ -1384,124 +1373,6 @@
 
       </div><!-- /.analyse-widget-grid -->
     </div>
-
-    <!-- Trades view -->
-    <div id="tradesView" style="display:none;">
-      <div class="section-header" style="margin-bottom:16px;">
-        <span class="section-title">Trades</span>
-      </div>
-
-      <div class="widget widget-info" style="margin-bottom:16px;">
-        <div class="widget-header">
-          <span class="widget-title" id="tradeFormTitle">Nieuwe trade</span>
-        </div>
-        <div class="widget-body">
-          <div class="form-group">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-              <div>
-                <label class="form-label" for="tradeDate">Datum</label>
-                <input type="date" class="form-input" id="tradeDate" />
-              </div>
-              <div>
-                <label class="form-label" for="tradePlatform">Platform (optioneel)</label>
-                <input type="text" class="form-input" id="tradePlatform" placeholder="bijv. Beurs, Marktplaats" />
-              </div>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="tradePerson">Met wie (optioneel)</label>
-            <input type="text" class="form-input" id="tradePerson" placeholder="Naam of account" />
-          </div>
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-            <div>
-              <div class="subsection-header"><span class="subsection-title">Ik geef</span></div>
-              <div id="tradeGivenRows"></div>
-              <button class="inline-btn" id="addTradeGivenRowBtn" type="button">Kaart toevoegen</button>
-              <div style="margin-top:8px;font-size:12px;color:var(--muted);">Totaal gegeven: <strong id="tradeTotalGiven">€ 0,00</strong></div>
-            </div>
-            <div>
-              <div class="subsection-header"><span class="subsection-title">Ik ontvang</span></div>
-              <div id="tradeReceivedRows"></div>
-              <button class="inline-btn" id="addTradeReceivedRowBtn" type="button">Kaart toevoegen</button>
-              <div style="margin-top:8px;font-size:12px;color:var(--muted);">Totaal ontvangen: <strong id="tradeTotalReceived">€ 0,00</strong></div>
-            </div>
-          </div>
-
-          <div class="form-group" style="margin-top:12px;">
-            <label class="form-label" for="tradeNotes">Notities (optioneel)</label>
-            <textarea class="form-textarea" id="tradeNotes" placeholder="Notities over de trade"></textarea>
-            <div class="form-hint">Alle waardes zijn jouw eigen ingevoerde waardering op het moment van traden.</div>
-          </div>
-
-          <div class="widget-stat" style="margin-top:12px;">
-            <span class="widget-stat-label">Trade resultaat</span>
-            <span class="widget-stat-value neutral" id="tradeLiveResult">€ 0,00 (0%)</span>
-          </div>
-          <div class="form-btn-row" style="margin-top:12px;">
-            <button class="submit-btn" id="saveTradeBtn" type="button">Trade opslaan</button>
-            <button class="cancel-btn" id="cancelTradeEditBtn" type="button" style="display:none;">Annuleren</button>
-          </div>
-          <div class="form-msg" id="tradeFormMsg"></div>
-        </div>
-      </div>
-
-      <div class="analyse-kpi-row" style="margin-bottom:16px;">
-        <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value neutral" id="tradeKpiCount">0</div><div class="kpi-sub">Aantal trades</div></div></div>
-        <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value negative" id="tradeKpiGiven">€ 0,00</div><div class="kpi-sub">Totaal gegeven</div></div></div>
-        <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value positive" id="tradeKpiReceived">€ 0,00</div><div class="kpi-sub">Totaal ontvangen</div></div></div>
-        <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value neutral" id="tradeKpiDifference">€ 0,00</div><div class="kpi-sub">Totaal difference</div></div></div>
-        <div class="widget widget-kpi"><div class="widget-body"><div class="kpi-value neutral" id="tradeKpiAvgRoi">0%</div><div class="kpi-sub">Gem. ROI</div></div></div>
-      </div>
-
-      <div class="subsection-header">
-        <span class="subsection-title">Trade overzicht</span>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <label for="tradeSortMode" class="form-label" style="margin:0;">Sorteren</label>
-          <select id="tradeSortMode" class="form-select" style="width:auto;min-width:220px;">
-            <option value="newest">Nieuwste trade</option>
-            <option value="oldest">Oudste trade</option>
-            <option value="best">Hoogste positieve difference</option>
-            <option value="worst">Laagste difference</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Datum</th>
-              <th>Gegeven</th>
-              <th>Ontvangen</th>
-              <th>Waarde gegeven</th>
-              <th>Waarde ontvangen</th>
-              <th>Verschil</th>
-              <th>ROI</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="tradeBody">
-            <tr><td colspan="8" class="empty">Nog geen trades toegevoegd.</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="analyse-widget-grid" style="margin-top:16px;">
-        <div class="widget widget-chart">
-          <div class="widget-header"><span class="widget-title">Trade performance per maand</span></div>
-          <div class="widget-body widget-body-chart"><canvas id="tradePerformanceChart"></canvas></div>
-        </div>
-        <div class="widget widget-info">
-          <div class="widget-header"><span class="widget-title">Trade analytics</span></div>
-          <div class="widget-body" id="tradeAnalyticsStats"><div class="widget-empty">Nog geen trade data.</div></div>
-        </div>
-        <div class="widget widget-info">
-          <div class="widget-header"><span class="widget-title">Trade details</span></div>
-          <div class="widget-body" id="tradeDetailPanel"><div class="widget-empty">Selecteer een trade om details te bekijken.</div></div>
-        </div>
-      </div>
-    </div>
   </main>
 
   <!-- sidebar -->
@@ -1702,16 +1573,12 @@ import {
   TYPE_BUY,
   TYPE_SELL,
   addTab,
-  appendTrade,
   appendTransaction,
   appendTransactions,
   clearAllData,
   computeCardmarketSurplus,
   computeProfitByCard,
   computeSummary,
-  computeTradeMonthlyData,
-  computeTradeSummary,
-  deleteTrade,
   deleteTab,
   deleteTransaction as deleteStoredTransaction,
   ensureAppState,
@@ -1720,8 +1587,6 @@ import {
   getCardmarketOrderLinks,
   getGradeLabel,
   getGradingScale,
-  getTradeById,
-  getTrades,
   inferQuantity,
   normalizeDate,
   normalizeQuantity,
@@ -1731,7 +1596,6 @@ import {
   setActiveTab,
   splitMultiLineDescription,
   todayISO,
-  updateTrade,
   updateTransaction as updateStoredTransaction,
   validateTabName,
 } from './profit-monitor-core.mjs';
@@ -1740,14 +1604,12 @@ let appState = ensureAppState(null);
 let activeFilter = 'all';
 let searchQuery = '';
 let editingId = null;
-let activeView = 'transactions'; // 'transactions' | 'profit' | 'analyse' | 'trades'
+let activeView = 'transactions'; // 'transactions' | 'profit' | 'analyse'
 let profitChart = null;
 let monthlyChart = null;
 let cumulativeChart = null;
 let monthlyCompareChart = null;
 let growthChart = null;
-let tradePerformanceChart = null;
-let editingTradeId = null;
 
 // Period filter state
 let periodFilter = 'all';
@@ -1816,90 +1678,6 @@ function formatDate(value) {
 function formatMonthLabel(monthKey) {
   const [year, month] = monthKey.split('-');
   return new Intl.DateTimeFormat('nl-NL', { month: 'short', year: 'numeric' }).format(new Date(Number(year), Number(month) - 1, 1));
-}
-
-function formatPercent(value) {
-  const amount = roundMoney(value);
-  return `${amount > 0 ? '+' : ''}${new Intl.NumberFormat('nl-NL', { maximumFractionDigits: 2 }).format(amount)}%`;
-}
-
-function createEmptyTradeItem() {
-  return { cardName: '', quantity: 1, unitValue: 0 };
-}
-
-function currentTradeDraft() {
-  const givenItems = Array.from(document.querySelectorAll('#tradeGivenRows .trade-item-row')).map(row => ({
-    cardName: row.querySelector('[data-field="cardName"]').value.trim(),
-    quantity: row.querySelector('[data-field="quantity"]').value,
-    unitValue: row.querySelector('[data-field="unitValue"]').value,
-  }));
-  const receivedItems = Array.from(document.querySelectorAll('#tradeReceivedRows .trade-item-row')).map(row => ({
-    cardName: row.querySelector('[data-field="cardName"]').value.trim(),
-    quantity: row.querySelector('[data-field="quantity"]').value,
-    unitValue: row.querySelector('[data-field="unitValue"]').value,
-  }));
-  return {
-    id: editingTradeId,
-    date: document.getElementById('tradeDate').value || todayISO(),
-    platform: document.getElementById('tradePlatform').value.trim(),
-    person: document.getElementById('tradePerson').value.trim(),
-    notes: document.getElementById('tradeNotes').value.trim(),
-    givenItems,
-    receivedItems,
-  };
-}
-
-function renderTradeItemRows(containerId, items) {
-  const container = document.getElementById(containerId);
-  container.innerHTML = items.map((item, index) => `
-    <div class="trade-item-row" data-index="${index}">
-      <input type="text" class="form-input" data-field="cardName" placeholder="Kaartnaam" value="${escAttr(item.cardName || '')}" />
-      <input type="number" class="form-input" data-field="quantity" value="${escAttr(item.quantity || 1)}" min="1" step="1" />
-      <input type="number" class="form-input" data-field="unitValue" value="${escAttr(item.unitValue || 0)}" min="0" step="0.01" />
-      <button class="cancel-btn" type="button" data-remove-row="true">Verwijder</button>
-    </div>
-  `).join('');
-}
-
-function bindTradeRowListeners() {
-  ['tradeGivenRows', 'tradeReceivedRows'].forEach(containerId => {
-    const container = document.getElementById(containerId);
-    container.querySelectorAll('input').forEach(input => {
-      input.addEventListener('input', updateTradeLiveTotals);
-    });
-    container.querySelectorAll('[data-remove-row="true"]').forEach(button => {
-      button.addEventListener('click', () => {
-        const rows = Array.from(container.querySelectorAll('.trade-item-row'));
-        if (rows.length <= 1) return;
-        button.closest('.trade-item-row')?.remove();
-        updateTradeLiveTotals();
-      });
-    });
-  });
-}
-
-function updateTradeLiveTotals() {
-  const normalized = normalizeTrade(currentTradeDraft());
-  document.getElementById('tradeTotalGiven').textContent = fmt(normalized.totalGiven);
-  document.getElementById('tradeTotalReceived').textContent = fmt(normalized.totalReceived);
-  const resultEl = document.getElementById('tradeLiveResult');
-  resultEl.textContent = `${normalized.difference >= 0 ? '+' : ''}${fmt(normalized.difference)} (${formatPercent(normalized.roi)})`;
-  resultEl.className = `widget-stat-value ${normalized.difference > 0 ? 'positive' : (normalized.difference < 0 ? 'negative' : 'neutral')}`;
-}
-
-function resetTradeForm() {
-  editingTradeId = null;
-  document.getElementById('tradeFormTitle').textContent = 'Nieuwe trade';
-  document.getElementById('saveTradeBtn').textContent = 'Trade opslaan';
-  document.getElementById('cancelTradeEditBtn').style.display = 'none';
-  document.getElementById('tradeDate').value = todayISO();
-  document.getElementById('tradePlatform').value = '';
-  document.getElementById('tradePerson').value = '';
-  document.getElementById('tradeNotes').value = '';
-  renderTradeItemRows('tradeGivenRows', [createEmptyTradeItem()]);
-  renderTradeItemRows('tradeReceivedRows', [createEmptyTradeItem()]);
-  bindTradeRowListeners();
-  updateTradeLiveTotals();
 }
 
 function syncTopbarTitle() {
@@ -2578,177 +2356,21 @@ function renderGrowthChart(monthly) {
   });
 }
 
-function getSortedTrades() {
-  const mode = document.getElementById('tradeSortMode')?.value || 'newest';
-  const trades = getTrades(appState).slice().map(trade => normalizeTrade(trade));
-  if (mode === 'oldest') return trades.sort((a, b) => a.date.localeCompare(b.date));
-  if (mode === 'best') return trades.sort((a, b) => b.difference - a.difference);
-  if (mode === 'worst') return trades.sort((a, b) => a.difference - b.difference);
-  return trades.sort((a, b) => b.date.localeCompare(a.date));
-}
-
-function summarizeTradeItems(items) {
-  if (!items.length) return '—';
-  return items.map(item => `${item.cardName} (${item.quantity}x)`).join(', ');
-}
-
-function renderTradeDetail(tradeId) {
-  const panel = document.getElementById('tradeDetailPanel');
-  const trade = getTradeById(appState, tradeId);
-  if (!trade) {
-    panel.innerHTML = '<div class="widget-empty">Selecteer een trade om details te bekijken.</div>';
-    return;
-  }
-  const normalized = normalizeTrade(trade);
-  panel.innerHTML = `
-    <div class="widget-stat"><span class="widget-stat-label">Datum</span><span class="widget-stat-value neutral">${escHTML(formatDate(normalized.date))}</span></div>
-    <div class="widget-stat"><span class="widget-stat-label">Platform</span><span class="widget-stat-value neutral">${escHTML(normalized.platform || '—')}</span></div>
-    <div class="widget-stat"><span class="widget-stat-label">Persoon</span><span class="widget-stat-value neutral">${escHTML(normalized.person || '—')}</span></div>
-    <div class="widget-stat"><span class="widget-stat-label">Gegeven</span><span class="widget-stat-value negative">${escHTML(summarizeTradeItems(normalized.givenItems))}</span></div>
-    <div class="widget-stat"><span class="widget-stat-label">Ontvangen</span><span class="widget-stat-value positive">${escHTML(summarizeTradeItems(normalized.receivedItems))}</span></div>
-    <div class="widget-stat"><span class="widget-stat-label">Waarde gegeven</span><span class="widget-stat-value negative">${escHTML(fmt(normalized.totalGiven))}</span></div>
-    <div class="widget-stat"><span class="widget-stat-label">Waarde ontvangen</span><span class="widget-stat-value positive">${escHTML(fmt(normalized.totalReceived))}</span></div>
-    <div class="widget-stat"><span class="widget-stat-label">Verschil</span><span class="widget-stat-value ${normalized.difference >= 0 ? 'positive' : 'negative'}">${escHTML(fmt(normalized.difference))}</span></div>
-    <div class="widget-stat"><span class="widget-stat-label">ROI</span><span class="widget-stat-value ${normalized.roi >= 0 ? 'positive' : 'negative'}">${escHTML(formatPercent(normalized.roi))}</span></div>
-    <div style="margin-top:10px;font-size:13px;color:var(--muted);white-space:pre-wrap;">${escHTML(normalized.notes || 'Geen notities')}</div>
-  `;
-}
-
-function renderTradePerformanceChart(monthly) {
-  const el = document.getElementById('tradePerformanceChart');
-  if (!el) return;
-  if (tradePerformanceChart) { tradePerformanceChart.destroy(); tradePerformanceChart = null; }
-  if (!monthly.length) return;
-  const labels = monthly.map(item => formatMonthLabel(item.month));
-  const values = monthly.map(item => item.totalDifference);
-  const colors = values.map(v => v >= 0 ? 'rgba(34,197,94,0.75)' : 'rgba(239,68,68,0.75)');
-  const borderColors = values.map(v => v >= 0 ? 'rgba(34,197,94,1)' : 'rgba(239,68,68,1)');
-  tradePerformanceChart = new Chart(el.getContext('2d'), {
-    type: 'bar',
-    data: { labels, datasets: [{ label: 'Trade difference', data: values, backgroundColor: colors, borderColor: borderColors, borderWidth: 1, borderRadius: 4 }] },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.parsed.y) } } },
-      scales: {
-        x: { ticks: { color: '#a1a1aa', font: { size: 11 }, maxRotation: 45 }, grid: { color: '#3f3f46' } },
-        y: { ticks: { color: '#a1a1aa', font: { size: 11 }, callback: v => fmt(v) }, grid: { color: '#3f3f46' } },
-      },
-    },
-  });
-}
-
-function renderTradeAnalytics(summary, monthly) {
-  const body = document.getElementById('tradeAnalyticsStats');
-  if (!summary.count) {
-    body.innerHTML = '<div class="widget-empty">Nog geen trade data.</div>';
-    return;
-  }
-  body.innerHTML = `
-    <div class="widget-stat"><span class="widget-stat-label">Totale trade value</span><span class="widget-stat-value neutral">${escHTML(fmt(summary.totalTradeValue))}</span></div>
-    <div class="widget-stat"><span class="widget-stat-label">Gem. waarde per trade</span><span class="widget-stat-value neutral">${escHTML(fmt(summary.averageTradeValue))}</span></div>
-    <div class="widget-stat"><span class="widget-stat-label">Gem. difference</span><span class="widget-stat-value ${summary.averageDifference >= 0 ? 'positive' : 'negative'}">${escHTML(fmt(summary.averageDifference))}</span></div>
-    <div class="widget-stat"><span class="widget-stat-label">Positief / Negatief</span><span class="widget-stat-value neutral">${summary.positiveCount} / ${summary.negativeCount}</span></div>
-    <div class="widget-stat"><span class="widget-stat-label">Trades over tijd</span><span class="widget-stat-value neutral">${monthly.length} maanden</span></div>
-    <div class="widget-stat"><span class="widget-stat-label">Beste trade</span><span class="widget-stat-value positive">${summary.bestTrade ? escHTML(fmt(summary.bestTrade.difference)) : '—'}</span></div>
-    <div class="widget-stat"><span class="widget-stat-label">Slechtste trade</span><span class="widget-stat-value negative">${summary.worstTrade ? escHTML(fmt(summary.worstTrade.difference)) : '—'}</span></div>
-  `;
-}
-
-function renderTradesView(selectedTradeId = null) {
-  const summary = computeTradeSummary(getTrades(appState));
-  const monthly = computeTradeMonthlyData(getTrades(appState));
-  document.getElementById('tradeKpiCount').textContent = summary.count;
-  document.getElementById('tradeKpiGiven').textContent = fmt(summary.totalGiven);
-  document.getElementById('tradeKpiReceived').textContent = fmt(summary.totalReceived);
-  const diffEl = document.getElementById('tradeKpiDifference');
-  diffEl.textContent = fmt(summary.totalDifference);
-  diffEl.className = `kpi-value ${summary.totalDifference > 0 ? 'positive' : (summary.totalDifference < 0 ? 'negative' : 'neutral')}`;
-  document.getElementById('tradeKpiAvgRoi').textContent = formatPercent(summary.averageRoi);
-
-  const rows = getSortedTrades();
-  const tbody = document.getElementById('tradeBody');
-  if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty">Nog geen trades toegevoegd.</td></tr>';
-    renderTradePerformanceChart([]);
-    renderTradeAnalytics(summary, monthly);
-    renderTradeDetail(null);
-    return;
-  }
-  tbody.innerHTML = rows.map(trade => `
-    <tr data-trade-id="${trade.id}">
-      <td>${escHTML(formatDate(trade.date))}</td>
-      <td>${escHTML(summarizeTradeItems(trade.givenItems))}</td>
-      <td>${escHTML(summarizeTradeItems(trade.receivedItems))}</td>
-      <td class="amount-cell negative">${escHTML(fmt(trade.totalGiven))}</td>
-      <td class="amount-cell positive">${escHTML(fmt(trade.totalReceived))}</td>
-      <td class="amount-cell ${trade.difference >= 0 ? 'positive' : 'negative'}">${escHTML(fmt(trade.difference))}</td>
-      <td class="amount-cell ${trade.roi >= 0 ? 'positive' : 'negative'}">${escHTML(formatPercent(trade.roi))}</td>
-      <td style="white-space:nowrap;">
-        <button class="edit-btn" type="button" data-trade-action="view" data-trade-id="${trade.id}" title="Details">👁</button>
-        <button class="edit-btn" type="button" data-trade-action="edit" data-trade-id="${trade.id}" title="Bewerken">✎</button>
-        <button class="delete-btn" type="button" data-trade-action="delete" data-trade-id="${trade.id}" title="Verwijderen">✕</button>
-      </td>
-    </tr>
-  `).join('');
-
-  tbody.querySelectorAll('[data-trade-action]').forEach(button => {
-    const tradeId = Number(button.dataset.tradeId);
-    const action = button.dataset.tradeAction;
-    button.addEventListener('click', () => {
-      if (action === 'view') {
-        renderTradeDetail(tradeId);
-        return;
-      }
-      if (action === 'edit') {
-        const trade = getTradeById(appState, tradeId);
-        if (!trade) return;
-        const normalized = normalizeTrade(trade);
-        editingTradeId = tradeId;
-        document.getElementById('tradeFormTitle').textContent = 'Trade bewerken';
-        document.getElementById('saveTradeBtn').textContent = 'Trade bijwerken';
-        document.getElementById('cancelTradeEditBtn').style.display = '';
-        document.getElementById('tradeDate').value = normalized.date;
-        document.getElementById('tradePlatform').value = normalized.platform;
-        document.getElementById('tradePerson').value = normalized.person;
-        document.getElementById('tradeNotes').value = normalized.notes;
-        renderTradeItemRows('tradeGivenRows', normalized.givenItems.length ? normalized.givenItems : [createEmptyTradeItem()]);
-        renderTradeItemRows('tradeReceivedRows', normalized.receivedItems.length ? normalized.receivedItems : [createEmptyTradeItem()]);
-        bindTradeRowListeners();
-        updateTradeLiveTotals();
-        return;
-      }
-      if (confirm('Deze trade verwijderen?')) {
-        appState = deleteTrade(appState, tradeId);
-        saveToStorage();
-        refreshView();
-      }
-    });
-  });
-
-  renderTradePerformanceChart(monthly);
-  renderTradeAnalytics(summary, monthly);
-  renderTradeDetail(selectedTradeId ?? rows[0].id);
-}
-
 function setActiveView(view) {
   activeView = view;
   const txnView = document.getElementById('transactionsView');
   const profView = document.getElementById('profitView');
   const analyseView = document.getElementById('analyseView');
-  const tradesView = document.getElementById('tradesView');
   const txnBtn = document.getElementById('viewTransactions');
   const profBtn = document.getElementById('viewProfit');
   const analyseBtn = document.getElementById('viewAnalyse');
-  const tradesBtn = document.getElementById('viewTrades');
 
   txnView.style.display = 'none';
   profView.style.display = 'none';
   analyseView.style.display = 'none';
-  tradesView.style.display = 'none';
   txnBtn.classList.remove('active');
   profBtn.classList.remove('active');
   analyseBtn.classList.remove('active');
-  tradesBtn.classList.remove('active');
 
   if (view === 'transactions') {
     txnView.style.display = '';
@@ -2757,14 +2379,10 @@ function setActiveView(view) {
     profView.style.display = '';
     profBtn.classList.add('active');
     renderProfitTable();
-  } else if (view === 'analyse') {
+  } else {
     analyseView.style.display = '';
     analyseBtn.classList.add('active');
     renderAnalytics();
-  } else {
-    tradesView.style.display = '';
-    tradesBtn.classList.add('active');
-    renderTradesView();
   }
 }
 
@@ -2814,7 +2432,6 @@ document.getElementById('toggleProfitCharts').addEventListener('click', () => {
 document.getElementById('viewTransactions').addEventListener('click', () => setActiveView('transactions'));
 document.getElementById('viewProfit').addEventListener('click', () => setActiveView('profit'));
 document.getElementById('viewAnalyse').addEventListener('click', () => setActiveView('analyse'));
-document.getElementById('viewTrades').addEventListener('click', () => setActiveView('trades'));
 
 // Widget expand/collapse
 document.getElementById('analyseView').addEventListener('click', e => {
@@ -2893,13 +2510,8 @@ function refreshView() {
   renderTable();
   if (activeView === 'profit') renderProfitTable();
   if (activeView === 'analyse') renderAnalytics();
-  if (activeView === 'trades') renderTradesView();
   if (!dateInput.value) {
     dateInput.value = todayISO();
-  }
-  const tradeDateInput = document.getElementById('tradeDate');
-  if (tradeDateInput && !tradeDateInput.value) {
-    tradeDateInput.value = todayISO();
   }
 }
 
@@ -3363,63 +2975,6 @@ document.getElementById('fHasCardName').addEventListener('change', syncDescripti
 document.getElementById('fIsGraded').addEventListener('change', syncGradingParsing);
 document.getElementById('fGradingCompany').addEventListener('change', syncGradingParsing);
 
-document.getElementById('addTradeGivenRowBtn').addEventListener('click', () => {
-  const rows = Array.from(document.querySelectorAll('#tradeGivenRows .trade-item-row')).map(row => ({
-    cardName: row.querySelector('[data-field="cardName"]').value.trim(),
-    quantity: row.querySelector('[data-field="quantity"]').value,
-    unitValue: row.querySelector('[data-field="unitValue"]').value,
-  }));
-  rows.push(createEmptyTradeItem());
-  renderTradeItemRows('tradeGivenRows', rows);
-  bindTradeRowListeners();
-  updateTradeLiveTotals();
-});
-
-document.getElementById('addTradeReceivedRowBtn').addEventListener('click', () => {
-  const rows = Array.from(document.querySelectorAll('#tradeReceivedRows .trade-item-row')).map(row => ({
-    cardName: row.querySelector('[data-field="cardName"]').value.trim(),
-    quantity: row.querySelector('[data-field="quantity"]').value,
-    unitValue: row.querySelector('[data-field="unitValue"]').value,
-  }));
-  rows.push(createEmptyTradeItem());
-  renderTradeItemRows('tradeReceivedRows', rows);
-  bindTradeRowListeners();
-  updateTradeLiveTotals();
-});
-
-document.getElementById('saveTradeBtn').addEventListener('click', () => {
-  const message = document.getElementById('tradeFormMsg');
-  showMessage(message);
-  const draft = normalizeTrade(currentTradeDraft());
-  if (!draft.givenItems.length) {
-    showMessage(message, 'error', 'Voeg minimaal één kaart toe bij "Ik geef".');
-    return;
-  }
-  if (!draft.receivedItems.length) {
-    showMessage(message, 'error', 'Voeg minimaal één kaart toe bij "Ik ontvang".');
-    return;
-  }
-  if (editingTradeId !== null) {
-    appState = updateTrade(appState, editingTradeId, draft);
-    showMessage(message, 'success', 'Trade bijgewerkt.');
-  } else {
-    appState = appendTrade(appState, draft);
-    showMessage(message, 'success', 'Trade toegevoegd.');
-  }
-  saveToStorage();
-  resetTradeForm();
-  refreshView();
-});
-
-document.getElementById('cancelTradeEditBtn').addEventListener('click', () => {
-  resetTradeForm();
-  showMessage(document.getElementById('tradeFormMsg'));
-});
-
-document.getElementById('tradeSortMode').addEventListener('change', () => {
-  renderTradesView();
-});
-
 function escHTML(value) {
   return String(value)
     .replace(/&/g, '&amp;')
@@ -3440,7 +2995,6 @@ function escAttr(value) {
 dateInput.value = todayISO();
 syncDescriptionParsing();
 syncGradingParsing();
-resetTradeForm();
 loadFromStorage();
 refreshView();
 </script>

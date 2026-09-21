@@ -122,58 +122,6 @@ export function normalizeAmount(type, amount) {
   return roundMoney(type === TYPE_BUY ? -value : value);
 }
 
-export function normalizeTradeUnitValue(value) {
-  const parsed = Number.parseFloat(String(value ?? '').replace(',', '.'));
-  if (!Number.isFinite(parsed) || parsed < 0) return 0;
-  return roundMoney(parsed);
-}
-
-export function normalizeTradeItem(item = {}) {
-  return {
-    cardName: normalizeTabName(item.cardName),
-    quantity: normalizeQuantity(item.quantity),
-    unitValue: normalizeTradeUnitValue(item.unitValue),
-  };
-}
-
-export function computeTradeTotals(trade = {}) {
-  const givenItems = Array.isArray(trade.givenItems) ? trade.givenItems : [];
-  const receivedItems = Array.isArray(trade.receivedItems) ? trade.receivedItems : [];
-  const totalGiven = roundMoney(givenItems.reduce((sum, item) => (
-    sum + (normalizeQuantity(item.quantity) * normalizeTradeUnitValue(item.unitValue))
-  ), 0));
-  const totalReceived = roundMoney(receivedItems.reduce((sum, item) => (
-    sum + (normalizeQuantity(item.quantity) * normalizeTradeUnitValue(item.unitValue))
-  ), 0));
-  const difference = roundMoney(totalReceived - totalGiven);
-  const roi = totalGiven > 0
-    ? roundMoney((difference / totalGiven) * 100)
-    : (totalReceived > 0 ? 100 : 0);
-  return { totalGiven, totalReceived, difference, roi };
-}
-
-export function normalizeTrade(trade = {}, options = {}) {
-  const givenItems = (Array.isArray(trade.givenItems) ? trade.givenItems : [])
-    .map(normalizeTradeItem)
-    .filter(item => item.cardName);
-  const receivedItems = (Array.isArray(trade.receivedItems) ? trade.receivedItems : [])
-    .map(normalizeTradeItem)
-    .filter(item => item.cardName);
-  const normalized = {
-    id: trade.id ?? null,
-    date: normalizeDate(trade.date, todayISO(options.now)),
-    platform: normalizeTabName(trade.platform),
-    person: normalizeTabName(trade.person),
-    notes: String(trade.notes ?? '').trim(),
-    givenItems,
-    receivedItems,
-  };
-  return {
-    ...normalized,
-    ...computeTradeTotals(normalized),
-  };
-}
-
 export function normalizeGradingCompany(value) {
   const company = String(value ?? '').trim().toUpperCase();
   return GRADING_COMPANY_OPTIONS.includes(company) ? company : '';
@@ -283,17 +231,6 @@ function normalizeTabs(rawTabs, options = {}) {
   return { tabs, nextTransactionId: nextId };
 }
 
-function normalizeTrades(rawTrades, options = {}) {
-  let nextId = 1;
-  const trades = (Array.isArray(rawTrades) ? rawTrades : []).map(trade => {
-    const normalized = normalizeTrade(trade, { now: options.now });
-    const id = Number.isInteger(normalized.id) ? normalized.id : nextId;
-    nextId = Math.max(nextId, id + 1);
-    return { ...normalized, id };
-  });
-  return { trades, nextTradeId: nextId };
-}
-
 export function ensureAppState(rawState, options = {}) {
   let parsed = rawState;
 
@@ -314,7 +251,6 @@ export function ensureAppState(rawState, options = {}) {
     return {
       tabs: [{ ...defaultTab, transactions: defaultTab.transactions.map((txn, index) => ({ ...txn, id: index + 1 })) }],
       activeTabId: defaultTab.id,
-      trades: [],
     };
   }
 
@@ -323,21 +259,20 @@ export function ensureAppState(rawState, options = {}) {
   }
 
   const { tabs } = normalizeTabs(parsed?.tabs, options);
-  const { trades } = normalizeTrades(parsed?.trades, options);
 
   if (!tabs.length) {
     const defaultTab = createTab(DEFAULT_TAB_NAME, {
       id: options.defaultTabId,
       now: options.now,
     });
-    return { tabs: [defaultTab], activeTabId: defaultTab.id, trades };
+    return { tabs: [defaultTab], activeTabId: defaultTab.id };
   }
 
   const activeTabId = tabs.some(tab => tab.id === parsed?.activeTabId)
     ? parsed.activeTabId
     : tabs[0].id;
 
-  return { tabs, activeTabId, trades };
+  return { tabs, activeTabId };
 }
 
 export function getActiveTab(state) {
@@ -348,10 +283,6 @@ export function getActiveTransactions(state) {
   return getActiveTab(state)?.transactions ?? [];
 }
 
-export function getTrades(state) {
-  return Array.isArray(state?.trades) ? state.trades : [];
-}
-
 export function nextTransactionId(state) {
   return state.tabs.reduce((maxId, tab) => {
     const tabMax = tab.transactions.reduce((currentMax, transaction) => (
@@ -359,16 +290,6 @@ export function nextTransactionId(state) {
     ), 0);
     return Math.max(maxId, tabMax);
   }, 0) + 1;
-}
-
-export function nextTradeId(state) {
-  return getTrades(state).reduce((maxId, trade) => (
-    Number.isInteger(trade.id) ? Math.max(maxId, trade.id) : maxId
-  ), 0) + 1;
-}
-
-export function getTradeById(state, tradeId) {
-  return getTrades(state).find(trade => trade.id === tradeId) ?? null;
 }
 
 export function validateTabName(state, name, excludeTabId = null) {
@@ -443,7 +364,6 @@ export function deleteTab(state, tabId, options = {}) {
     return {
       tabs: [defaultTab],
       activeTabId: defaultTab.id,
-      trades: getTrades(state),
     };
   }
 
@@ -455,7 +375,6 @@ export function deleteTab(state, tabId, options = {}) {
   return {
     tabs: remainingTabs,
     activeTabId,
-    trades: getTrades(state),
   };
 }
 
@@ -544,32 +463,6 @@ export function updateTransaction(state, transactionId, transaction, options = {
   };
 }
 
-export function appendTrade(state, trade, options = {}) {
-  const normalized = normalizeTrade(trade, { now: options.now });
-  const id = nextTradeId(state);
-  return {
-    ...state,
-    trades: [...getTrades(state), { ...normalized, id }],
-  };
-}
-
-export function updateTrade(state, tradeId, trade, options = {}) {
-  const normalized = normalizeTrade(trade, { now: options.now });
-  return {
-    ...state,
-    trades: getTrades(state).map(existing => (
-      existing.id === tradeId ? { ...normalized, id: tradeId } : existing
-    )),
-  };
-}
-
-export function deleteTrade(state, tradeId) {
-  return {
-    ...state,
-    trades: getTrades(state).filter(trade => trade.id !== tradeId),
-  };
-}
-
 export function clearAllData(options = {}) {
   return ensureAppState(null, options);
 }
@@ -588,62 +481,6 @@ export function computeSummary(transactions) {
     profit: roundMoney(totalSold + totalBought),
     count: transactions.length,
   };
-}
-
-export function computeTradeSummary(trades) {
-  const normalizedTrades = (Array.isArray(trades) ? trades : []).map(trade => normalizeTrade(trade));
-  const totalGiven = roundMoney(normalizedTrades.reduce((sum, trade) => sum + trade.totalGiven, 0));
-  const totalReceived = roundMoney(normalizedTrades.reduce((sum, trade) => sum + trade.totalReceived, 0));
-  const totalDifference = roundMoney(normalizedTrades.reduce((sum, trade) => sum + trade.difference, 0));
-  const averageDifference = normalizedTrades.length ? roundMoney(totalDifference / normalizedTrades.length) : 0;
-  const averageRoi = normalizedTrades.length
-    ? roundMoney(normalizedTrades.reduce((sum, trade) => sum + trade.roi, 0) / normalizedTrades.length)
-    : 0;
-  const totalTradeValue = roundMoney(totalGiven + totalReceived);
-  const averageTradeValue = normalizedTrades.length ? roundMoney(totalTradeValue / normalizedTrades.length) : 0;
-  const positiveCount = normalizedTrades.filter(trade => trade.difference > 0).length;
-  const negativeCount = normalizedTrades.filter(trade => trade.difference < 0).length;
-  const neutralCount = normalizedTrades.length - positiveCount - negativeCount;
-  const bestTrade = normalizedTrades.slice().sort((a, b) => b.difference - a.difference)[0] ?? null;
-  const worstTrade = normalizedTrades.slice().sort((a, b) => a.difference - b.difference)[0] ?? null;
-  return {
-    count: normalizedTrades.length,
-    totalGiven,
-    totalReceived,
-    totalDifference,
-    averageDifference,
-    averageRoi,
-    totalTradeValue,
-    averageTradeValue,
-    positiveCount,
-    negativeCount,
-    neutralCount,
-    bestTrade,
-    worstTrade,
-  };
-}
-
-export function computeTradeMonthlyData(trades) {
-  const monthMap = new Map();
-  (Array.isArray(trades) ? trades : []).forEach(trade => {
-    const normalized = normalizeTrade(trade);
-    const key = normalized.date.slice(0, 7);
-    if (!monthMap.has(key)) {
-      monthMap.set(key, { month: key, count: 0, totalGiven: 0, totalReceived: 0, totalDifference: 0, totalRoi: 0 });
-    }
-    const item = monthMap.get(key);
-    item.count += 1;
-    item.totalGiven = roundMoney(item.totalGiven + normalized.totalGiven);
-    item.totalReceived = roundMoney(item.totalReceived + normalized.totalReceived);
-    item.totalDifference = roundMoney(item.totalDifference + normalized.difference);
-    item.totalRoi = roundMoney(item.totalRoi + normalized.roi);
-  });
-  return Array.from(monthMap.values())
-    .sort((left, right) => left.month.localeCompare(right.month))
-    .map(item => ({
-      ...item,
-      averageRoi: item.count ? roundMoney(item.totalRoi / item.count) : 0,
-    }));
 }
 
 function compareTransactionsForFifo(left, right) {

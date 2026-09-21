@@ -6,25 +6,18 @@ import {
   TYPE_BUY,
   TYPE_SELL,
   addTab,
-  appendTrade,
   computeCardmarketSurplus,
   computeProfitByCard,
   deleteTab,
-  deleteTrade,
   ensureAppState,
-  computeTradeMonthlyData,
-  computeTradeSummary,
   extractCardmarketOrderIds,
   getGradeLabel,
   getGradingScale,
-  getTrades,
   getActiveTab,
   getCardmarketOrderLinks,
   normalizeGradingValue,
-  normalizeTrade,
   normalizeTransaction,
   setActiveTab,
-  updateTrade,
   validateTabName,
 } from '../profit-monitor-core.mjs';
 
@@ -194,86 +187,4 @@ test('grading normalization keeps only valid company-specific grades', () => {
   assert.equal(normalized.gradingCompany, 'BGS');
   assert.equal(normalized.gradingValue, '9.5');
   assert.equal(normalized.gradingLabel, 'Gem Mint');
-});
-
-test('trade normalization calculates totals, difference and ROI', () => {
-  const trade = normalizeTrade({
-    date: '2026-09-01',
-    givenItems: [
-      { cardName: 'Charizard ex', quantity: 1, unitValue: 80 },
-      { cardName: 'Pikachu', quantity: 2, unitValue: 20 },
-    ],
-    receivedItems: [
-      { cardName: 'Umbreon VMAX', quantity: 1, unitValue: 125 },
-    ],
-  });
-
-  assert.equal(trade.totalGiven, 120);
-  assert.equal(trade.totalReceived, 125);
-  assert.equal(trade.difference, 5);
-  assert.equal(trade.roi, 4.17);
-});
-
-test('trade CRUD keeps trades separate from sales transactions', () => {
-  let state = ensureAppState([
-    { id: 1, type: TYPE_SELL, amount: 100, description: 'Sale' },
-  ]);
-  assert.equal(getTrades(state).length, 0);
-
-  state = appendTrade(state, {
-    date: '2026-09-10',
-    givenItems: [{ cardName: 'A', quantity: 1, unitValue: 10 }],
-    receivedItems: [{ cardName: 'B', quantity: 1, unitValue: 15 }],
-  });
-
-  assert.equal(getTrades(state).length, 1);
-  assert.equal(state.tabs[0].transactions.length, 1);
-
-  const created = getTrades(state)[0];
-  state = updateTrade(state, created.id, {
-    ...created,
-    receivedItems: [{ cardName: 'B', quantity: 1, unitValue: 20 }],
-  });
-  assert.equal(getTrades(state)[0].totalReceived, 20);
-  assert.equal(state.tabs[0].transactions.length, 1);
-
-  state = deleteTrade(state, created.id);
-  assert.equal(getTrades(state).length, 0);
-  assert.equal(state.tabs[0].transactions.length, 1);
-});
-
-test('trade summary and monthly analytics are aggregated correctly', () => {
-  const trades = [
-    normalizeTrade({
-      date: '2026-08-01',
-      givenItems: [{ cardName: 'A', quantity: 1, unitValue: 100 }],
-      receivedItems: [{ cardName: 'B', quantity: 1, unitValue: 120 }],
-    }),
-    normalizeTrade({
-      date: '2026-08-14',
-      givenItems: [{ cardName: 'C', quantity: 1, unitValue: 90 }],
-      receivedItems: [{ cardName: 'D', quantity: 1, unitValue: 80 }],
-    }),
-    normalizeTrade({
-      date: '2026-09-02',
-      givenItems: [{ cardName: 'E', quantity: 2, unitValue: 20 }],
-      receivedItems: [{ cardName: 'F', quantity: 1, unitValue: 50 }],
-    }),
-  ];
-
-  const summary = computeTradeSummary(trades);
-  assert.equal(summary.count, 3);
-  assert.equal(summary.totalGiven, 230);
-  assert.equal(summary.totalReceived, 250);
-  assert.equal(summary.totalDifference, 20);
-  assert.equal(summary.averageDifference, 6.67);
-  assert.equal(summary.positiveCount, 2);
-  assert.equal(summary.negativeCount, 1);
-
-  const monthly = computeTradeMonthlyData(trades);
-  assert.equal(monthly.length, 2);
-  assert.deepEqual(monthly.map(item => item.month), ['2026-08', '2026-09']);
-  assert.equal(monthly[0].count, 2);
-  assert.equal(monthly[0].totalDifference, 10);
-  assert.equal(monthly[1].totalDifference, 10);
 });
