@@ -300,7 +300,7 @@ function normalizeTrades(rawTrades, options = {}) {
     nextId = Math.max(nextId, id + 1);
     return { ...normalized, id };
   });
-  return { trades, nextTradeId: nextId };
+  return { trades };
 }
 
 export function ensureAppState(rawState, options = {}) {

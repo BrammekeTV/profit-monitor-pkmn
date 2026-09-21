@@ -2623,9 +2623,11 @@ function renderTradePerformanceChart(monthly) {
   if (!el) return;
   if (tradePerformanceChart) { tradePerformanceChart.destroy(); tradePerformanceChart = null; }
   if (!monthly.length) {
+    el.style.display = 'none';
     if (summaryEl) summaryEl.textContent = 'Geen maanddata beschikbaar.';
     return;
   }
+  el.style.display = '';
   const labels = monthly.map(item => formatMonthLabel(item.month));
   const values = monthly.map(item => item.totalDifference);
   const colors = values.map(v => v >= 0 ? 'rgba(34,197,94,0.75)' : 'rgba(239,68,68,0.75)');
@@ -2740,18 +2742,19 @@ function renderTradesView(selectedTradeId = null) {
       }
     });
 
-    tbody.querySelectorAll('tr[data-trade-id]').forEach(row => {
-      const tradeId = Number(row.dataset.tradeId);
-      row.addEventListener('click', event => {
-        if (event.target.closest('[data-trade-action]')) return;
+  });
+
+  tbody.querySelectorAll('tr[data-trade-id]').forEach(row => {
+    const tradeId = Number(row.dataset.tradeId);
+    row.addEventListener('click', event => {
+      if (event.target.closest('[data-trade-action]')) return;
+      renderTradeDetail(tradeId);
+    });
+    row.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
         renderTradeDetail(tradeId);
-      });
-      row.addEventListener('keydown', event => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          renderTradeDetail(tradeId);
-        }
-      });
+      }
     });
   });
 
