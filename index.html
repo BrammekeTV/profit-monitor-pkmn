@@ -1751,7 +1751,6 @@ let monthlyCompareChart = null;
 let growthChart = null;
 let tradePerformanceChart = null;
 let editingTradeId = null;
-let selectedTradeId = null;
 
 // Period filter state
 let periodFilter = 'all';
@@ -2669,7 +2668,7 @@ function renderTradeAnalytics(summary, monthly) {
   `;
 }
 
-function renderTradesView(preferredTradeId = selectedTradeId) {
+function renderTradesView(selectedTradeId = null) {
   const summary = computeTradeSummary(getTrades(appState));
   const monthly = computeTradeMonthlyData(getTrades(appState));
   document.getElementById('tradeKpiCount').textContent = summary.count;
@@ -2684,7 +2683,6 @@ function renderTradesView(preferredTradeId = selectedTradeId) {
   const tbody = document.getElementById('tradeBody');
   if (!rows.length) {
     tbody.innerHTML = '<tr><td colspan="8" class="empty">Nog geen trades toegevoegd.</td></tr>';
-    selectedTradeId = null;
     renderTradePerformanceChart([]);
     renderTradeAnalytics(summary, monthly);
     renderTradeDetail(null);
@@ -2712,7 +2710,6 @@ function renderTradesView(preferredTradeId = selectedTradeId) {
     const action = button.dataset.tradeAction;
     button.addEventListener('click', () => {
       if (action === 'view') {
-        selectedTradeId = tradeId;
         renderTradeDetail(tradeId);
         return;
       }
@@ -2739,7 +2736,6 @@ function renderTradesView(preferredTradeId = selectedTradeId) {
       if (confirm('Deze trade verwijderen?')) {
         try {
           appState = deleteTrade(appState, tradeId);
-          if (selectedTradeId === tradeId) selectedTradeId = null;
         } catch {
           return;
         }
@@ -2752,9 +2748,7 @@ function renderTradesView(preferredTradeId = selectedTradeId) {
 
   renderTradePerformanceChart(monthly);
   renderTradeAnalytics(summary, monthly);
-  const hasPreferred = preferredTradeId != null && rows.some(trade => trade.id === preferredTradeId);
-  selectedTradeId = hasPreferred ? preferredTradeId : rows[0].id;
-  renderTradeDetail(selectedTradeId);
+  renderTradeDetail(selectedTradeId ?? rows[0].id);
 }
 
 function setActiveView(view) {
@@ -2776,29 +2770,21 @@ function setActiveView(view) {
   profBtn.classList.remove('active');
   analyseBtn.classList.remove('active');
   tradesBtn.classList.remove('active');
-  txnBtn.setAttribute('aria-pressed', 'false');
-  profBtn.setAttribute('aria-pressed', 'false');
-  analyseBtn.setAttribute('aria-pressed', 'false');
-  tradesBtn.setAttribute('aria-pressed', 'false');
 
   if (view === 'transactions') {
     txnView.style.display = '';
     txnBtn.classList.add('active');
-    txnBtn.setAttribute('aria-pressed', 'true');
   } else if (view === 'profit') {
     profView.style.display = '';
     profBtn.classList.add('active');
-    profBtn.setAttribute('aria-pressed', 'true');
     renderProfitTable();
   } else if (view === 'analyse') {
     analyseView.style.display = '';
     analyseBtn.classList.add('active');
-    analyseBtn.setAttribute('aria-pressed', 'true');
     renderAnalytics();
   } else {
     tradesView.style.display = '';
     tradesBtn.classList.add('active');
-    tradesBtn.setAttribute('aria-pressed', 'true');
     renderTradesView();
   }
 }
