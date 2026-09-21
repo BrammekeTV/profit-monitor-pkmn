@@ -2751,6 +2751,7 @@ function renderTradesAnalyseView() {
   const trades = getTrades(appState);
   const summary = computeTradeSummary(trades);
   const monthly = computeTradeMonthlyData(trades);
+  renderTradeDetail(null);
   renderTradePerformanceChart(monthly);
   renderTradeAnalytics(summary, monthly);
 }
@@ -3449,11 +3450,11 @@ document.getElementById('saveTradeBtn').addEventListener('click', () => {
   showMessage(message);
   const draft = normalizeTrade(currentTradeDraft());
   if (!draft.givenItems.length) {
-    showMessage(message, 'error', 'Vul bij "Ik geef" minimaal één rij in met kaartnaam (aantal/waarde optioneel).');
+    showMessage(message, 'error', 'Vul bij "Ik geef" minimaal één rij in met een kaartnaam.');
     return;
   }
   if (!draft.receivedItems.length) {
-    showMessage(message, 'error', 'Vul bij "Ik ontvang" minimaal één rij in met kaartnaam (aantal/waarde optioneel).');
+    showMessage(message, 'error', 'Vul bij "Ik ontvang" minimaal één rij in met een kaartnaam.');
     return;
   }
   if (editingTradeId !== null) {
