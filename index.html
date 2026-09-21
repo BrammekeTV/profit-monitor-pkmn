@@ -1140,6 +1140,7 @@
       <button class="view-toggle-btn" type="button" id="viewProfit" role="tab" aria-selected="false" aria-controls="profitView">Winst per kaart</button>
       <button class="view-toggle-btn" type="button" id="viewAnalyse" role="tab" aria-selected="false" aria-controls="analyseView">Analyse</button>
       <button class="view-toggle-btn" type="button" id="viewTrades" role="tab" aria-selected="false" aria-controls="tradesView">Trades</button>
+      <button class="view-toggle-btn" type="button" id="viewTradesAnalyse" role="tab" aria-selected="false" aria-controls="tradesAnalyseView">Trades - Analyse</button>
     </div>
 
     <!-- Transactions view -->
@@ -1397,31 +1398,21 @@
         </div>
         <div class="widget-body">
           <div class="form-group">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-              <div>
-                <label class="form-label" for="tradeDate">Datum</label>
-                <input type="date" class="form-input" id="tradeDate" />
-              </div>
-              <div>
-                <label class="form-label" for="tradePlatform">Platform (optioneel)</label>
-                <input type="text" class="form-input" id="tradePlatform" placeholder="bijv. Beurs, Marktplaats" />
-              </div>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="tradePerson">Met wie (optioneel)</label>
-            <input type="text" class="form-input" id="tradePerson" placeholder="Naam of account" />
+            <label class="form-label" for="tradeDate">Datum</label>
+            <input type="date" class="form-input" id="tradeDate" />
           </div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
             <div>
               <div class="subsection-header"><span class="subsection-title">Ik geef</span></div>
+              <div class="form-hint" style="margin-bottom:8px;">Per rij: kaartnaam, aantal en waarde per kaart (€).</div>
               <div id="tradeGivenRows"></div>
               <button class="inline-btn" id="addTradeGivenRowBtn" type="button">Kaart toevoegen</button>
               <div style="margin-top:8px;font-size:12px;color:var(--muted);">Totaal gegeven: <strong id="tradeTotalGiven">€ 0,00</strong></div>
             </div>
             <div>
               <div class="subsection-header"><span class="subsection-title">Ik ontvang</span></div>
+              <div class="form-hint" style="margin-bottom:8px;">Per rij: kaartnaam, aantal en waarde per kaart (€).</div>
               <div id="tradeReceivedRows"></div>
               <button class="inline-btn" id="addTradeReceivedRowBtn" type="button">Kaart toevoegen</button>
               <div style="margin-top:8px;font-size:12px;color:var(--muted);">Totaal ontvangen: <strong id="tradeTotalReceived">€ 0,00</strong></div>
@@ -1488,6 +1479,19 @@
       </div>
 
       <div class="analyse-widget-grid" style="margin-top:16px;">
+        <div class="widget widget-info">
+          <div class="widget-header"><span class="widget-title">Trade details</span></div>
+          <div class="widget-body" id="tradeDetailPanel"><div class="widget-empty">Selecteer een trade om details te bekijken.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trades analytics view -->
+    <div id="tradesAnalyseView" role="tabpanel" aria-labelledby="viewTradesAnalyse" style="display:none;" hidden>
+      <div class="section-header" style="margin-bottom:16px;">
+        <span class="section-title">Trades - Analyse</span>
+      </div>
+      <div class="analyse-widget-grid">
         <div class="widget widget-chart">
           <div class="widget-header"><span class="widget-title">Trade performance per maand</span></div>
           <div class="widget-body widget-body-chart">
@@ -1498,10 +1502,6 @@
         <div class="widget widget-info">
           <div class="widget-header"><span class="widget-title">Trade analytics</span></div>
           <div class="widget-body" id="tradeAnalyticsStats"><div class="widget-empty">Nog geen trade data.</div></div>
-        </div>
-        <div class="widget widget-info">
-          <div class="widget-header"><span class="widget-title">Trade details</span></div>
-          <div class="widget-body" id="tradeDetailPanel"><div class="widget-empty">Selecteer een trade om details te bekijken.</div></div>
         </div>
       </div>
     </div>
@@ -1743,7 +1743,7 @@ let appState = ensureAppState(null);
 let activeFilter = 'all';
 let searchQuery = '';
 let editingId = null;
-let activeView = 'transactions'; // 'transactions' | 'profit' | 'analyse' | 'trades'
+let activeView = 'transactions'; // 'transactions' | 'profit' | 'analyse' | 'trades' | 'trades-analyse'
 let profitChart = null;
 let monthlyChart = null;
 let cumulativeChart = null;
@@ -1845,8 +1845,6 @@ function currentTradeDraft() {
   return {
     id: editingTradeId,
     date: document.getElementById('tradeDate').value || todayISO(),
-    platform: document.getElementById('tradePlatform').value.trim(),
-    person: document.getElementById('tradePerson').value.trim(),
     notes: document.getElementById('tradeNotes').value.trim(),
     givenItems,
     receivedItems,
@@ -1857,9 +1855,9 @@ function renderTradeItemRows(containerId, items) {
   const container = document.getElementById(containerId);
   container.innerHTML = items.map((item, index) => `
     <div class="trade-item-row" data-index="${index}">
-      <input type="text" class="form-input" data-field="cardName" placeholder="Kaartnaam" value="${escAttr(item.cardName || '')}" aria-label="Kaartnaam rij ${index + 1}" />
-      <input type="number" class="form-input" data-field="quantity" value="${escAttr(item.quantity || 1)}" min="1" step="1" aria-label="Aantal rij ${index + 1}" />
-      <input type="number" class="form-input" data-field="unitValue" value="${escAttr(item.unitValue || 0)}" min="0" step="0.01" aria-label="Waarde per kaart rij ${index + 1}" />
+      <input type="text" class="form-input" data-field="cardName" placeholder="Kaartnaam (bijv. Charizard)" value="${escAttr(item.cardName || '')}" aria-label="Kaartnaam rij ${index + 1}" />
+      <input type="number" class="form-input" data-field="quantity" value="${escAttr(item.quantity || 1)}" min="1" step="1" aria-label="Aantal rij ${index + 1}" title="Aantal kaarten" />
+      <input type="number" class="form-input" data-field="unitValue" value="${escAttr(item.unitValue || 0)}" min="0" step="0.01" aria-label="Waarde per kaart rij ${index + 1}" title="Waarde per kaart in euro" />
       <button class="cancel-btn" type="button" data-remove-row="true" aria-label="Verwijder rij ${index + 1}">Verwijder</button>
     </div>
   `).join('');
@@ -1897,8 +1895,6 @@ function resetTradeForm() {
   document.getElementById('saveTradeBtn').textContent = 'Trade opslaan';
   document.getElementById('cancelTradeEditBtn').style.display = 'none';
   document.getElementById('tradeDate').value = todayISO();
-  document.getElementById('tradePlatform').value = '';
-  document.getElementById('tradePerson').value = '';
   document.getElementById('tradeNotes').value = '';
   renderTradeItemRows('tradeGivenRows', [createEmptyTradeItem()]);
   renderTradeItemRows('tradeReceivedRows', [createEmptyTradeItem()]);
@@ -2609,8 +2605,6 @@ function renderTradeDetail(tradeId) {
   const normalized = normalizeTrade(trade);
   panel.innerHTML = `
     <div class="widget-stat"><span class="widget-stat-label">Datum</span><span class="widget-stat-value neutral">${escHTML(formatDate(normalized.date))}</span></div>
-    <div class="widget-stat"><span class="widget-stat-label">Platform</span><span class="widget-stat-value neutral">${escHTML(normalized.platform || '—')}</span></div>
-    <div class="widget-stat"><span class="widget-stat-label">Persoon</span><span class="widget-stat-value neutral">${escHTML(normalized.person || '—')}</span></div>
     <div class="widget-stat"><span class="widget-stat-label">Gegeven</span><span class="widget-stat-value negative">${escHTML(summarizeTradeItems(normalized.givenItems))}</span></div>
     <div class="widget-stat"><span class="widget-stat-label">Ontvangen</span><span class="widget-stat-value positive">${escHTML(summarizeTradeItems(normalized.receivedItems))}</span></div>
     <div class="widget-stat"><span class="widget-stat-label">Waarde gegeven</span><span class="widget-stat-value negative">${escHTML(fmt(normalized.totalGiven))}</span></div>
@@ -2674,7 +2668,6 @@ function renderTradeAnalytics(summary, monthly) {
 
 function renderTradesView(preferredTradeId = selectedTradeId) {
   const summary = computeTradeSummary(getTrades(appState));
-  const monthly = computeTradeMonthlyData(getTrades(appState));
   document.getElementById('tradeKpiCount').textContent = summary.count;
   document.getElementById('tradeKpiGiven').textContent = fmt(summary.totalGiven);
   document.getElementById('tradeKpiReceived').textContent = fmt(summary.totalReceived);
@@ -2688,8 +2681,6 @@ function renderTradesView(preferredTradeId = selectedTradeId) {
   if (!rows.length) {
     tbody.innerHTML = '<tr><td colspan="8" class="empty">Nog geen trades toegevoegd.</td></tr>';
     selectedTradeId = null;
-    renderTradePerformanceChart([]);
-    renderTradeAnalytics(summary, monthly);
     renderTradeDetail(null);
     return;
   }
@@ -2728,8 +2719,6 @@ function renderTradesView(preferredTradeId = selectedTradeId) {
         document.getElementById('saveTradeBtn').textContent = 'Trade bijwerken';
         document.getElementById('cancelTradeEditBtn').style.display = '';
         document.getElementById('tradeDate').value = normalized.date;
-        document.getElementById('tradePlatform').value = normalized.platform;
-        document.getElementById('tradePerson').value = normalized.person;
         document.getElementById('tradeNotes').value = normalized.notes;
         renderTradeItemRows('tradeGivenRows', normalized.givenItems.length ? normalized.givenItems : [createEmptyTradeItem()]);
         renderTradeItemRows('tradeReceivedRows', normalized.receivedItems.length ? normalized.receivedItems : [createEmptyTradeItem()]);
@@ -2753,11 +2742,17 @@ function renderTradesView(preferredTradeId = selectedTradeId) {
 
   });
 
-  renderTradePerformanceChart(monthly);
-  renderTradeAnalytics(summary, monthly);
   const hasPreferred = preferredTradeId != null && rows.some(trade => trade.id === preferredTradeId);
   selectedTradeId = hasPreferred ? preferredTradeId : rows[0].id;
   renderTradeDetail(selectedTradeId);
+}
+
+function renderTradesAnalyseView() {
+  const trades = getTrades(appState);
+  const summary = computeTradeSummary(trades);
+  const monthly = computeTradeMonthlyData(trades);
+  renderTradePerformanceChart(monthly);
+  renderTradeAnalytics(summary, monthly);
 }
 
 function setActiveView(view) {
@@ -2766,27 +2761,33 @@ function setActiveView(view) {
   const profView = document.getElementById('profitView');
   const analyseView = document.getElementById('analyseView');
   const tradesView = document.getElementById('tradesView');
+  const tradesAnalyseView = document.getElementById('tradesAnalyseView');
   const txnBtn = document.getElementById('viewTransactions');
   const profBtn = document.getElementById('viewProfit');
   const analyseBtn = document.getElementById('viewAnalyse');
   const tradesBtn = document.getElementById('viewTrades');
+  const tradesAnalyseBtn = document.getElementById('viewTradesAnalyse');
 
   txnView.style.display = 'none';
   profView.style.display = 'none';
   analyseView.style.display = 'none';
   tradesView.style.display = 'none';
+  tradesAnalyseView.style.display = 'none';
   txnView.hidden = true;
   profView.hidden = true;
   analyseView.hidden = true;
   tradesView.hidden = true;
+  tradesAnalyseView.hidden = true;
   txnBtn.classList.remove('active');
   profBtn.classList.remove('active');
   analyseBtn.classList.remove('active');
   tradesBtn.classList.remove('active');
+  tradesAnalyseBtn.classList.remove('active');
   txnBtn.setAttribute('aria-selected', 'false');
   profBtn.setAttribute('aria-selected', 'false');
   analyseBtn.setAttribute('aria-selected', 'false');
   tradesBtn.setAttribute('aria-selected', 'false');
+  tradesAnalyseBtn.setAttribute('aria-selected', 'false');
 
   if (view === 'transactions') {
     txnView.style.display = '';
@@ -2806,6 +2807,14 @@ function setActiveView(view) {
     analyseBtn.setAttribute('aria-selected', 'true');
     renderAnalytics();
   } else {
+    if (view === 'trades-analyse') {
+      tradesAnalyseView.style.display = '';
+      tradesAnalyseView.hidden = false;
+      tradesAnalyseBtn.classList.add('active');
+      tradesAnalyseBtn.setAttribute('aria-selected', 'true');
+      renderTradesAnalyseView();
+      return;
+    }
     tradesView.style.display = '';
     tradesView.hidden = false;
     tradesBtn.classList.add('active');
@@ -2861,6 +2870,7 @@ document.getElementById('viewTransactions').addEventListener('click', () => setA
 document.getElementById('viewProfit').addEventListener('click', () => setActiveView('profit'));
 document.getElementById('viewAnalyse').addEventListener('click', () => setActiveView('analyse'));
 document.getElementById('viewTrades').addEventListener('click', () => setActiveView('trades'));
+document.getElementById('viewTradesAnalyse').addEventListener('click', () => setActiveView('trades-analyse'));
 
 // Widget expand/collapse
 document.getElementById('analyseView').addEventListener('click', e => {
@@ -2940,6 +2950,7 @@ function refreshView() {
   if (activeView === 'profit') renderProfitTable();
   if (activeView === 'analyse') renderAnalytics();
   if (activeView === 'trades') renderTradesView();
+  if (activeView === 'trades-analyse') renderTradesAnalyseView();
   if (!dateInput.value) {
     dateInput.value = todayISO();
   }
@@ -3438,11 +3449,11 @@ document.getElementById('saveTradeBtn').addEventListener('click', () => {
   showMessage(message);
   const draft = normalizeTrade(currentTradeDraft());
   if (!draft.givenItems.length) {
-    showMessage(message, 'error', 'Voeg minimaal één kaart toe bij "Ik geef".');
+    showMessage(message, 'error', 'Vul bij "Ik geef" minimaal één rij in met kaartnaam (aantal/waarde optioneel).');
     return;
   }
   if (!draft.receivedItems.length) {
-    showMessage(message, 'error', 'Voeg minimaal één kaart toe bij "Ik ontvang".');
+    showMessage(message, 'error', 'Vul bij "Ik ontvang" minimaal één rij in met kaartnaam (aantal/waarde optioneel).');
     return;
   }
   if (editingTradeId !== null) {
