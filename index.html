@@ -1082,6 +1082,178 @@
     .widget-table tr:hover td {
       background: var(--bg);
     }
+
+    .trade-entry-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .trade-side {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .trade-side-header {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .trade-items {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+    }
+
+    .trade-item-row {
+      display: grid;
+      grid-template-columns: 1fr 90px 120px auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .trade-input {
+      width: 100%;
+      padding: 7px 9px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+    }
+
+    .trade-input:focus {
+      outline: none;
+      border-color: var(--btn-h);
+    }
+
+    .trade-item-remove {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .trade-item-remove:hover {
+      color: var(--text);
+      border-color: var(--btn-h);
+      background: var(--surface);
+    }
+
+    .trade-add-btn {
+      margin: 0 10px 10px;
+      padding: 7px 9px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .trade-add-btn:hover {
+      color: var(--text);
+      border-color: var(--btn-h);
+      background: var(--surface);
+    }
+
+    .trade-total {
+      padding: 0 10px 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .trade-result {
+      margin-top: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      display: grid;
+      gap: 6px;
+      background: var(--surface2);
+    }
+
+    .trade-result-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+    }
+
+    .trade-actions-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .trade-analysis-grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      margin-bottom: 16px;
+    }
+
+    .trade-kpi {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      background: var(--surface2);
+    }
+
+    .trade-kpi-label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .trade-kpi-value {
+      font-size: 15px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .trade-detail-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.56);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 40;
+      padding: 20px;
+    }
+
+    .trade-detail-backdrop.open {
+      display: flex;
+    }
+
+    .trade-detail-modal {
+      width: min(860px, 100%);
+      max-height: 90vh;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      padding: 14px;
+    }
+
+    @media (max-width: 1080px) {
+      .trade-entry-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1129,6 +1301,8 @@
       <button class="view-toggle-btn active" id="viewTransactions">Transacties</button>
       <button class="view-toggle-btn" id="viewProfit">Winst per kaart</button>
       <button class="view-toggle-btn" id="viewAnalyse">Analyse</button>
+      <button class="view-toggle-btn" id="viewTrades">Trades</button>
+      <button class="view-toggle-btn" id="viewTradesAnalyse">Trades - Analyse</button>
     </div>
 
     <!-- Transactions view -->
@@ -1373,6 +1547,84 @@
 
       </div><!-- /.analyse-widget-grid -->
     </div>
+
+    <div id="tradesView" style="display:none;">
+      <div class="section-header">
+        <span class="section-title">Trades</span>
+      </div>
+
+      <div class="table-wrap" style="padding:12px;margin-bottom:14px;">
+        <div style="display:grid;grid-template-columns:140px 1fr;gap:10px;margin-bottom:10px;">
+          <div>
+            <label class="form-label" for="tradeDate">Datum</label>
+            <input type="date" id="tradeDate" class="trade-input" />
+          </div>
+          <div>
+            <label class="form-label" for="tradeNote">Notitie (optioneel)</label>
+            <input type="text" id="tradeNote" class="trade-input" placeholder="Bijv. tradebeurs Utrecht" />
+          </div>
+        </div>
+
+        <div class="trade-entry-grid">
+          <div class="trade-side">
+            <div class="trade-side-header">IK GEEF</div>
+            <div class="trade-items" id="tradeGivenItems"></div>
+            <button type="button" class="trade-add-btn" id="addTradeGivenItem">+ Kaart toevoegen</button>
+            <div class="trade-total">Totaal: <span id="tradeGivenTotal">€0,00</span></div>
+          </div>
+          <div class="trade-side">
+            <div class="trade-side-header">IK ONTVANG</div>
+            <div class="trade-items" id="tradeReceivedItems"></div>
+            <button type="button" class="trade-add-btn" id="addTradeReceivedItem">+ Kaart toevoegen</button>
+            <div class="trade-total">Totaal: <span id="tradeReceivedTotal">€0,00</span></div>
+          </div>
+        </div>
+
+        <div class="trade-result">
+          <div class="trade-result-row"><span>Waarde gegeven</span><strong id="tradeResultGiven">€0,00</strong></div>
+          <div class="trade-result-row"><span>Waarde ontvangen</span><strong id="tradeResultReceived">€0,00</strong></div>
+          <div class="trade-result-row"><span>Verschil</span><strong id="tradeResultDifference">€0,00</strong></div>
+          <div class="trade-result-row"><span>ROI</span><strong id="tradeResultRoi">0%</strong></div>
+        </div>
+
+        <div class="trade-actions-row">
+          <button class="submit-btn" id="saveTradeBtn">Trade opslaan</button>
+          <button class="cancel-btn" id="cancelTradeEditBtn" style="display:none;">Annuleer bewerken</button>
+        </div>
+        <div class="form-msg" id="tradeMsg"></div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Datum</th>
+              <th>Gegeven</th>
+              <th>Ontvangen</th>
+              <th>Waarde gegeven</th>
+              <th>Waarde ontvangen</th>
+              <th>Verschil</th>
+              <th>ROI</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tradesBody">
+            <tr><td colspan="8" class="empty">Nog geen trades toegevoegd.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="tradesAnalyseView" style="display:none;">
+      <div class="section-header">
+        <span class="section-title">Trades - Analyse</span>
+      </div>
+      <div class="trade-analysis-grid" id="tradeAnalysisGrid"></div>
+      <div class="chart-wrap" id="tradePerformanceChartWrap" style="display:none;">
+        <div class="chart-title">Trade performance over tijd</div>
+        <canvas id="tradePerformanceChart"></canvas>
+      </div>
+    </div>
   </main>
 
   <!-- sidebar -->
@@ -1567,6 +1819,16 @@
 
 </div>
 
+<div class="trade-detail-backdrop" id="tradeDetailBackdrop">
+  <div class="trade-detail-modal">
+    <div class="section-header">
+      <span class="section-title">Trade details</span>
+      <button class="cancel-btn" id="closeTradeDetailBtn">Sluiten</button>
+    </div>
+    <div id="tradeDetailContent"></div>
+  </div>
+</div>
+
 <script type="module">
 import {
   STORAGE_KEY,
@@ -1575,11 +1837,16 @@ import {
   addTab,
   appendTransaction,
   appendTransactions,
+  appendTrade,
   clearAllData,
   computeCardmarketSurplus,
   computeProfitByCard,
   computeSummary,
+  computeTradeAnalytics,
+  computeTradePerformanceSeries,
+  computeTradeSideTotal,
   deleteTab,
+  deleteTrade as deleteStoredTrade,
   deleteTransaction as deleteStoredTransaction,
   ensureAppState,
   getActiveTab as getActiveTabState,
@@ -1590,12 +1857,14 @@ import {
   inferQuantity,
   normalizeDate,
   normalizeQuantity,
+  normalizeTrade,
   normalizeTransaction,
   renameTab,
   roundMoney,
   setActiveTab,
   splitMultiLineDescription,
   todayISO,
+  updateTrade as updateStoredTrade,
   updateTransaction as updateStoredTransaction,
   validateTabName,
 } from './profit-monitor-core.mjs';
@@ -1604,12 +1873,20 @@ let appState = ensureAppState(null);
 let activeFilter = 'all';
 let searchQuery = '';
 let editingId = null;
-let activeView = 'transactions'; // 'transactions' | 'profit' | 'analyse'
+let activeView = 'transactions'; // 'transactions' | 'profit' | 'analyse' | 'trades' | 'trades-analysis'
 let profitChart = null;
 let monthlyChart = null;
 let cumulativeChart = null;
 let monthlyCompareChart = null;
 let growthChart = null;
+let tradePerformanceChart = null;
+let editingTradeId = null;
+let tradeDraft = {
+  date: todayISO(),
+  note: '',
+  givenItems: [{ cardName: '', quantity: 1, value: 0 }],
+  receivedItems: [{ cardName: '', quantity: 1, value: 0 }],
+};
 
 // Period filter state
 let periodFilter = 'all';
@@ -1678,6 +1955,15 @@ function formatDate(value) {
 function formatMonthLabel(monthKey) {
   const [year, month] = monthKey.split('-');
   return new Intl.DateTimeFormat('nl-NL', { month: 'short', year: 'numeric' }).format(new Date(Number(year), Number(month) - 1, 1));
+}
+
+function fmtPercent(value) {
+  const number = Number(value) || 0;
+  const formatted = new Intl.NumberFormat('nl-NL', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(number);
+  return `${number > 0 ? '+' : ''}${formatted}%`;
 }
 
 function syncTopbarTitle() {
@@ -2356,21 +2642,289 @@ function renderGrowthChart(monthly) {
   });
 }
 
+function emptyTradeItem() {
+  return { cardName: '', quantity: 1, value: 0 };
+}
+
+function resetTradeDraft() {
+  editingTradeId = null;
+  tradeDraft = {
+    date: todayISO(),
+    note: '',
+    givenItems: [emptyTradeItem()],
+    receivedItems: [emptyTradeItem()],
+  };
+  document.getElementById('saveTradeBtn').textContent = 'Trade opslaan';
+  document.getElementById('cancelTradeEditBtn').style.display = 'none';
+}
+
+function tradeListSummary(items) {
+  return items.map(item => item.cardName).filter(Boolean).join(' + ') || '—';
+}
+
+function renderTradeDraftItems(side) {
+  const targetId = side === 'givenItems' ? 'tradeGivenItems' : 'tradeReceivedItems';
+  const rows = tradeDraft[side] || [];
+  const target = document.getElementById(targetId);
+  target.innerHTML = rows.map((item, index) => `
+    <div class="trade-item-row">
+      <input
+        type="text"
+        class="trade-input"
+        data-trade-side="${side}"
+        data-trade-index="${index}"
+        data-trade-field="cardName"
+        placeholder="Kaartnaam"
+        value="${escAttr(item.cardName || '')}"
+      />
+      <input
+        type="number"
+        class="trade-input"
+        data-trade-side="${side}"
+        data-trade-index="${index}"
+        data-trade-field="quantity"
+        min="1"
+        step="1"
+        value="${escAttr(item.quantity || 1)}"
+      />
+      <input
+        type="number"
+        class="trade-input"
+        data-trade-side="${side}"
+        data-trade-index="${index}"
+        data-trade-field="value"
+        min="0.01"
+        step="0.01"
+        value="${escAttr(item.value || '')}"
+        placeholder="Waarde p/st"
+      />
+      <button type="button" class="trade-item-remove" data-trade-remove-side="${side}" data-trade-remove-index="${index}" title="Verwijderen">×</button>
+    </div>
+  `).join('');
+}
+
+function syncTradeResult() {
+  const givenTotal = computeTradeSideTotal(tradeDraft.givenItems);
+  const receivedTotal = computeTradeSideTotal(tradeDraft.receivedItems);
+  const difference = roundMoney(receivedTotal - givenTotal);
+  const roi = givenTotal > 0 ? roundMoney((difference / givenTotal) * 100) : 0;
+
+  document.getElementById('tradeGivenTotal').textContent = fmt(givenTotal);
+  document.getElementById('tradeReceivedTotal').textContent = fmt(receivedTotal);
+  document.getElementById('tradeResultGiven').textContent = fmt(givenTotal);
+  document.getElementById('tradeResultReceived').textContent = fmt(receivedTotal);
+
+  const diffEl = document.getElementById('tradeResultDifference');
+  diffEl.textContent = `${difference > 0 ? '+' : ''}${fmt(difference)}`;
+  diffEl.className = difference > 0 ? 'positive' : (difference < 0 ? 'negative' : 'neutral');
+
+  const roiEl = document.getElementById('tradeResultRoi');
+  roiEl.textContent = fmtPercent(roi);
+  roiEl.className = roi > 0 ? 'positive' : (roi < 0 ? 'negative' : 'neutral');
+}
+
+function renderTradeForm() {
+  document.getElementById('tradeDate').value = tradeDraft.date || todayISO();
+  document.getElementById('tradeNote').value = tradeDraft.note || '';
+  renderTradeDraftItems('givenItems');
+  renderTradeDraftItems('receivedItems');
+  syncTradeResult();
+}
+
+function getTrades() {
+  return Array.isArray(appState.trades) ? appState.trades : [];
+}
+
+function renderTradesTable() {
+  const rows = getTrades().slice().sort((left, right) => {
+    if (left.date !== right.date) return right.date.localeCompare(left.date);
+    return right.id - left.id;
+  });
+  const body = document.getElementById('tradesBody');
+
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="8" class="empty">Nog geen trades toegevoegd.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = rows.map(trade => `
+    <tr>
+      <td>${escHTML(formatDate(trade.date))}</td>
+      <td>${escHTML(tradeListSummary(trade.givenItems))}</td>
+      <td>${escHTML(tradeListSummary(trade.receivedItems))}</td>
+      <td>${escHTML(fmt(trade.totalGiven))}</td>
+      <td>${escHTML(fmt(trade.totalReceived))}</td>
+      <td class="amount-cell ${trade.difference >= 0 ? 'positive' : 'negative'}">${escHTML(`${trade.difference > 0 ? '+' : ''}${fmt(trade.difference)}`)}</td>
+      <td class="${trade.roi >= 0 ? 'positive' : 'negative'}">${escHTML(fmtPercent(trade.roi))}</td>
+      <td style="white-space:nowrap;">
+        <button class="inline-btn" data-trade-action="view" data-trade-id="${trade.id}">Open</button>
+        <button class="inline-btn" data-trade-action="edit" data-trade-id="${trade.id}">Bewerk</button>
+        <button class="inline-btn" data-trade-action="delete" data-trade-id="${trade.id}">Verwijder</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openTradeDetail(tradeId) {
+  const trade = getTrades().find(item => item.id === tradeId);
+  if (!trade) return;
+  const detail = document.getElementById('tradeDetailContent');
+  const makeRows = items => items.map(item => `
+    <tr>
+      <td>${escHTML(item.cardName)}</td>
+      <td>${item.quantity}</td>
+      <td>${escHTML(fmt(item.value))}</td>
+      <td>${escHTML(fmt(roundMoney(item.quantity * item.value)))}</td>
+    </tr>
+  `).join('');
+
+  detail.innerHTML = `
+    <div style="margin-bottom:10px;color:var(--muted);font-size:12px;">
+      ${escHTML(formatDate(trade.date))}${trade.note ? ` · ${escHTML(trade.note)}` : ''}
+    </div>
+    <div class="trade-entry-grid">
+      <div class="trade-side">
+        <div class="trade-side-header">IK GEEF</div>
+        <div class="table-wrap" style="border:none;border-radius:0;">
+          <table>
+            <thead><tr><th>Kaart</th><th>Aantal</th><th>Waarde p/st</th><th>Totaal</th></tr></thead>
+            <tbody>${makeRows(trade.givenItems)}</tbody>
+          </table>
+        </div>
+        <div class="trade-total">Totaal: ${escHTML(fmt(trade.totalGiven))}</div>
+      </div>
+      <div class="trade-side">
+        <div class="trade-side-header">IK ONTVANG</div>
+        <div class="table-wrap" style="border:none;border-radius:0;">
+          <table>
+            <thead><tr><th>Kaart</th><th>Aantal</th><th>Waarde p/st</th><th>Totaal</th></tr></thead>
+            <tbody>${makeRows(trade.receivedItems)}</tbody>
+          </table>
+        </div>
+        <div class="trade-total">Totaal: ${escHTML(fmt(trade.totalReceived))}</div>
+      </div>
+    </div>
+    <div class="trade-result" style="margin-top:12px;">
+      <div class="trade-result-row"><span>Verschil</span><strong class="${trade.difference >= 0 ? 'positive' : 'negative'}">${escHTML(`${trade.difference > 0 ? '+' : ''}${fmt(trade.difference)}`)}</strong></div>
+      <div class="trade-result-row"><span>ROI</span><strong class="${trade.roi >= 0 ? 'positive' : 'negative'}">${escHTML(fmtPercent(trade.roi))}</strong></div>
+    </div>
+  `;
+  document.getElementById('tradeDetailBackdrop').classList.add('open');
+}
+
+function closeTradeDetail() {
+  document.getElementById('tradeDetailBackdrop').classList.remove('open');
+}
+
+function renderTradePerformanceChart(trades) {
+  const wrap = document.getElementById('tradePerformanceChartWrap');
+  if (tradePerformanceChart) { tradePerformanceChart.destroy(); tradePerformanceChart = null; }
+  const points = computeTradePerformanceSeries(trades);
+  if (!points.length) {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  wrap.style.display = '';
+  const ctx = document.getElementById('tradePerformanceChart').getContext('2d');
+  tradePerformanceChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: points.map(point => formatDate(point.date)),
+      datasets: [{
+        label: 'Cumulatief verschil',
+        data: points.map(point => point.cumulativeDifference),
+        borderColor: 'rgba(250,250,250,0.85)',
+        backgroundColor: 'rgba(250,250,250,0.12)',
+        borderWidth: 2,
+        pointRadius: 3,
+        tension: 0.25,
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: context => fmt(context.parsed.y) } },
+      },
+      scales: {
+        x: { ticks: { color: '#a1a1aa', font: { size: 11 } }, grid: { color: '#3f3f46' } },
+        y: { ticks: { color: '#a1a1aa', font: { size: 11 }, callback: value => fmt(value) }, grid: { color: '#3f3f46' } },
+      },
+    },
+  });
+}
+
+function renderTradesAnalysis() {
+  const analytics = computeTradeAnalytics(getTrades());
+  const grid = document.getElementById('tradeAnalysisGrid');
+  const items = [
+    ['Totaal aantal trades', analytics.totalTrades],
+    ['Totale waarde gegeven', fmt(analytics.totalGiven)],
+    ['Totale waarde ontvangen', fmt(analytics.totalReceived)],
+    ['Totale value difference', `${analytics.totalDifference > 0 ? '+' : ''}${fmt(analytics.totalDifference)}`],
+    ['Gemiddelde difference per trade', `${analytics.averageDifference > 0 ? '+' : ''}${fmt(analytics.averageDifference)}`],
+    ['Gemiddelde ROI', fmtPercent(analytics.averageRoi)],
+    ['Positieve trades', analytics.positiveTrades],
+    ['Negatieve trades', analytics.negativeTrades],
+  ];
+
+  grid.innerHTML = items.map(([label, value]) => `
+    <div class="trade-kpi">
+      <span class="trade-kpi-label">${escHTML(String(label))}</span>
+      <span class="trade-kpi-value">${escHTML(String(value))}</span>
+    </div>
+  `).join('');
+
+  renderTradePerformanceChart(getTrades());
+}
+
+function updateTradeDraftItem(side, index, field, value) {
+  if (!tradeDraft[side] || !tradeDraft[side][index]) return;
+  if (field === 'cardName') {
+    tradeDraft[side][index].cardName = value;
+  } else if (field === 'quantity') {
+    tradeDraft[side][index].quantity = normalizeQuantity(value);
+  } else if (field === 'value') {
+    const parsed = Number.parseFloat(String(value).replace(',', '.'));
+    tradeDraft[side][index].value = Number.isFinite(parsed) && parsed > 0 ? roundMoney(parsed) : 0;
+  }
+  syncTradeResult();
+}
+
+function collectTradeFromDraft() {
+  const normalized = normalizeTrade({
+    date: document.getElementById('tradeDate').value || todayISO(),
+    note: document.getElementById('tradeNote').value,
+    givenItems: tradeDraft.givenItems,
+    receivedItems: tradeDraft.receivedItems,
+  });
+  return normalized;
+}
+
 function setActiveView(view) {
   activeView = view;
   const txnView = document.getElementById('transactionsView');
   const profView = document.getElementById('profitView');
   const analyseView = document.getElementById('analyseView');
+  const tradesView = document.getElementById('tradesView');
+  const tradesAnalyseView = document.getElementById('tradesAnalyseView');
   const txnBtn = document.getElementById('viewTransactions');
   const profBtn = document.getElementById('viewProfit');
   const analyseBtn = document.getElementById('viewAnalyse');
+  const tradesBtn = document.getElementById('viewTrades');
+  const tradesAnalyseBtn = document.getElementById('viewTradesAnalyse');
 
   txnView.style.display = 'none';
   profView.style.display = 'none';
   analyseView.style.display = 'none';
+  tradesView.style.display = 'none';
+  tradesAnalyseView.style.display = 'none';
   txnBtn.classList.remove('active');
   profBtn.classList.remove('active');
   analyseBtn.classList.remove('active');
+  tradesBtn.classList.remove('active');
+  tradesAnalyseBtn.classList.remove('active');
 
   if (view === 'transactions') {
     txnView.style.display = '';
@@ -2379,10 +2933,19 @@ function setActiveView(view) {
     profView.style.display = '';
     profBtn.classList.add('active');
     renderProfitTable();
-  } else {
+  } else if (view === 'analyse') {
     analyseView.style.display = '';
     analyseBtn.classList.add('active');
     renderAnalytics();
+  } else if (view === 'trades') {
+    tradesView.style.display = '';
+    tradesBtn.classList.add('active');
+    renderTradeForm();
+    renderTradesTable();
+  } else {
+    tradesAnalyseView.style.display = '';
+    tradesAnalyseBtn.classList.add('active');
+    renderTradesAnalysis();
   }
 }
 
@@ -2432,6 +2995,128 @@ document.getElementById('toggleProfitCharts').addEventListener('click', () => {
 document.getElementById('viewTransactions').addEventListener('click', () => setActiveView('transactions'));
 document.getElementById('viewProfit').addEventListener('click', () => setActiveView('profit'));
 document.getElementById('viewAnalyse').addEventListener('click', () => setActiveView('analyse'));
+document.getElementById('viewTrades').addEventListener('click', () => setActiveView('trades'));
+document.getElementById('viewTradesAnalyse').addEventListener('click', () => setActiveView('trades-analysis'));
+
+document.getElementById('tradeDate').addEventListener('change', event => {
+  tradeDraft.date = event.target.value || todayISO();
+});
+
+document.getElementById('tradeNote').addEventListener('input', event => {
+  tradeDraft.note = event.target.value;
+});
+
+function attachTradeSideHandlers(elementId) {
+  const element = document.getElementById(elementId);
+  element.addEventListener('input', event => {
+    const input = event.target.closest('[data-trade-side]');
+    if (!input) return;
+    const side = input.dataset.tradeSide;
+    const index = Number(input.dataset.tradeIndex);
+    const field = input.dataset.tradeField;
+    updateTradeDraftItem(side, index, field, input.value);
+  });
+  element.addEventListener('click', event => {
+    const button = event.target.closest('[data-trade-remove-side]');
+    if (!button) return;
+    const side = button.dataset.tradeRemoveSide;
+    const index = Number(button.dataset.tradeRemoveIndex);
+    if (!tradeDraft[side] || !tradeDraft[side][index]) return;
+    tradeDraft[side].splice(index, 1);
+    if (!tradeDraft[side].length) tradeDraft[side].push(emptyTradeItem());
+    renderTradeForm();
+  });
+}
+
+attachTradeSideHandlers('tradeGivenItems');
+attachTradeSideHandlers('tradeReceivedItems');
+
+document.getElementById('addTradeGivenItem').addEventListener('click', () => {
+  tradeDraft.givenItems.push(emptyTradeItem());
+  renderTradeForm();
+});
+
+document.getElementById('addTradeReceivedItem').addEventListener('click', () => {
+  tradeDraft.receivedItems.push(emptyTradeItem());
+  renderTradeForm();
+});
+
+document.getElementById('saveTradeBtn').addEventListener('click', () => {
+  const tradeMsg = document.getElementById('tradeMsg');
+  showMessage(tradeMsg);
+  const trade = collectTradeFromDraft();
+
+  if (!trade.givenItems.length) {
+    showMessage(tradeMsg, 'error', 'Voeg minimaal één kaart toe bij IK GEEF.');
+    return;
+  }
+  if (!trade.receivedItems.length) {
+    showMessage(tradeMsg, 'error', 'Voeg minimaal één kaart toe bij IK ONTVANG.');
+    return;
+  }
+
+  if (editingTradeId !== null) {
+    appState = updateStoredTrade(appState, editingTradeId, trade);
+    showMessage(tradeMsg, 'success', 'Trade bijgewerkt.');
+  } else {
+    appState = appendTrade(appState, trade);
+    showMessage(tradeMsg, 'success', 'Trade toegevoegd.');
+  }
+
+  saveToStorage();
+  resetTradeDraft();
+  renderTradeForm();
+  renderTradesTable();
+  if (activeView === 'trades-analysis') renderTradesAnalysis();
+  setTimeout(() => showMessage(tradeMsg), 3000);
+});
+
+document.getElementById('cancelTradeEditBtn').addEventListener('click', () => {
+  resetTradeDraft();
+  renderTradeForm();
+  showMessage(document.getElementById('tradeMsg'));
+});
+
+document.getElementById('tradesBody').addEventListener('click', event => {
+  const button = event.target.closest('[data-trade-action]');
+  if (!button) return;
+  const tradeId = Number(button.dataset.tradeId);
+  const action = button.dataset.tradeAction;
+  const trade = getTrades().find(item => item.id === tradeId);
+  if (!trade) return;
+
+  if (action === 'view') {
+    openTradeDetail(tradeId);
+    return;
+  }
+
+  if (action === 'edit') {
+    editingTradeId = tradeId;
+    tradeDraft = {
+      date: trade.date,
+      note: trade.note || '',
+      givenItems: trade.givenItems.map(item => ({ ...item })),
+      receivedItems: trade.receivedItems.map(item => ({ ...item })),
+    };
+    document.getElementById('saveTradeBtn').textContent = 'Trade bijwerken';
+    document.getElementById('cancelTradeEditBtn').style.display = '';
+    renderTradeForm();
+    showMessage(document.getElementById('tradeMsg'));
+    setActiveView('trades');
+    return;
+  }
+
+  if (!confirm('Trade verwijderen?')) return;
+  appState = deleteStoredTrade(appState, tradeId);
+  saveToStorage();
+  renderTradesTable();
+  if (activeView === 'trades-analysis') renderTradesAnalysis();
+});
+
+document.getElementById('closeTradeDetailBtn').addEventListener('click', closeTradeDetail);
+document.getElementById('tradeDetailBackdrop').addEventListener('click', event => {
+  if (event.target.id === 'tradeDetailBackdrop') closeTradeDetail();
+});
 
 // Widget expand/collapse
 document.getElementById('analyseView').addEventListener('click', e => {
@@ -2510,6 +3195,11 @@ function refreshView() {
   renderTable();
   if (activeView === 'profit') renderProfitTable();
   if (activeView === 'analyse') renderAnalytics();
+  if (activeView === 'trades') {
+    renderTradeForm();
+    renderTradesTable();
+  }
+  if (activeView === 'trades-analysis') renderTradesAnalysis();
   if (!dateInput.value) {
     dateInput.value = todayISO();
   }
@@ -2697,6 +3387,8 @@ document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit);
 document.getElementById('clearBtn').addEventListener('click', () => {
   if (!confirm('Alle tabs en transacties wissen? Dit kan niet ongedaan worden gemaakt.')) return;
   appState = clearAllData();
+  resetTradeDraft();
+  closeTradeDetail();
   saveToStorage();
   refreshView();
   showMessage(tabMsg, 'success', 'Alle data gewist.');

@@ -17,6 +17,8 @@ A static profit tracker for Pokémon TCG trading that runs entirely in the brows
 - Track realized profit per card name with FIFO matching on buy/sell quantities
 - Profit visualizations: top-card profit chart and monthly net-result trend
 - Analyse dashboard with KPI widgets including current-month performance
+- Trade registratie met duidelijke **IK GEEF / IK ONTVANG** invoer, live verschil/ROI, en bewerken/verwijderen
+- Aparte tab **Trades - Analyse** met trade-statistieken en performancegrafiek
 - Sold transactions with `#123456789` in the description show Cardmarket order links
 - **Import from `.xlsm` / `.xlsx`** — reads your existing spreadsheet client-side and merges the data (duplicates skipped)
 - Pokémon card image lookup: descriptions in the format `CardName (SETCODE NUMBER)` show images from the [Pokémon TCG API](https://pokemontcg.io), with links to Cardmarket
@@ -37,11 +39,14 @@ The browser app now stores a workspace object:
       "transactions": []
     }
   ],
-  "activeTabId": "tab-..."
+  "activeTabId": "tab-...",
+  "trades": []
 }
 ```
 
 Existing users with the original single transaction array are migrated automatically into a default tab on first load. Use the **JSON exporteren** button to download a full workspace backup, and import that JSON later to restore every tab.
+
+Trades blijven volledig gescheiden van transacties: ze tellen alleen mee in **Trades** en **Trades - Analyse**, niet in omzet/winst van de bestaande verkoopanalyse.
 
 ### Profit matching
 

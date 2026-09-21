@@ -2,6 +2,8 @@ export const STORAGE_KEY = 'profit-monitor-pkmn';
 export const DEFAULT_TAB_NAME = 'Default';
 export const TYPE_SELL = 'Verkocht';
 export const TYPE_BUY = 'Gekocht';
+export const TRADE_SIDE_GIVEN = 'givenItems';
+export const TRADE_SIDE_RECEIVED = 'receivedItems';
 export const GRADING_COMPANY_OPTIONS = ['PSA', 'BGS', 'CGC', 'TAG'];
 export const GRADING_SCALE_BY_COMPANY = Object.freeze({
   PSA: Object.freeze([
@@ -171,6 +173,47 @@ export function normalizeTransaction(transaction = {}, options = {}) {
   };
 }
 
+export function normalizeTradeItem(item = {}) {
+  return {
+    cardName: normalizeTabName(item.cardName),
+    quantity: normalizeQuantity(item.quantity),
+    value: roundMoney(Math.abs(Number(item.value) || 0)),
+  };
+}
+
+export function computeTradeSideTotal(items = []) {
+  return roundMoney(items.reduce((sum, item) => (
+    sum + (normalizeQuantity(item.quantity) * roundMoney(Math.abs(Number(item.value) || 0)))
+  ), 0));
+}
+
+function normalizeTradeItems(items = []) {
+  return (Array.isArray(items) ? items : [])
+    .map(normalizeTradeItem)
+    .filter(item => item.cardName && item.value > 0);
+}
+
+export function normalizeTrade(trade = {}, options = {}) {
+  const givenItems = normalizeTradeItems(trade.givenItems);
+  const receivedItems = normalizeTradeItems(trade.receivedItems);
+  const totalGiven = computeTradeSideTotal(givenItems);
+  const totalReceived = computeTradeSideTotal(receivedItems);
+  const difference = roundMoney(totalReceived - totalGiven);
+  const roi = totalGiven > 0 ? roundMoney((difference / totalGiven) * 100) : 0;
+
+  return {
+    id: trade.id ?? null,
+    date: normalizeDate(trade.date, todayISO(options.now)),
+    note: String(trade.note ?? '').trim(),
+    givenItems,
+    receivedItems,
+    totalGiven,
+    totalReceived,
+    difference,
+    roi,
+  };
+}
+
 export function makeId(prefix = 'id') {
   if (globalThis.crypto?.randomUUID) {
     return `${prefix}-${globalThis.crypto.randomUUID()}`;
@@ -251,6 +294,7 @@ export function ensureAppState(rawState, options = {}) {
     return {
       tabs: [{ ...defaultTab, transactions: defaultTab.transactions.map((txn, index) => ({ ...txn, id: index + 1 })) }],
       activeTabId: defaultTab.id,
+      trades: [],
     };
   }
 
@@ -265,14 +309,23 @@ export function ensureAppState(rawState, options = {}) {
       id: options.defaultTabId,
       now: options.now,
     });
-    return { tabs: [defaultTab], activeTabId: defaultTab.id };
+    return { tabs: [defaultTab], activeTabId: defaultTab.id, trades: [] };
   }
 
   const activeTabId = tabs.some(tab => tab.id === parsed?.activeTabId)
     ? parsed.activeTabId
     : tabs[0].id;
 
-  return { tabs, activeTabId };
+  const trades = (Array.isArray(parsed?.trades) ? parsed.trades : [])
+    .map((trade, index) => {
+      const normalized = normalizeTrade(trade, options);
+      return {
+        ...normalized,
+        id: Number.isInteger(trade?.id) ? trade.id : index + 1,
+      };
+    });
+
+  return { tabs, activeTabId, trades };
 }
 
 export function getActiveTab(state) {
@@ -465,6 +518,87 @@ export function updateTransaction(state, transactionId, transaction, options = {
 
 export function clearAllData(options = {}) {
   return ensureAppState(null, options);
+}
+
+export function getTrades(state) {
+  return Array.isArray(state?.trades) ? state.trades : [];
+}
+
+export function nextTradeId(state) {
+  return getTrades(state).reduce((maxId, trade) => (
+    Number.isInteger(trade.id) ? Math.max(maxId, trade.id) : maxId
+  ), 0) + 1;
+}
+
+export function appendTrade(state, trade, options = {}) {
+  const normalized = normalizeTrade(trade, { now: options.now });
+  const id = nextTradeId(state);
+  return {
+    ...state,
+    trades: [...getTrades(state), { ...normalized, id }],
+  };
+}
+
+export function updateTrade(state, tradeId, trade, options = {}) {
+  const normalized = normalizeTrade(trade, { now: options.now });
+  return {
+    ...state,
+    trades: getTrades(state).map(entry => (
+      entry.id === tradeId ? { ...normalized, id: tradeId } : entry
+    )),
+  };
+}
+
+export function deleteTrade(state, tradeId) {
+  return {
+    ...state,
+    trades: getTrades(state).filter(trade => trade.id !== tradeId),
+  };
+}
+
+export function computeTradeAnalytics(trades = []) {
+  const normalizedTrades = (Array.isArray(trades) ? trades : []).map(trade => normalizeTrade(trade));
+  const totalTrades = normalizedTrades.length;
+  const totalGiven = roundMoney(normalizedTrades.reduce((sum, trade) => sum + trade.totalGiven, 0));
+  const totalReceived = roundMoney(normalizedTrades.reduce((sum, trade) => sum + trade.totalReceived, 0));
+  const totalDifference = roundMoney(totalReceived - totalGiven);
+  const averageDifference = totalTrades ? roundMoney(totalDifference / totalTrades) : 0;
+  const averageRoi = totalTrades
+    ? roundMoney(normalizedTrades.reduce((sum, trade) => sum + trade.roi, 0) / totalTrades)
+    : 0;
+  const positiveTrades = normalizedTrades.filter(trade => trade.difference > 0).length;
+  const negativeTrades = normalizedTrades.filter(trade => trade.difference < 0).length;
+
+  return {
+    totalTrades,
+    totalGiven,
+    totalReceived,
+    totalDifference,
+    averageDifference,
+    averageRoi,
+    positiveTrades,
+    negativeTrades,
+  };
+}
+
+export function computeTradePerformanceSeries(trades = []) {
+  const normalizedTrades = (Array.isArray(trades) ? trades : [])
+    .map(trade => normalizeTrade(trade))
+    .sort((left, right) => {
+      if (left.date !== right.date) return left.date.localeCompare(right.date);
+      return left.id - right.id;
+    });
+
+  let cumulativeDifference = 0;
+  return normalizedTrades.map(trade => {
+    cumulativeDifference = roundMoney(cumulativeDifference + trade.difference);
+    return {
+      id: trade.id,
+      date: trade.date,
+      difference: trade.difference,
+      cumulativeDifference,
+    };
+  });
 }
 
 export function computeSummary(transactions) {
