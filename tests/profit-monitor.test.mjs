@@ -6,8 +6,12 @@ import {
   TYPE_BUY,
   TYPE_SELL,
   addTab,
+  appendTrade,
+  computeTradeAnalytics,
+  computeTradePerformanceSeries,
   computeCardmarketSurplus,
   computeProfitByCard,
+  deleteTrade,
   deleteTab,
   ensureAppState,
   extractCardmarketOrderIds,
@@ -18,6 +22,7 @@ import {
   normalizeGradingValue,
   normalizeTransaction,
   setActiveTab,
+  updateTrade,
   validateTabName,
 } from '../profit-monitor-core.mjs';
 
@@ -34,6 +39,7 @@ test('legacy data migrates into a default tab and repairs invalid active tabs', 
   assert.equal(state.activeTabId, 'default-tab');
   assert.equal(state.tabs[0].transactions[0].amount, -12.5);
   assert.equal(state.tabs[0].transactions[0].quantity, 1);
+  assert.deepEqual(state.trades, []);
 
   const repaired = ensureAppState({
     tabs: state.tabs,
@@ -41,6 +47,7 @@ test('legacy data migrates into a default tab and repairs invalid active tabs', 
   });
 
   assert.equal(repaired.activeTabId, state.tabs[0].id);
+  assert.deepEqual(repaired.trades, []);
 });
 
 test('tabs can be created, switched, deleted, and recreated when the last tab is removed', () => {
@@ -187,4 +194,61 @@ test('grading normalization keeps only valid company-specific grades', () => {
   assert.equal(normalized.gradingCompany, 'BGS');
   assert.equal(normalized.gradingValue, '9.5');
   assert.equal(normalized.gradingLabel, 'Gem Mint');
+});
+
+test('trades are stored separately and support CRUD plus analytics', () => {
+  let state = ensureAppState(null, {
+    defaultTabId: 'default-tab',
+    now: '2026-09-21T00:00:00Z',
+  });
+
+  state = appendTrade(state, {
+    date: '2026-09-21',
+    note: 'Eerste trade',
+    givenItems: [
+      { cardName: 'Charizard ex', quantity: 1, value: 80 },
+      { cardName: 'Pikachu', quantity: 2, value: 20 },
+    ],
+    receivedItems: [
+      { cardName: 'Umbreon VMAX', quantity: 1, value: 125 },
+    ],
+  });
+
+  assert.equal(state.trades.length, 1);
+  assert.equal(state.trades[0].totalGiven, 120);
+  assert.equal(state.trades[0].totalReceived, 125);
+  assert.equal(state.trades[0].difference, 5);
+  assert.equal(state.trades[0].roi, 4.17);
+
+  state = updateTrade(state, state.trades[0].id, {
+    ...state.trades[0],
+    receivedItems: [{ cardName: 'Umbreon VMAX', quantity: 1, value: 130 }],
+  });
+
+  assert.equal(state.trades[0].difference, 10);
+  assert.equal(state.trades[0].roi, 8.33);
+
+  const analytics = computeTradeAnalytics(state.trades);
+  assert.deepEqual(analytics, {
+    totalTrades: 1,
+    totalGiven: 120,
+    totalReceived: 130,
+    totalDifference: 10,
+    averageDifference: 10,
+    averageRoi: 8.33,
+    positiveTrades: 1,
+    negativeTrades: 0,
+  });
+
+  const series = computeTradePerformanceSeries(state.trades);
+  assert.deepEqual(series, [{
+    id: state.trades[0].id,
+    date: '2026-09-21',
+    difference: 10,
+    cumulativeDifference: 10,
+  }]);
+
+  state = deleteTrade(state, state.trades[0].id);
+  assert.equal(state.trades.length, 0);
+  assert.equal(state.tabs.length, 1);
 });
