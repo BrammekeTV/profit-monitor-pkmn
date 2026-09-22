@@ -1112,7 +1112,7 @@
 
     .trade-item-row {
       display: grid;
-      grid-template-columns: 1fr 90px 120px auto;
+      grid-template-columns: minmax(0, 1fr) 90px 120px 88px 150px auto;
       gap: 8px;
       align-items: center;
     }
@@ -1852,6 +1852,7 @@
 <script type="module">
 import {
   STORAGE_KEY,
+  GRADING_COMPANY_OPTIONS,
   TYPE_BUY,
   TYPE_SELL,
   addTab,
@@ -2663,7 +2664,7 @@ function renderGrowthChart(monthly) {
 }
 
 function emptyTradeItem() {
-  return { cardName: '', quantity: 1, value: 0 };
+  return { cardName: '', quantity: 1, value: 0, gradingCompany: '', gradingValue: '' };
 }
 
 function resetTradeDraft() {
@@ -2679,7 +2680,13 @@ function resetTradeDraft() {
 }
 
 function tradeListSummary(items) {
-  return items.map(item => item.cardName).filter(Boolean).join(' + ') || '—';
+  return items.map(item => {
+    if (!item.cardName) return '';
+    if (!item.gradingCompany || !item.gradingValue) return item.cardName;
+    const gradeLabel = item.gradingLabel || getGradeLabel(item.gradingCompany, item.gradingValue);
+    const gradeText = gradeLabel ? `${item.gradingValue} · ${gradeLabel}` : item.gradingValue;
+    return `${item.cardName} (${item.gradingCompany} ${gradeText})`;
+  }).filter(Boolean).join(' + ') || '—';
 }
 
 function renderTradeDraftItems(side) {
@@ -2718,6 +2725,31 @@ function renderTradeDraftItems(side) {
         value="${escAttr(item.value || '')}"
         placeholder="Waarde p/st"
       />
+      <select
+        class="trade-input"
+        data-trade-side="${side}"
+        data-trade-index="${index}"
+        data-trade-field="gradingCompany"
+      >
+        <option value="">Niet gegradeerd</option>
+        ${GRADING_COMPANY_OPTIONS.map(company => `
+          <option value="${escAttr(company)}" ${item.gradingCompany === company ? 'selected' : ''}>${escHTML(company)}</option>
+        `).join('')}
+      </select>
+      <select
+        class="trade-input"
+        data-trade-side="${side}"
+        data-trade-index="${index}"
+        data-trade-field="gradingValue"
+        ${item.gradingCompany ? '' : 'disabled'}
+      >
+        <option value="">— grade —</option>
+        ${getGradingScale(item.gradingCompany).map(grade => `
+          <option value="${escAttr(grade.value)}" ${item.gradingValue === grade.value ? 'selected' : ''}>
+            ${escHTML(`${grade.value} — ${grade.label}`)}
+          </option>
+        `).join('')}
+      </select>
       <button type="button" class="trade-item-remove" data-trade-remove-side="${side}" data-trade-remove-index="${index}" title="Verwijderen">×</button>
     </div>
   `).join('');
@@ -2792,6 +2824,9 @@ function openTradeDetail(tradeId) {
   const makeRows = items => items.map(item => `
     <tr>
       <td>${escHTML(item.cardName)}</td>
+      <td>${item.gradingCompany && item.gradingValue
+    ? escHTML(`${item.gradingCompany} ${item.gradingValue}${item.gradingLabel ? ` · ${item.gradingLabel}` : ''}`)
+    : '—'}</td>
       <td>${item.quantity}</td>
       <td>${escHTML(fmt(item.value))}</td>
       <td>${escHTML(fmt(roundMoney(item.quantity * item.value)))}</td>
@@ -2807,7 +2842,7 @@ function openTradeDetail(tradeId) {
         <div class="trade-side-header">IK GEEF</div>
         <div class="table-wrap" style="border:none;border-radius:0;">
           <table>
-            <thead><tr><th>Kaart</th><th>Aantal</th><th>Waarde p/st</th><th>Totaal</th></tr></thead>
+            <thead><tr><th>Kaart</th><th>Grade</th><th>Aantal</th><th>Waarde p/st</th><th>Totaal</th></tr></thead>
             <tbody>${makeRows(trade.givenItems)}</tbody>
           </table>
         </div>
@@ -2817,7 +2852,7 @@ function openTradeDetail(tradeId) {
         <div class="trade-side-header">IK ONTVANG</div>
         <div class="table-wrap" style="border:none;border-radius:0;">
           <table>
-            <thead><tr><th>Kaart</th><th>Aantal</th><th>Waarde p/st</th><th>Totaal</th></tr></thead>
+            <thead><tr><th>Kaart</th><th>Grade</th><th>Aantal</th><th>Waarde p/st</th><th>Totaal</th></tr></thead>
             <tbody>${makeRows(trade.receivedItems)}</tbody>
           </table>
         </div>
@@ -2951,6 +2986,20 @@ function updateTradeDraftItem(side, index, field, value) {
   } else if (field === 'value') {
     const parsed = Number.parseFloat(String(value).replace(',', '.'));
     tradeDraft[side][index].value = Number.isFinite(parsed) && parsed > 0 ? roundMoney(parsed) : 0;
+  } else if (field === 'gradingCompany') {
+    tradeDraft[side][index].gradingCompany = GRADING_COMPANY_OPTIONS.includes(value) ? value : '';
+    if (!tradeDraft[side][index].gradingCompany) {
+      tradeDraft[side][index].gradingValue = '';
+    } else {
+      const grades = getGradingScale(tradeDraft[side][index].gradingCompany);
+      const hasCurrentGrade = grades.some(grade => grade.value === tradeDraft[side][index].gradingValue);
+      if (!hasCurrentGrade) tradeDraft[side][index].gradingValue = '';
+    }
+    renderTradeForm();
+    return;
+  } else if (field === 'gradingValue') {
+    const grades = getGradingScale(tradeDraft[side][index].gradingCompany);
+    tradeDraft[side][index].gradingValue = grades.some(grade => grade.value === value) ? value : '';
   }
   syncTradeResult();
 }

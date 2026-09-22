@@ -206,11 +206,11 @@ test('trades are stored separately and support CRUD plus analytics', () => {
     date: '2026-09-21',
     note: 'Eerste trade',
     givenItems: [
-      { cardName: 'Charizard ex', quantity: 1, value: 80 },
+      { cardName: 'Charizard ex', quantity: 1, value: 80, gradingCompany: 'psa', gradingValue: '10' },
       { cardName: 'Pikachu', quantity: 2, value: 20 },
     ],
     receivedItems: [
-      { cardName: 'Umbreon VMAX', quantity: 1, value: 125 },
+      { cardName: 'Umbreon VMAX', quantity: 1, value: 125, gradingCompany: 'tag', gradingValue: '9.5' },
     ],
   });
 
@@ -219,6 +219,11 @@ test('trades are stored separately and support CRUD plus analytics', () => {
   assert.equal(state.trades[0].totalReceived, 125);
   assert.equal(state.trades[0].difference, 5);
   assert.equal(state.trades[0].roi, 4.17);
+  assert.equal(state.trades[0].givenItems[0].gradingCompany, 'PSA');
+  assert.equal(state.trades[0].givenItems[0].gradingValue, '10');
+  assert.equal(state.trades[0].givenItems[0].gradingLabel, 'Gem Mint');
+  assert.equal(state.trades[0].receivedItems[0].gradingCompany, 'TAG');
+  assert.equal(state.trades[0].receivedItems[0].gradingValue, '');
 
   state = updateTrade(state, state.trades[0].id, {
     ...state.trades[0],
