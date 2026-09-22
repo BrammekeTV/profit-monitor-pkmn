@@ -1112,7 +1112,7 @@
 
     .trade-item-row {
       display: grid;
-      grid-template-columns: 1fr 90px 120px auto;
+      grid-template-columns: minmax(0, 1fr) 90px 120px 88px 150px auto;
       gap: 8px;
       align-items: center;
     }
@@ -1852,6 +1852,7 @@
 <script type="module">
 import {
   STORAGE_KEY,
+  GRADING_COMPANY_OPTIONS,
   TYPE_BUY,
   TYPE_SELL,
   addTab,
@@ -2663,7 +2664,35 @@ function renderGrowthChart(monthly) {
 }
 
 function emptyTradeItem() {
-  return { cardName: '', quantity: 1, value: 0 };
+  return { cardName: '', quantity: 1, value: 0, gradingCompany: '', gradingValue: '' };
+}
+
+function normalizeTradeDraftItemGrading(item) {
+  const company = String(item.gradingCompany || '').trim().toUpperCase();
+  const normalizedCompany = GRADING_COMPANY_OPTIONS.includes(company) ? company : '';
+  const gradingValue = String(item.gradingValue || '').trim();
+  const validGrades = getGradingScale(normalizedCompany);
+  const normalizedValue = validGrades.some(grade => grade.value === gradingValue) ? gradingValue : '';
+  item.gradingCompany = normalizedCompany;
+  item.gradingValue = normalizedValue;
+  return item;
+}
+
+function normalizeTradeDraftState() {
+  for (const side of ['givenItems', 'receivedItems']) {
+    const items = tradeDraft[side];
+    if (!Array.isArray(items)) continue;
+    items.forEach(normalizeTradeDraftItemGrading);
+  }
+}
+
+function formatTradeItemGrade(item) {
+  const company = String(item.gradingCompany || '').trim().toUpperCase();
+  const value = String(item.gradingValue || '').trim();
+  const grades = getGradingScale(company);
+  if (!company || !value || !grades.some(grade => grade.value === value)) return '';
+  const gradeLabel = getGradeLabel(company, value);
+  return `${company} ${value}${gradeLabel ? ` · ${gradeLabel}` : ''}`;
 }
 
 function resetTradeDraft() {
@@ -2674,19 +2703,26 @@ function resetTradeDraft() {
     givenItems: [emptyTradeItem()],
     receivedItems: [emptyTradeItem()],
   };
+  normalizeTradeDraftState();
   document.getElementById('saveTradeBtn').textContent = 'Trade opslaan';
   document.getElementById('cancelTradeEditBtn').style.display = 'none';
 }
 
 function tradeListSummary(items) {
-  return items.map(item => item.cardName).filter(Boolean).join(' + ') || '—';
+  return items.map(item => {
+    if (!item.cardName) return '';
+    const gradeText = formatTradeItemGrade(item);
+    if (!gradeText) return item.cardName;
+    return `${item.cardName} (${gradeText})`;
+  }).filter(Boolean).join(' + ') || '—';
 }
 
 function renderTradeDraftItems(side) {
   const targetId = side === 'givenItems' ? 'tradeGivenItems' : 'tradeReceivedItems';
   const rows = tradeDraft[side] || [];
   const target = document.getElementById(targetId);
-  target.innerHTML = rows.map((item, index) => `
+  target.innerHTML = rows.map((item, index) => {
+    return `
     <div class="trade-item-row">
       <input
         type="text"
@@ -2718,9 +2754,35 @@ function renderTradeDraftItems(side) {
         value="${escAttr(item.value || '')}"
         placeholder="Waarde p/st"
       />
+      <select
+        class="trade-input"
+        data-trade-side="${side}"
+        data-trade-index="${index}"
+        data-trade-field="gradingCompany"
+      >
+        <option value="">Niet gegradeerd</option>
+        ${GRADING_COMPANY_OPTIONS.map(company => `
+          <option value="${escAttr(company)}" ${item.gradingCompany === company ? 'selected' : ''}>${escHTML(company)}</option>
+        `).join('')}
+      </select>
+      <select
+        class="trade-input"
+        data-trade-side="${side}"
+        data-trade-index="${index}"
+        data-trade-field="gradingValue"
+        ${item.gradingCompany ? '' : 'disabled'}
+      >
+        <option value="">— grade —</option>
+        ${getGradingScale(item.gradingCompany).map(grade => `
+          <option value="${escAttr(grade.value)}" ${item.gradingValue === grade.value ? 'selected' : ''}>
+            ${escHTML(`${grade.value} — ${grade.label}`)}
+          </option>
+        `).join('')}
+      </select>
       <button type="button" class="trade-item-remove" data-trade-remove-side="${side}" data-trade-remove-index="${index}" title="Verwijderen">×</button>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function syncTradeResult() {
@@ -2744,6 +2806,7 @@ function syncTradeResult() {
 }
 
 function renderTradeForm() {
+  normalizeTradeDraftState();
   document.getElementById('tradeDate').value = tradeDraft.date || todayISO();
   document.getElementById('tradeNote').value = tradeDraft.note || '';
   renderTradeDraftItems('givenItems');
@@ -2789,14 +2852,20 @@ function openTradeDetail(tradeId) {
   const trade = getTrades().find(item => item.id === tradeId);
   if (!trade) return;
   const detail = document.getElementById('tradeDetailContent');
-  const makeRows = items => items.map(item => `
+  const makeRows = items => items.map(item => {
+    const gradeText = formatTradeItemGrade(item);
+    return `
     <tr>
-      <td>${escHTML(item.cardName)}</td>
+      <td>
+        ${escHTML(item.cardName)}
+        ${gradeText ? `<div style="font-size:12px;color:var(--muted);">${escHTML(gradeText)}</div>` : ''}
+      </td>
       <td>${item.quantity}</td>
       <td>${escHTML(fmt(item.value))}</td>
       <td>${escHTML(fmt(roundMoney(item.quantity * item.value)))}</td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 
   detail.innerHTML = `
     <div style="margin-bottom:10px;color:var(--muted);font-size:12px;">
@@ -2951,6 +3020,20 @@ function updateTradeDraftItem(side, index, field, value) {
   } else if (field === 'value') {
     const parsed = Number.parseFloat(String(value).replace(',', '.'));
     tradeDraft[side][index].value = Number.isFinite(parsed) && parsed > 0 ? roundMoney(parsed) : 0;
+  } else if (field === 'gradingCompany') {
+    tradeDraft[side][index].gradingCompany = GRADING_COMPANY_OPTIONS.includes(value) ? value : '';
+    if (!tradeDraft[side][index].gradingCompany) {
+      tradeDraft[side][index].gradingValue = '';
+    } else {
+      const grades = getGradingScale(tradeDraft[side][index].gradingCompany);
+      const hasCurrentGrade = grades.some(grade => grade.value === tradeDraft[side][index].gradingValue);
+      if (!hasCurrentGrade) tradeDraft[side][index].gradingValue = '';
+    }
+    renderTradeForm();
+    return;
+  } else if (field === 'gradingValue') {
+    const grades = getGradingScale(tradeDraft[side][index].gradingCompany);
+    tradeDraft[side][index].gradingValue = grades.some(grade => grade.value === value) ? value : '';
   }
   syncTradeResult();
 }
@@ -3161,6 +3244,7 @@ document.getElementById('tradesBody').addEventListener('click', event => {
       givenItems: trade.givenItems.map(item => ({ ...item })),
       receivedItems: trade.receivedItems.map(item => ({ ...item })),
     };
+    normalizeTradeDraftState();
     document.getElementById('saveTradeBtn').textContent = 'Trade bijwerken';
     document.getElementById('cancelTradeEditBtn').style.display = '';
     renderTradeForm();

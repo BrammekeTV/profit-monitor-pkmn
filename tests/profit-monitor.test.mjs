@@ -206,11 +206,11 @@ test('trades are stored separately and support CRUD plus analytics', () => {
     date: '2026-09-21',
     note: 'Eerste trade',
     givenItems: [
-      { cardName: 'Charizard ex', quantity: 1, value: 80 },
+      { cardName: 'Charizard ex', quantity: 1, value: 80, gradingCompany: 'psa', gradingValue: '10' },
       { cardName: 'Pikachu', quantity: 2, value: 20 },
     ],
     receivedItems: [
-      { cardName: 'Umbreon VMAX', quantity: 1, value: 125 },
+      { cardName: 'Umbreon VMAX', quantity: 1, value: 125, gradingCompany: 'tag', gradingValue: '9' },
     ],
   });
 
@@ -219,6 +219,12 @@ test('trades are stored separately and support CRUD plus analytics', () => {
   assert.equal(state.trades[0].totalReceived, 125);
   assert.equal(state.trades[0].difference, 5);
   assert.equal(state.trades[0].roi, 4.17);
+  assert.equal(state.trades[0].givenItems[0].gradingCompany, 'PSA');
+  assert.equal(state.trades[0].givenItems[0].gradingValue, '10');
+  assert.equal(state.trades[0].givenItems[0].gradingLabel, 'Gem Mint');
+  assert.equal(state.trades[0].receivedItems[0].gradingCompany, 'TAG');
+  assert.equal(state.trades[0].receivedItems[0].gradingValue, '9');
+  assert.equal(state.trades[0].receivedItems[0].gradingLabel, '9');
 
   state = updateTrade(state, state.trades[0].id, {
     ...state.trades[0],
@@ -251,4 +257,30 @@ test('trades are stored separately and support CRUD plus analytics', () => {
   state = deleteTrade(state, state.trades[0].id);
   assert.equal(state.trades.length, 0);
   assert.equal(state.tabs.length, 1);
+});
+
+test('persisted trades normalize graded item values on load', () => {
+  const state = ensureAppState({
+    tabs: [{
+      id: 'default-tab',
+      name: 'Default',
+      createdAt: '2026-09-21T00:00:00Z',
+      transactions: [],
+    }],
+    activeTabId: 'default-tab',
+    trades: [{
+      id: 1,
+      date: '2026-09-21',
+      givenItems: [{ cardName: 'Mewtwo', quantity: 1, value: 99, gradingCompany: 'psa', gradingValue: '10' }],
+      receivedItems: [{ cardName: 'Rayquaza', quantity: 1, value: 110, gradingCompany: 'tag', gradingValue: '10' }],
+    }],
+  }, {
+    now: '2026-09-21T00:00:00Z',
+  });
+
+  assert.equal(state.trades[0].givenItems[0].gradingCompany, 'PSA');
+  assert.equal(state.trades[0].givenItems[0].gradingLabel, 'Gem Mint');
+  assert.equal(state.trades[0].receivedItems[0].gradingCompany, 'TAG');
+  assert.equal(state.trades[0].receivedItems[0].gradingValue, '10');
+  assert.equal(state.trades[0].receivedItems[0].gradingLabel, '10');
 });

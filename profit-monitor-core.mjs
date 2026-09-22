@@ -174,10 +174,15 @@ export function normalizeTransaction(transaction = {}, options = {}) {
 }
 
 export function normalizeTradeItem(item = {}) {
+  const gradingCompany = normalizeGradingCompany(item.gradingCompany);
+  const gradingValue = normalizeGradingValue(gradingCompany, item.gradingValue);
   return {
     cardName: normalizeTabName(item.cardName),
     quantity: normalizeQuantity(item.quantity),
     value: roundMoney(Math.abs(Number(item.value) || 0)),
+    gradingCompany,
+    gradingValue,
+    gradingLabel: getGradeLabel(gradingCompany, gradingValue),
   };
 }
 
