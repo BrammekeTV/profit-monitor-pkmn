@@ -2736,6 +2736,13 @@ function tradeListSummary(items, cashAmount = 0) {
   return entries.join(' + ') || '—';
 }
 
+function hasTradeSideContent(side) {
+  if (normalizeTradeDraftCashAmount(tradeDraft[`${side}CashAmount`]) > 0) return true;
+  return (tradeDraft[`${side}Items`] || []).some(item => (
+    String(item.cardName || '').trim() && roundMoney(Math.abs(Number(item.value) || 0)) > 0
+  ));
+}
+
 function renderTradeDraftItems(side) {
   const targetId = side === 'givenItems' ? 'tradeGivenItems' : 'tradeReceivedItems';
   const rows = tradeDraft[side] || [];
@@ -3232,11 +3239,11 @@ document.getElementById('saveTradeBtn').addEventListener('click', () => {
   showMessage(tradeMsg);
   const trade = collectTradeFromDraft();
 
-  if (trade.totalGiven <= 0) {
+  if (!hasTradeSideContent('given')) {
     showMessage(tradeMsg, 'error', 'Voeg minimaal één kaart of bedrag toe bij IK GEEF.');
     return;
   }
-  if (trade.totalReceived <= 0) {
+  if (!hasTradeSideContent('received')) {
     showMessage(tradeMsg, 'error', 'Voeg minimaal één kaart of bedrag toe bij IK ONTVANG.');
     return;
   }
