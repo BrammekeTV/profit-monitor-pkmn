@@ -2878,7 +2878,11 @@ function openTradeDetail(tradeId) {
   const trade = getTrades().find(item => item.id === tradeId);
   if (!trade) return;
   const detail = document.getElementById('tradeDetailContent');
-  const makeRows = (items, cashAmount) => items.map(item => {
+  const makeRows = items => {
+    if (!items.length) {
+      return '<tr><td colspan="4" class="empty">Geen kaarten toegevoegd.</td></tr>';
+    }
+    return items.map(item => {
     const gradeText = formatTradeItemGrade(item);
     return `
     <tr>
@@ -2891,14 +2895,8 @@ function openTradeDetail(tradeId) {
       <td>${escHTML(fmt(roundMoney(item.quantity * item.value)))}</td>
     </tr>
   `;
-  }).join('') + (cashAmount > 0 ? `
-    <tr>
-      <td>Contant</td>
-      <td>—</td>
-      <td>${escHTML(fmt(cashAmount))}</td>
-      <td>${escHTML(fmt(cashAmount))}</td>
-    </tr>
-  ` : '');
+    }).join('');
+  };
 
   detail.innerHTML = `
     <div style="margin-bottom:10px;color:var(--muted);font-size:12px;">
@@ -2910,9 +2908,10 @@ function openTradeDetail(tradeId) {
         <div class="table-wrap" style="border:none;border-radius:0;">
           <table>
             <thead><tr><th>Kaart</th><th>Aantal</th><th>Waarde p/st</th><th>Totaal</th></tr></thead>
-            <tbody>${makeRows(trade.givenItems, trade.givenCashAmount)}</tbody>
+            <tbody>${makeRows(trade.givenItems)}</tbody>
           </table>
         </div>
+        ${trade.givenCashAmount > 0 ? `<div class="trade-total">Los bedrag: ${escHTML(fmt(trade.givenCashAmount))}</div>` : ''}
         <div class="trade-total">Totaal: ${escHTML(fmt(trade.totalGiven))}</div>
       </div>
       <div class="trade-side">
@@ -2920,9 +2919,10 @@ function openTradeDetail(tradeId) {
         <div class="table-wrap" style="border:none;border-radius:0;">
           <table>
             <thead><tr><th>Kaart</th><th>Aantal</th><th>Waarde p/st</th><th>Totaal</th></tr></thead>
-            <tbody>${makeRows(trade.receivedItems, trade.receivedCashAmount)}</tbody>
+            <tbody>${makeRows(trade.receivedItems)}</tbody>
           </table>
         </div>
+        ${trade.receivedCashAmount > 0 ? `<div class="trade-total">Los bedrag: ${escHTML(fmt(trade.receivedCashAmount))}</div>` : ''}
         <div class="trade-total">Totaal: ${escHTML(fmt(trade.totalReceived))}</div>
       </div>
     </div>
