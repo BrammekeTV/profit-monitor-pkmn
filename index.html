@@ -1886,6 +1886,7 @@ import {
   inferQuantity,
   normalizeDate,
   normalizeQuantity,
+  normalizeTradeCashAmount,
   normalizeTrade,
   normalizeTransaction,
   renameTab,
@@ -2679,7 +2680,7 @@ function emptyTradeItem() {
 
 function normalizeTradeDraftCashAmount(value) {
   const parsed = Number.parseFloat(String(value ?? '').replace(',', '.'));
-  return Number.isFinite(parsed) && parsed > 0 ? roundMoney(parsed) : 0;
+  return normalizeTradeCashAmount(Number.isFinite(parsed) ? parsed : 0);
 }
 
 function normalizeTradeDraftItemGrading(item) {
@@ -2736,11 +2737,9 @@ function tradeListSummary(items, cashAmount = 0) {
   return entries.join(' + ') || '—';
 }
 
-function hasTradeSideContent(side) {
-  if (normalizeTradeDraftCashAmount(tradeDraft[`${side}CashAmount`]) > 0) return true;
-  return (tradeDraft[`${side}Items`] || []).some(item => (
-    String(item.cardName || '').trim() && roundMoney(Math.abs(Number(item.value) || 0)) > 0
-  ));
+function hasTradeSideContent(trade, side) {
+  if (trade[`${side}CashAmount`] > 0) return true;
+  return trade[`${side}Items`].length > 0;
 }
 
 function renderTradeDraftItems(side) {
@@ -3239,11 +3238,11 @@ document.getElementById('saveTradeBtn').addEventListener('click', () => {
   showMessage(tradeMsg);
   const trade = collectTradeFromDraft();
 
-  if (!hasTradeSideContent('given')) {
+  if (!hasTradeSideContent(trade, 'given')) {
     showMessage(tradeMsg, 'error', 'Voeg minimaal één kaart of bedrag toe bij IK GEEF.');
     return;
   }
-  if (!hasTradeSideContent('received')) {
+  if (!hasTradeSideContent(trade, 'received')) {
     showMessage(tradeMsg, 'error', 'Voeg minimaal één kaart of bedrag toe bij IK ONTVANG.');
     return;
   }
