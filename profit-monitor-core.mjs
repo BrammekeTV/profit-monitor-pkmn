@@ -192,6 +192,10 @@ export function computeTradeSideTotal(items = []) {
   ), 0));
 }
 
+export function normalizeTradeCashAmount(value) {
+  return roundMoney(Math.abs(Number(value) || 0));
+}
+
 function normalizeTradeItems(items = []) {
   return (Array.isArray(items) ? items : [])
     .map(normalizeTradeItem)
@@ -201,8 +205,10 @@ function normalizeTradeItems(items = []) {
 export function normalizeTrade(trade = {}, options = {}) {
   const givenItems = normalizeTradeItems(trade.givenItems);
   const receivedItems = normalizeTradeItems(trade.receivedItems);
-  const totalGiven = computeTradeSideTotal(givenItems);
-  const totalReceived = computeTradeSideTotal(receivedItems);
+  const givenCashAmount = normalizeTradeCashAmount(trade.givenCashAmount);
+  const receivedCashAmount = normalizeTradeCashAmount(trade.receivedCashAmount);
+  const totalGiven = roundMoney(computeTradeSideTotal(givenItems) + givenCashAmount);
+  const totalReceived = roundMoney(computeTradeSideTotal(receivedItems) + receivedCashAmount);
   const difference = roundMoney(totalReceived - totalGiven);
   const roi = totalGiven > 0 ? roundMoney((difference / totalGiven) * 100) : 0;
 
@@ -212,6 +218,8 @@ export function normalizeTrade(trade = {}, options = {}) {
     note: String(trade.note ?? '').trim(),
     givenItems,
     receivedItems,
+    givenCashAmount,
+    receivedCashAmount,
     totalGiven,
     totalReceived,
     difference,

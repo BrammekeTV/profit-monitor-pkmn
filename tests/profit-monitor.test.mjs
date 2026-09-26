@@ -259,6 +259,38 @@ test('trades are stored separately and support CRUD plus analytics', () => {
   assert.equal(state.tabs.length, 1);
 });
 
+test('trades support loose cash amounts alongside or without card rows', () => {
+  let state = ensureAppState(null, {
+    defaultTabId: 'default-tab',
+    now: '2026-09-21T00:00:00Z',
+  });
+
+  state = appendTrade(state, {
+    date: '2026-09-22',
+    givenCashAmount: 15,
+    givenItems: [],
+    receivedCashAmount: 5,
+    receivedItems: [{ cardName: 'Mew ex', quantity: 1, value: 40 }],
+  });
+
+  assert.equal(state.trades[0].givenCashAmount, 15);
+  assert.equal(state.trades[0].receivedCashAmount, 5);
+  assert.equal(state.trades[0].totalGiven, 15);
+  assert.equal(state.trades[0].totalReceived, 45);
+  assert.equal(state.trades[0].difference, 30);
+  assert.equal(state.trades[0].roi, 200);
+
+  state = updateTrade(state, state.trades[0].id, {
+    ...state.trades[0],
+    receivedCashAmount: 12.5,
+    receivedItems: [{ cardName: 'Mew ex', quantity: 1, value: 40 }],
+  });
+
+  assert.equal(state.trades[0].totalReceived, 52.5);
+  assert.equal(state.trades[0].difference, 37.5);
+  assert.equal(state.trades[0].roi, 250);
+});
+
 test('persisted trades normalize graded item values on load', () => {
   const state = ensureAppState({
     tabs: [{
@@ -271,7 +303,9 @@ test('persisted trades normalize graded item values on load', () => {
     trades: [{
       id: 1,
       date: '2026-09-21',
+      givenCashAmount: 7.5,
       givenItems: [{ cardName: 'Mewtwo', quantity: 1, value: 99, gradingCompany: 'psa', gradingValue: '10' }],
+      receivedCashAmount: 2.5,
       receivedItems: [{ cardName: 'Rayquaza', quantity: 1, value: 110, gradingCompany: 'tag', gradingValue: '10' }],
     }],
   }, {
@@ -283,4 +317,8 @@ test('persisted trades normalize graded item values on load', () => {
   assert.equal(state.trades[0].receivedItems[0].gradingCompany, 'TAG');
   assert.equal(state.trades[0].receivedItems[0].gradingValue, '10');
   assert.equal(state.trades[0].receivedItems[0].gradingLabel, '10');
+  assert.equal(state.trades[0].givenCashAmount, 7.5);
+  assert.equal(state.trades[0].receivedCashAmount, 2.5);
+  assert.equal(state.trades[0].totalGiven, 106.5);
+  assert.equal(state.trades[0].totalReceived, 112.5);
 });

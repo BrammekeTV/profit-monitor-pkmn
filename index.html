@@ -1590,12 +1590,20 @@
             <div class="trade-side-header">IK GEEF</div>
             <div class="trade-items" id="tradeGivenItems"></div>
             <button type="button" class="trade-add-btn" id="addTradeGivenItem">+ Kaart toevoegen</button>
+            <div style="margin-top:10px;">
+              <label class="form-label" for="tradeGivenCashAmount">Los bedrag</label>
+              <input type="number" id="tradeGivenCashAmount" class="trade-input" min="0" step="0.01" placeholder="Bijv. 10,00" />
+            </div>
             <div class="trade-total">Totaal: <span id="tradeGivenTotal">€0,00</span></div>
           </div>
           <div class="trade-side">
             <div class="trade-side-header">IK ONTVANG</div>
             <div class="trade-items" id="tradeReceivedItems"></div>
             <button type="button" class="trade-add-btn" id="addTradeReceivedItem">+ Kaart toevoegen</button>
+            <div style="margin-top:10px;">
+              <label class="form-label" for="tradeReceivedCashAmount">Los bedrag</label>
+              <input type="number" id="tradeReceivedCashAmount" class="trade-input" min="0" step="0.01" placeholder="Bijv. 10,00" />
+            </div>
             <div class="trade-total">Totaal: <span id="tradeReceivedTotal">€0,00</span></div>
           </div>
         </div>
@@ -1905,8 +1913,10 @@ let editingTradeId = null;
 let tradeDraft = {
   date: todayISO(),
   note: '',
-  givenItems: [{ cardName: '', quantity: 1, value: 0 }],
-  receivedItems: [{ cardName: '', quantity: 1, value: 0 }],
+  givenCashAmount: 0,
+  givenItems: [{ cardName: '', quantity: 1, value: 0, gradingCompany: '', gradingValue: '' }],
+  receivedCashAmount: 0,
+  receivedItems: [{ cardName: '', quantity: 1, value: 0, gradingCompany: '', gradingValue: '' }],
 };
 
 // Period filter state
@@ -2667,6 +2677,11 @@ function emptyTradeItem() {
   return { cardName: '', quantity: 1, value: 0, gradingCompany: '', gradingValue: '' };
 }
 
+function normalizeTradeDraftCashAmount(value) {
+  const parsed = Number.parseFloat(String(value ?? '').replace(',', '.'));
+  return Number.isFinite(parsed) && parsed > 0 ? roundMoney(parsed) : 0;
+}
+
 function normalizeTradeDraftItemGrading(item) {
   const company = String(item.gradingCompany || '').trim().toUpperCase();
   const normalizedCompany = GRADING_COMPANY_OPTIONS.includes(company) ? company : '';
@@ -2700,7 +2715,9 @@ function resetTradeDraft() {
   tradeDraft = {
     date: todayISO(),
     note: '',
+    givenCashAmount: 0,
     givenItems: [emptyTradeItem()],
+    receivedCashAmount: 0,
     receivedItems: [emptyTradeItem()],
   };
   normalizeTradeDraftState();
@@ -2708,13 +2725,15 @@ function resetTradeDraft() {
   document.getElementById('cancelTradeEditBtn').style.display = 'none';
 }
 
-function tradeListSummary(items) {
-  return items.map(item => {
+function tradeListSummary(items, cashAmount = 0) {
+  const entries = items.map(item => {
     if (!item.cardName) return '';
     const gradeText = formatTradeItemGrade(item);
     if (!gradeText) return item.cardName;
     return `${item.cardName} (${gradeText})`;
-  }).filter(Boolean).join(' + ') || '—';
+  }).filter(Boolean);
+  if (cashAmount > 0) entries.push(`Contant ${fmt(cashAmount)}`);
+  return entries.join(' + ') || '—';
 }
 
 function renderTradeDraftItems(side) {
@@ -2786,8 +2805,8 @@ function renderTradeDraftItems(side) {
 }
 
 function syncTradeResult() {
-  const givenTotal = computeTradeSideTotal(tradeDraft.givenItems);
-  const receivedTotal = computeTradeSideTotal(tradeDraft.receivedItems);
+  const givenTotal = roundMoney(computeTradeSideTotal(tradeDraft.givenItems) + normalizeTradeDraftCashAmount(tradeDraft.givenCashAmount));
+  const receivedTotal = roundMoney(computeTradeSideTotal(tradeDraft.receivedItems) + normalizeTradeDraftCashAmount(tradeDraft.receivedCashAmount));
   const difference = roundMoney(receivedTotal - givenTotal);
   const roi = givenTotal > 0 ? roundMoney((difference / givenTotal) * 100) : 0;
 
@@ -2809,6 +2828,8 @@ function renderTradeForm() {
   normalizeTradeDraftState();
   document.getElementById('tradeDate').value = tradeDraft.date || todayISO();
   document.getElementById('tradeNote').value = tradeDraft.note || '';
+  document.getElementById('tradeGivenCashAmount').value = tradeDraft.givenCashAmount || '';
+  document.getElementById('tradeReceivedCashAmount').value = tradeDraft.receivedCashAmount || '';
   renderTradeDraftItems('givenItems');
   renderTradeDraftItems('receivedItems');
   syncTradeResult();
@@ -2833,8 +2854,8 @@ function renderTradesTable() {
   body.innerHTML = rows.map(trade => `
     <tr>
       <td>${escHTML(formatDate(trade.date))}</td>
-      <td>${escHTML(tradeListSummary(trade.givenItems))}</td>
-      <td>${escHTML(tradeListSummary(trade.receivedItems))}</td>
+      <td>${escHTML(tradeListSummary(trade.givenItems, trade.givenCashAmount))}</td>
+      <td>${escHTML(tradeListSummary(trade.receivedItems, trade.receivedCashAmount))}</td>
       <td>${escHTML(fmt(trade.totalGiven))}</td>
       <td>${escHTML(fmt(trade.totalReceived))}</td>
       <td class="amount-cell ${trade.difference >= 0 ? 'positive' : 'negative'}">${escHTML(`${trade.difference > 0 ? '+' : ''}${fmt(trade.difference)}`)}</td>
@@ -2852,7 +2873,7 @@ function openTradeDetail(tradeId) {
   const trade = getTrades().find(item => item.id === tradeId);
   if (!trade) return;
   const detail = document.getElementById('tradeDetailContent');
-  const makeRows = items => items.map(item => {
+  const makeRows = (items, cashAmount) => items.map(item => {
     const gradeText = formatTradeItemGrade(item);
     return `
     <tr>
@@ -2865,7 +2886,14 @@ function openTradeDetail(tradeId) {
       <td>${escHTML(fmt(roundMoney(item.quantity * item.value)))}</td>
     </tr>
   `;
-  }).join('');
+  }).join('') + (cashAmount > 0 ? `
+    <tr>
+      <td>Contant</td>
+      <td>—</td>
+      <td>${escHTML(fmt(cashAmount))}</td>
+      <td>${escHTML(fmt(cashAmount))}</td>
+    </tr>
+  ` : '');
 
   detail.innerHTML = `
     <div style="margin-bottom:10px;color:var(--muted);font-size:12px;">
@@ -2877,7 +2905,7 @@ function openTradeDetail(tradeId) {
         <div class="table-wrap" style="border:none;border-radius:0;">
           <table>
             <thead><tr><th>Kaart</th><th>Aantal</th><th>Waarde p/st</th><th>Totaal</th></tr></thead>
-            <tbody>${makeRows(trade.givenItems)}</tbody>
+            <tbody>${makeRows(trade.givenItems, trade.givenCashAmount)}</tbody>
           </table>
         </div>
         <div class="trade-total">Totaal: ${escHTML(fmt(trade.totalGiven))}</div>
@@ -2887,7 +2915,7 @@ function openTradeDetail(tradeId) {
         <div class="table-wrap" style="border:none;border-radius:0;">
           <table>
             <thead><tr><th>Kaart</th><th>Aantal</th><th>Waarde p/st</th><th>Totaal</th></tr></thead>
-            <tbody>${makeRows(trade.receivedItems)}</tbody>
+            <tbody>${makeRows(trade.receivedItems, trade.receivedCashAmount)}</tbody>
           </table>
         </div>
         <div class="trade-total">Totaal: ${escHTML(fmt(trade.totalReceived))}</div>
@@ -3042,7 +3070,9 @@ function collectTradeFromDraft() {
   const normalized = normalizeTrade({
     date: document.getElementById('tradeDate').value || todayISO(),
     note: document.getElementById('tradeNote').value,
+    givenCashAmount: tradeDraft.givenCashAmount,
     givenItems: tradeDraft.givenItems,
+    receivedCashAmount: tradeDraft.receivedCashAmount,
     receivedItems: tradeDraft.receivedItems,
   });
   return normalized;
@@ -3152,6 +3182,16 @@ document.getElementById('tradeNote').addEventListener('input', event => {
   tradeDraft.note = event.target.value;
 });
 
+document.getElementById('tradeGivenCashAmount').addEventListener('input', event => {
+  tradeDraft.givenCashAmount = normalizeTradeDraftCashAmount(event.target.value);
+  syncTradeResult();
+});
+
+document.getElementById('tradeReceivedCashAmount').addEventListener('input', event => {
+  tradeDraft.receivedCashAmount = normalizeTradeDraftCashAmount(event.target.value);
+  syncTradeResult();
+});
+
 function attachTradeSideHandlers(elementId) {
   const element = document.getElementById(elementId);
   element.addEventListener('input', event => {
@@ -3192,12 +3232,12 @@ document.getElementById('saveTradeBtn').addEventListener('click', () => {
   showMessage(tradeMsg);
   const trade = collectTradeFromDraft();
 
-  if (!trade.givenItems.length) {
-    showMessage(tradeMsg, 'error', 'Voeg minimaal één kaart toe bij IK GEEF.');
+  if (trade.totalGiven <= 0) {
+    showMessage(tradeMsg, 'error', 'Voeg minimaal één kaart of bedrag toe bij IK GEEF.');
     return;
   }
-  if (!trade.receivedItems.length) {
-    showMessage(tradeMsg, 'error', 'Voeg minimaal één kaart toe bij IK ONTVANG.');
+  if (trade.totalReceived <= 0) {
+    showMessage(tradeMsg, 'error', 'Voeg minimaal één kaart of bedrag toe bij IK ONTVANG.');
     return;
   }
 
@@ -3241,8 +3281,10 @@ document.getElementById('tradesBody').addEventListener('click', event => {
     tradeDraft = {
       date: trade.date,
       note: trade.note || '',
-      givenItems: trade.givenItems.map(item => ({ ...item })),
-      receivedItems: trade.receivedItems.map(item => ({ ...item })),
+      givenCashAmount: trade.givenCashAmount || 0,
+      givenItems: trade.givenItems.length ? trade.givenItems.map(item => ({ ...item })) : [emptyTradeItem()],
+      receivedCashAmount: trade.receivedCashAmount || 0,
+      receivedItems: trade.receivedItems.length ? trade.receivedItems.map(item => ({ ...item })) : [emptyTradeItem()],
     };
     normalizeTradeDraftState();
     document.getElementById('saveTradeBtn').textContent = 'Trade bijwerken';
