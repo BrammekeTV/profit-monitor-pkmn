@@ -2887,9 +2887,12 @@ function openTradeDetail(tradeId) {
   const trade = getTrades().find(item => item.id === tradeId);
   if (!trade) return;
   const detail = document.getElementById('tradeDetailContent');
-  const makeRows = items => {
+  const makeRows = (items, cashAmount) => {
     if (!items.length) {
-      return '<tr><td colspan="5" class="empty">Geen kaarten toegevoegd.</td></tr>';
+      const message = cashAmount > 0
+        ? 'Geen kaarten toegevoegd; alleen los bedrag.'
+        : 'Geen kaarten toegevoegd.';
+      return `<tr><td colspan="5" class="empty">${escHTML(message)}</td></tr>`;
     }
     return items.map(item => {
     const gradeText = formatTradeItemGrade(item);
@@ -2915,7 +2918,7 @@ function openTradeDetail(tradeId) {
         <div class="table-wrap" style="border:none;border-radius:0;">
           <table>
           <thead><tr><th>Kaart</th><th>Grade</th><th>Aantal</th><th>Waarde p/st</th><th>Totaal</th></tr></thead>
-            <tbody>${makeRows(trade.givenItems)}</tbody>
+            <tbody>${makeRows(trade.givenItems, trade.givenCashAmount)}</tbody>
           </table>
         </div>
         ${trade.givenCashAmount > 0 ? `<div class="trade-total">Los bedrag: ${escHTML(fmt(trade.givenCashAmount))}</div>` : ''}
@@ -2926,7 +2929,7 @@ function openTradeDetail(tradeId) {
         <div class="table-wrap" style="border:none;border-radius:0;">
           <table>
           <thead><tr><th>Kaart</th><th>Grade</th><th>Aantal</th><th>Waarde p/st</th><th>Totaal</th></tr></thead>
-            <tbody>${makeRows(trade.receivedItems)}</tbody>
+            <tbody>${makeRows(trade.receivedItems, trade.receivedCashAmount)}</tbody>
           </table>
         </div>
         ${trade.receivedCashAmount > 0 ? `<div class="trade-total">Los bedrag: ${escHTML(fmt(trade.receivedCashAmount))}</div>` : ''}
