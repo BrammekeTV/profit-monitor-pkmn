@@ -1592,7 +1592,7 @@
             <button type="button" class="trade-add-btn" id="addTradeGivenItem">+ Kaart toevoegen</button>
             <div style="margin-top:10px;">
               <label class="form-label" for="tradeGivenCashAmount">Los bedrag bij IK GEEF</label>
-              <input type="number" id="tradeGivenCashAmount" class="trade-input" min="0" step="0.01" placeholder="Bijv. 10,50 of 10.50" />
+              <input type="text" inputmode="decimal" id="tradeGivenCashAmount" class="trade-input" placeholder="Bijv. 10,50 of 10.50" />
             </div>
             <div class="trade-total">Totaal: <span id="tradeGivenTotal">€0,00</span></div>
           </div>
@@ -1602,7 +1602,7 @@
             <button type="button" class="trade-add-btn" id="addTradeReceivedItem">+ Kaart toevoegen</button>
             <div style="margin-top:10px;">
               <label class="form-label" for="tradeReceivedCashAmount">Los bedrag bij IK ONTVANG</label>
-              <input type="number" id="tradeReceivedCashAmount" class="trade-input" min="0" step="0.01" placeholder="Bijv. 10,50 of 10.50" />
+              <input type="text" inputmode="decimal" id="tradeReceivedCashAmount" class="trade-input" placeholder="Bijv. 10,50 of 10.50" />
             </div>
             <div class="trade-total">Totaal: <span id="tradeReceivedTotal">€0,00</span></div>
           </div>
@@ -2908,7 +2908,7 @@ function openTradeDetail(tradeId) {
       const label = items.length ? 'Los bedrag' : 'Los bedrag (geen kaarten)';
       rows.push(`
         <tr>
-          <td>${label}</td>
+          <td>${escHTML(label)}</td>
           <td>—</td>
           <td>—</td>
           <td>—</td>
