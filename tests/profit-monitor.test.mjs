@@ -351,3 +351,20 @@ test('persisted trades normalize invalid or negative cash amounts', () => {
   assert.equal(state.trades[0].difference, 97.5);
   assert.equal(state.trades[0].roi, 780);
 });
+
+test('normalizeTrade removes empty default rows when no cash amount is present', () => {
+  const trade = normalizeTrade({
+    date: '2026-09-21',
+    givenCashAmount: 0,
+    givenItems: [{ cardName: '', quantity: 1, value: 0 }],
+    receivedCashAmount: 0,
+    receivedItems: [{ cardName: '', quantity: 1, value: 0 }],
+  });
+
+  assert.deepEqual(trade.givenItems, []);
+  assert.deepEqual(trade.receivedItems, []);
+  assert.equal(trade.givenCashAmount, 0);
+  assert.equal(trade.receivedCashAmount, 0);
+  assert.equal(trade.totalGiven, 0);
+  assert.equal(trade.totalReceived, 0);
+});

@@ -2739,7 +2739,9 @@ function tradeListSummary(items, cashAmount = 0) {
 
 function hasTradeSideContent(trade, side) {
   if (trade[`${side}CashAmount`] > 0) return true;
-  return trade[`${side}Items`].length > 0;
+  return trade[`${side}Items`].some(item => (
+    String(item.cardName || '').trim() && Number(item.value) > 0
+  ));
 }
 
 function renderTradeDraftItems(side) {
