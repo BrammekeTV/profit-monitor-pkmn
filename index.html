@@ -1608,7 +1608,7 @@
           </div>
         </div>
 
-        <div class="trade-result">
+        <div class="trade-result" aria-live="polite" aria-atomic="true">
           <div class="trade-result-row"><span>Waarde gegeven</span><strong id="tradeResultGiven">€0,00</strong></div>
           <div class="trade-result-row"><span>Waarde ontvangen</span><strong id="tradeResultReceived">€0,00</strong></div>
           <div class="trade-result-row"><span>Verschil</span><strong id="tradeResultDifference">€0,00</strong></div>
@@ -2915,7 +2915,7 @@ function openTradeDetail(tradeId) {
       `);
     }
     if (!rows.length) {
-      rows.push('<tr><td colspan="5" class="empty">Geen kaarten toegevoegd.</td></tr>');
+      rows.push('<tr><td colspan="5" class="empty">Geen kaarten of losse bedragen toegevoegd.</td></tr>');
     }
     return rows.join('');
   };
