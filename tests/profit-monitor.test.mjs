@@ -360,7 +360,9 @@ test('trade cash normalization keeps UI and persisted trade behavior aligned', (
   assert.equal(normalizeTradeCashAmount(-12.5), 0);
   assert.equal(normalizeTradeCashAmount('abc'), 0);
   assert.equal(parseTradeCashAmountInput('12,5'), 12.5);
+  assert.equal(parseTradeCashAmountInput('1.234,56'), 1234.56);
   assert.equal(resolveTradeDraftCashAmount(7, '12,5'), 12.5);
+  assert.equal(resolveTradeDraftCashAmount(7, '1.234,56'), 1234.56);
   assert.equal(resolveTradeDraftCashAmount(7, null), 7);
 });
 

@@ -198,7 +198,21 @@ export function normalizeTradeCashAmount(value) {
 }
 
 export function parseTradeCashAmountInput(value) {
-  const parsed = Number.parseFloat(String(value ?? '').replace(',', '.'));
+  const normalizedValue = String(value ?? '').trim().replace(/\s+/g, '');
+  let normalizedNumber = normalizedValue;
+
+  if (normalizedValue.includes('.') && normalizedValue.includes(',')) {
+    normalizedNumber = normalizedValue.lastIndexOf(',') > normalizedValue.lastIndexOf('.')
+      ? normalizedValue.replace(/\./g, '').replace(',', '.')
+      : normalizedValue.replace(/,/g, '');
+  } else if ((normalizedValue.match(/,/g) || []).length > 1) {
+    normalizedNumber = normalizedValue.replace(/,/g, '');
+  } else if (normalizedValue.includes(',')) {
+    const [whole = '', decimal = ''] = normalizedValue.split(',');
+    normalizedNumber = decimal.length === 3 ? `${whole}${decimal}` : normalizedValue.replace(',', '.');
+  }
+
+  const parsed = Number.parseFloat(normalizedNumber);
   return normalizeTradeCashAmount(Number.isFinite(parsed) ? parsed : 0);
 }
 
