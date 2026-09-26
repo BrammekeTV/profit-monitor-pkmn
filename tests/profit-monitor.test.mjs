@@ -346,16 +346,16 @@ test('persisted trades normalize invalid or negative cash amounts', () => {
     now: '2026-09-21T00:00:00Z',
   });
 
-  assert.equal(state.trades[0].givenCashAmount, 12.5);
+  assert.equal(state.trades[0].givenCashAmount, 0);
   assert.equal(state.trades[0].receivedCashAmount, 0);
-  assert.equal(state.trades[0].totalGiven, 12.5);
+  assert.equal(state.trades[0].totalGiven, 0);
   assert.equal(state.trades[0].totalReceived, 110);
-  assert.equal(state.trades[0].difference, 97.5);
-  assert.equal(state.trades[0].roi, 780);
+  assert.equal(state.trades[0].difference, 110);
+  assert.equal(state.trades[0].roi, 0);
 });
 
 test('trade cash normalization keeps UI and persisted trade behavior aligned', () => {
-  assert.equal(normalizeTradeCashAmount(-12.5), 12.5);
+  assert.equal(normalizeTradeCashAmount(-12.5), 0);
   assert.equal(normalizeTradeCashAmount('abc'), 0);
 });
 

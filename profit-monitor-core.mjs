@@ -193,7 +193,8 @@ export function computeTradeSideTotal(items = []) {
 }
 
 export function normalizeTradeCashAmount(value) {
-  return roundMoney(Math.abs(Number(value) || 0));
+  const amount = Number(value) || 0;
+  return amount > 0 ? roundMoney(amount) : 0;
 }
 
 function normalizeTradeItems(items = []) {
