@@ -1885,8 +1885,8 @@ import {
   getGradingScale,
   inferQuantity,
   normalizeDate,
+  parseTradeCashAmountInput,
   normalizeQuantity,
-  normalizeTradeCashAmount,
   normalizeTrade,
   normalizeTransaction,
   renameTab,
@@ -1915,8 +1915,10 @@ let tradeDraft = {
   date: todayISO(),
   note: '',
   givenCashAmount: 0,
+  givenCashAmountInput: null,
   givenItems: [{ cardName: '', quantity: 1, value: 0, gradingCompany: '', gradingValue: '' }],
   receivedCashAmount: 0,
+  receivedCashAmountInput: null,
   receivedItems: [{ cardName: '', quantity: 1, value: 0, gradingCompany: '', gradingValue: '' }],
 };
 
@@ -2679,8 +2681,13 @@ function emptyTradeItem() {
 }
 
 function normalizeTradeDraftCashAmount(value) {
-  const parsed = Number.parseFloat(String(value ?? '').replace(',', '.'));
-  return normalizeTradeCashAmount(Number.isFinite(parsed) ? parsed : 0);
+  return parseTradeCashAmountInput(value);
+}
+
+function getTradeDraftCashAmount(side) {
+  const rawValue = tradeDraft[`${side}CashAmountInput`];
+  if (rawValue !== null) return normalizeTradeDraftCashAmount(rawValue);
+  return normalizeTradeDraftCashAmount(tradeDraft[`${side}CashAmount`]);
 }
 
 function normalizeTradeDraftItemGrading(item) {
@@ -2717,8 +2724,10 @@ function resetTradeDraft() {
     date: todayISO(),
     note: '',
     givenCashAmount: 0,
+    givenCashAmountInput: null,
     givenItems: [emptyTradeItem()],
     receivedCashAmount: 0,
+    receivedCashAmountInput: null,
     receivedItems: [emptyTradeItem()],
   };
   normalizeTradeDraftState();
@@ -2810,8 +2819,8 @@ function renderTradeDraftItems(side) {
 }
 
 function syncTradeResult() {
-  const givenTotal = roundMoney(computeTradeSideTotal(tradeDraft.givenItems) + normalizeTradeDraftCashAmount(tradeDraft.givenCashAmount));
-  const receivedTotal = roundMoney(computeTradeSideTotal(tradeDraft.receivedItems) + normalizeTradeDraftCashAmount(tradeDraft.receivedCashAmount));
+  const givenTotal = roundMoney(computeTradeSideTotal(tradeDraft.givenItems) + getTradeDraftCashAmount('given'));
+  const receivedTotal = roundMoney(computeTradeSideTotal(tradeDraft.receivedItems) + getTradeDraftCashAmount('received'));
   const difference = roundMoney(receivedTotal - givenTotal);
   const roi = givenTotal > 0 ? roundMoney((difference / givenTotal) * 100) : 0;
 
@@ -2833,8 +2842,8 @@ function renderTradeForm() {
   normalizeTradeDraftState();
   document.getElementById('tradeDate').value = tradeDraft.date || todayISO();
   document.getElementById('tradeNote').value = tradeDraft.note || '';
-  document.getElementById('tradeGivenCashAmount').value = tradeDraft.givenCashAmount || '';
-  document.getElementById('tradeReceivedCashAmount').value = tradeDraft.receivedCashAmount || '';
+  document.getElementById('tradeGivenCashAmount').value = tradeDraft.givenCashAmountInput ?? (tradeDraft.givenCashAmount || '');
+  document.getElementById('tradeReceivedCashAmount').value = tradeDraft.receivedCashAmountInput ?? (tradeDraft.receivedCashAmount || '');
   renderTradeDraftItems('givenItems');
   renderTradeDraftItems('receivedItems');
   syncTradeResult();
@@ -3075,9 +3084,9 @@ function collectTradeFromDraft() {
   const normalized = normalizeTrade({
     date: document.getElementById('tradeDate').value || todayISO(),
     note: document.getElementById('tradeNote').value,
-    givenCashAmount: tradeDraft.givenCashAmount,
+    givenCashAmount: getTradeDraftCashAmount('given'),
     givenItems: tradeDraft.givenItems,
-    receivedCashAmount: tradeDraft.receivedCashAmount,
+    receivedCashAmount: getTradeDraftCashAmount('received'),
     receivedItems: tradeDraft.receivedItems,
   });
   return normalized;
@@ -3190,11 +3199,12 @@ document.getElementById('tradeNote').addEventListener('input', event => {
 function attachTradeCashHandler(elementId, key) {
   const element = document.getElementById(elementId);
   element.addEventListener('input', event => {
-    tradeDraft[key] = normalizeTradeDraftCashAmount(event.target.value);
+    tradeDraft[`${key}Input`] = event.target.value;
     syncTradeResult();
   });
   element.addEventListener('change', event => {
     tradeDraft[key] = normalizeTradeDraftCashAmount(event.target.value);
+    tradeDraft[`${key}Input`] = null;
     event.target.value = tradeDraft[key] ? String(tradeDraft[key]) : '';
     syncTradeResult();
   });
@@ -3293,8 +3303,10 @@ document.getElementById('tradesBody').addEventListener('click', event => {
       date: trade.date,
       note: trade.note || '',
       givenCashAmount: trade.givenCashAmount || 0,
+      givenCashAmountInput: null,
       givenItems: trade.givenItems.length ? trade.givenItems.map(item => ({ ...item })) : [emptyTradeItem()],
       receivedCashAmount: trade.receivedCashAmount || 0,
+      receivedCashAmountInput: null,
       receivedItems: trade.receivedItems.length ? trade.receivedItems.map(item => ({ ...item })) : [emptyTradeItem()],
     };
     normalizeTradeDraftState();

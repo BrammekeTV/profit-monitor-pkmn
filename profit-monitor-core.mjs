@@ -197,6 +197,11 @@ export function normalizeTradeCashAmount(value) {
   return amount > 0 ? roundMoney(amount) : 0;
 }
 
+export function parseTradeCashAmountInput(value) {
+  const parsed = Number.parseFloat(String(value ?? '').replace(',', '.'));
+  return normalizeTradeCashAmount(Number.isFinite(parsed) ? parsed : 0);
+}
+
 function normalizeTradeItems(items = []) {
   return (Array.isArray(items) ? items : [])
     .map(normalizeTradeItem)

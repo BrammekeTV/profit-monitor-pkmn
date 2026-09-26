@@ -20,6 +20,7 @@ import {
   getActiveTab,
   getCardmarketOrderLinks,
   normalizeGradingValue,
+  parseTradeCashAmountInput,
   normalizeTradeCashAmount,
   normalizeTrade,
   normalizeTransaction,
@@ -357,6 +358,7 @@ test('persisted trades normalize invalid or negative cash amounts', () => {
 test('trade cash normalization keeps UI and persisted trade behavior aligned', () => {
   assert.equal(normalizeTradeCashAmount(-12.5), 0);
   assert.equal(normalizeTradeCashAmount('abc'), 0);
+  assert.equal(parseTradeCashAmountInput('12,5'), 12.5);
 });
 
 test('normalizeTrade removes empty default rows when no cash amount is present', () => {
