@@ -3198,6 +3198,7 @@ function attachTradeCashHandler(elementId, key) {
   const element = document.getElementById(elementId);
   element.addEventListener('input', event => {
     tradeDraft[`${key}Input`] = event.target.value;
+    tradeDraft[key] = normalizeTradeDraftCashAmount(event.target.value);
     syncTradeResult();
   });
   element.addEventListener('change', event => {
