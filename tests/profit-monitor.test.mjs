@@ -20,6 +20,7 @@ import {
   getActiveTab,
   getCardmarketOrderLinks,
   normalizeGradingValue,
+  normalizeTrade,
   normalizeTransaction,
   setActiveTab,
   updateTrade,
