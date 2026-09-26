@@ -322,3 +322,32 @@ test('persisted trades normalize graded item values on load', () => {
   assert.equal(state.trades[0].totalGiven, 106.5);
   assert.equal(state.trades[0].totalReceived, 112.5);
 });
+
+test('persisted trades normalize invalid or negative cash amounts', () => {
+  const state = ensureAppState({
+    tabs: [{
+      id: 'default-tab',
+      name: 'Default',
+      createdAt: '2026-09-21T00:00:00Z',
+      transactions: [],
+    }],
+    activeTabId: 'default-tab',
+    trades: [{
+      id: 1,
+      date: '2026-09-21',
+      givenCashAmount: '-12.5',
+      givenItems: [],
+      receivedCashAmount: 'abc',
+      receivedItems: [{ cardName: 'Rayquaza', quantity: 1, value: 110 }],
+    }],
+  }, {
+    now: '2026-09-21T00:00:00Z',
+  });
+
+  assert.equal(state.trades[0].givenCashAmount, 12.5);
+  assert.equal(state.trades[0].receivedCashAmount, 0);
+  assert.equal(state.trades[0].totalGiven, 12.5);
+  assert.equal(state.trades[0].totalReceived, 110);
+  assert.equal(state.trades[0].difference, 97.5);
+  assert.equal(state.trades[0].roi, 780);
+});
