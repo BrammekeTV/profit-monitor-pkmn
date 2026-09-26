@@ -2889,6 +2889,8 @@ function openTradeDetail(tradeId) {
   const trade = getTrades().find(item => item.id === tradeId);
   if (!trade) return;
   const detail = document.getElementById('tradeDetailContent');
+  const hasGivenEntries = trade.givenItems.length > 0 || trade.givenCashAmount > 0;
+  const hasReceivedEntries = trade.receivedItems.length > 0 || trade.receivedCashAmount > 0;
   const makeRows = (items, cashAmount) => {
     const rows = items.map(item => {
     const gradeText = formatTradeItemGrade(item);
@@ -2914,9 +2916,6 @@ function openTradeDetail(tradeId) {
         </tr>
       `);
     }
-    if (!rows.length) {
-      rows.push('<tr><td colspan="5" class="empty">Geen kaarten of losse bedragen toegevoegd.</td></tr>');
-    }
     return rows.join('');
   };
 
@@ -2928,20 +2927,24 @@ function openTradeDetail(tradeId) {
       <div class="trade-side">
         <div class="trade-side-header">IK GEEF</div>
         <div class="table-wrap" style="border:none;border-radius:0;">
+          ${hasGivenEntries ? `
           <table>
-          <thead><tr><th>Kaart</th><th>Grade</th><th>Aantal</th><th>Waarde p/st</th><th>Totaal</th></tr></thead>
-          <tbody>${makeRows(trade.givenItems, trade.givenCashAmount)}</tbody>
+            <thead><tr><th>Kaart</th><th>Grade</th><th>Aantal</th><th>Waarde p/st</th><th>Totaal</th></tr></thead>
+            <tbody>${makeRows(trade.givenItems, trade.givenCashAmount)}</tbody>
           </table>
+          ` : '<div class="empty" style="padding:12px;">Geen kaarten of losse bedragen toegevoegd.</div>'}
         </div>
         <div class="trade-total">Totaal: ${escHTML(fmt(trade.totalGiven))}</div>
       </div>
       <div class="trade-side">
         <div class="trade-side-header">IK ONTVANG</div>
         <div class="table-wrap" style="border:none;border-radius:0;">
+          ${hasReceivedEntries ? `
           <table>
-          <thead><tr><th>Kaart</th><th>Grade</th><th>Aantal</th><th>Waarde p/st</th><th>Totaal</th></tr></thead>
-          <tbody>${makeRows(trade.receivedItems, trade.receivedCashAmount)}</tbody>
+            <thead><tr><th>Kaart</th><th>Grade</th><th>Aantal</th><th>Waarde p/st</th><th>Totaal</th></tr></thead>
+            <tbody>${makeRows(trade.receivedItems, trade.receivedCashAmount)}</tbody>
           </table>
+          ` : '<div class="empty" style="padding:12px;">Geen kaarten of losse bedragen toegevoegd.</div>'}
         </div>
         <div class="trade-total">Totaal: ${escHTML(fmt(trade.totalReceived))}</div>
       </div>
