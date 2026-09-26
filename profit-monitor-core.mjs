@@ -202,6 +202,12 @@ export function parseTradeCashAmountInput(value) {
   return normalizeTradeCashAmount(Number.isFinite(parsed) ? parsed : 0);
 }
 
+export function resolveTradeDraftCashAmount(amount, rawInput = null) {
+  return rawInput !== null
+    ? parseTradeCashAmountInput(rawInput)
+    : normalizeTradeCashAmount(amount);
+}
+
 function normalizeTradeItems(items = []) {
   return (Array.isArray(items) ? items : [])
     .map(normalizeTradeItem)

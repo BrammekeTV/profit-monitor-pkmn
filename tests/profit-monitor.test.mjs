@@ -21,6 +21,7 @@ import {
   getCardmarketOrderLinks,
   normalizeGradingValue,
   parseTradeCashAmountInput,
+  resolveTradeDraftCashAmount,
   normalizeTradeCashAmount,
   normalizeTrade,
   normalizeTransaction,
@@ -359,6 +360,8 @@ test('trade cash normalization keeps UI and persisted trade behavior aligned', (
   assert.equal(normalizeTradeCashAmount(-12.5), 0);
   assert.equal(normalizeTradeCashAmount('abc'), 0);
   assert.equal(parseTradeCashAmountInput('12,5'), 12.5);
+  assert.equal(resolveTradeDraftCashAmount(7, '12,5'), 12.5);
+  assert.equal(resolveTradeDraftCashAmount(7, null), 7);
 });
 
 test('normalizeTrade removes empty default rows when no cash amount is present', () => {

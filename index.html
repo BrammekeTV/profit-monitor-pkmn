@@ -1887,6 +1887,7 @@ import {
   normalizeDate,
   parseTradeCashAmountInput,
   normalizeQuantity,
+  resolveTradeDraftCashAmount,
   normalizeTrade,
   normalizeTransaction,
   renameTab,
@@ -2685,9 +2686,10 @@ function normalizeTradeDraftCashAmount(value) {
 }
 
 function getTradeDraftCashAmount(side) {
-  const rawValue = tradeDraft[`${side}CashAmountInput`];
-  if (rawValue !== null) return normalizeTradeDraftCashAmount(rawValue);
-  return normalizeTradeDraftCashAmount(tradeDraft[`${side}CashAmount`]);
+  return resolveTradeDraftCashAmount(
+    tradeDraft[`${side}CashAmount`],
+    tradeDraft[`${side}CashAmountInput`],
+  );
 }
 
 function normalizeTradeDraftItemGrading(item) {
@@ -2900,6 +2902,9 @@ function openTradeDetail(tradeId) {
     </tr>
   `;
     });
+    if (!items.length && cashAmount > 0) {
+      rows.push('<tr><td colspan="5" class="empty">Geen kaarten toegevoegd.</td></tr>');
+    }
     if (cashAmount > 0) {
       rows.push(`
         <tr>
