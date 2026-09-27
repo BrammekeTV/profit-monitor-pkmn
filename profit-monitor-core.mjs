@@ -474,31 +474,6 @@ export function deleteTab(state, tabId, options = {}) {
     };
   }
 
-  export function archiveTab(state, tabId) {
-    const tab = state.tabs.find(entry => entry.id === tabId);
-    if (!tab || tab.archived) return ensureAppState(state);
-
-    const nextState = {
-      ...state,
-      tabs: state.tabs.map(entry => (
-        entry.id === tabId ? { ...entry, archived: true } : entry
-      )),
-    };
-    return ensureAppState(nextState);
-  }
-
-  export function restoreTab(state, tabId) {
-    const tab = state.tabs.find(entry => entry.id === tabId);
-    if (!tab || !tab.archived) return ensureAppState(state);
-
-    return {
-      ...state,
-      tabs: state.tabs.map(entry => (
-        entry.id === tabId ? { ...entry, archived: false } : entry
-      )),
-    };
-  }
-
   const fallbackTab = remainingTabs[Math.min(index, remainingTabs.length - 1)];
   const activeTabId = state.activeTabId === tabId ? fallbackTab.id : (
     remainingTabs.some(tab => tab.id === state.activeTabId) ? state.activeTabId : remainingTabs[0].id
@@ -507,6 +482,31 @@ export function deleteTab(state, tabId, options = {}) {
   return {
     tabs: remainingTabs,
     activeTabId,
+  };
+}
+
+export function archiveTab(state, tabId) {
+  const tab = state.tabs.find(entry => entry.id === tabId);
+  if (!tab || tab.archived) return ensureAppState(state);
+
+  const nextState = {
+    ...state,
+    tabs: state.tabs.map(entry => (
+      entry.id === tabId ? { ...entry, archived: true } : entry
+    )),
+  };
+  return ensureAppState(nextState);
+}
+
+export function restoreTab(state, tabId) {
+  const tab = state.tabs.find(entry => entry.id === tabId);
+  if (!tab || !tab.archived) return ensureAppState(state);
+
+  return {
+    ...state,
+    tabs: state.tabs.map(entry => (
+      entry.id === tabId ? { ...entry, archived: false } : entry
+    )),
   };
 }
 
