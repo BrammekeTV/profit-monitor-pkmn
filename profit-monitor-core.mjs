@@ -502,12 +502,12 @@ export function restoreTab(state, tabId) {
   const tab = state.tabs.find(entry => entry.id === tabId);
   if (!tab || !tab.archived) return ensureAppState(state);
 
-  return {
+  return ensureAppState({
     ...state,
     tabs: state.tabs.map(entry => (
       entry.id === tabId ? { ...entry, archived: false } : entry
     )),
-  };
+  });
 }
 
 export function replaceActiveTabTransactions(state, transactions, options = {}) {
