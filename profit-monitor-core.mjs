@@ -269,6 +269,9 @@ export function createTab(name = DEFAULT_TAB_NAME, options = {}) {
     transactions: Array.isArray(options.transactions)
       ? options.transactions.map(txn => normalizeTransaction(txn, { now: options.now }))
       : [],
+    trades: Array.isArray(options.trades)
+      ? options.trades.map(trade => normalizeTrade(trade, { now: options.now }))
+      : [],
   };
 }
 
@@ -290,6 +293,7 @@ function normalizeTabs(rawTabs, options = {}) {
   const tabs = [];
   const usedNames = new Set();
   let nextId = 1;
+  let nextTradeId = 1;
 
   for (const rawTab of Array.isArray(rawTabs) ? rawTabs : []) {
     const fallbackName = `Tab ${tabs.length + 1}`;
@@ -298,6 +302,7 @@ function normalizeTabs(rawTabs, options = {}) {
       createdAt: rawTab?.createdAt,
       now: options.now,
       transactions: Array.isArray(rawTab?.transactions) ? rawTab.transactions : [],
+      trades: Array.isArray(rawTab?.trades) ? rawTab.trades : [],
     });
 
     tab.name = uniquifyTabName(tab.name || fallbackName, usedNames);
@@ -305,6 +310,11 @@ function normalizeTabs(rawTabs, options = {}) {
       const id = Number.isInteger(transaction.id) ? transaction.id : nextId;
       nextId = Math.max(nextId, id + 1);
       return { ...transaction, id };
+    });
+    tab.trades = tab.trades.map(trade => {
+      const id = Number.isInteger(trade.id) ? trade.id : nextTradeId;
+      nextTradeId = Math.max(nextTradeId, id + 1);
+      return { ...trade, id };
     });
 
     tabs.push(tab);
@@ -575,6 +585,22 @@ export function appendTrade(state, trade, options = {}) {
   return {
     ...state,
     trades: [...getTrades(state), { ...normalized, id }],
+  };
+}
+
+export function appendTrades(state, trades, options = {}) {
+  let id = nextTradeId(state);
+  const additions = (Array.isArray(trades) ? trades : []).map(trade => {
+    const normalized = normalizeTrade(trade, { now: options.now });
+    const withId = { ...normalized, id };
+    id += 1;
+    return withId;
+  });
+
+  if (!additions.length) return state;
+  return {
+    ...state,
+    trades: [...getTrades(state), ...additions],
   };
 }
 
