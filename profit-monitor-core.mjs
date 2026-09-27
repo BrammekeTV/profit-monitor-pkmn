@@ -266,6 +266,7 @@ export function createTab(name = DEFAULT_TAB_NAME, options = {}) {
     id: options.id ?? makeId('tab'),
     name: normalizeTabName(name) || DEFAULT_TAB_NAME,
     createdAt: options.createdAt ?? new Date(options.now ?? Date.now()).toISOString(),
+    archived: Boolean(options.archived),
     transactions: Array.isArray(options.transactions)
       ? options.transactions.map(txn => normalizeTransaction(txn, { now: options.now }))
       : [],
@@ -301,6 +302,7 @@ function normalizeTabs(rawTabs, options = {}) {
       id: rawTab?.id ?? makeId('tab'),
       createdAt: rawTab?.createdAt,
       now: options.now,
+      archived: rawTab?.archived,
       transactions: Array.isArray(rawTab?.transactions) ? rawTab.transactions : [],
       trades: Array.isArray(rawTab?.trades) ? rawTab.trades : [],
     });
@@ -361,9 +363,10 @@ export function ensureAppState(rawState, options = {}) {
     return { tabs: [defaultTab], activeTabId: defaultTab.id, trades: [] };
   }
 
-  const activeTabId = tabs.some(tab => tab.id === parsed?.activeTabId)
+  const firstAvailableTab = tabs.find(tab => !tab.archived) || tabs[0];
+  const activeTabId = tabs.some(tab => tab.id === parsed?.activeTabId && !tab.archived)
     ? parsed.activeTabId
-    : tabs[0].id;
+    : firstAvailableTab.id;
 
   const trades = (Array.isArray(parsed?.trades) ? parsed.trades : [])
     .map((trade, index) => {
@@ -378,7 +381,9 @@ export function ensureAppState(rawState, options = {}) {
 }
 
 export function getActiveTab(state) {
-  return state.tabs.find(tab => tab.id === state.activeTabId) || state.tabs[0];
+  const activeTab = state.tabs.find(tab => tab.id === state.activeTabId && !tab.archived);
+  if (activeTab) return activeTab;
+  return state.tabs.find(tab => !tab.archived) || state.tabs[0];
 }
 
 export function getActiveTransactions(state) {
@@ -412,7 +417,7 @@ export function validateTabName(state, name, excludeTabId = null) {
 }
 
 export function setActiveTab(state, tabId) {
-  if (!state.tabs.some(tab => tab.id === tabId)) return ensureAppState(state);
+  if (!state.tabs.some(tab => tab.id === tabId && !tab.archived)) return ensureAppState(state);
   return { ...state, activeTabId: tabId };
 }
 
@@ -466,6 +471,31 @@ export function deleteTab(state, tabId, options = {}) {
     return {
       tabs: [defaultTab],
       activeTabId: defaultTab.id,
+    };
+  }
+
+  export function archiveTab(state, tabId) {
+    const tab = state.tabs.find(entry => entry.id === tabId);
+    if (!tab || tab.archived) return ensureAppState(state);
+
+    const nextState = {
+      ...state,
+      tabs: state.tabs.map(entry => (
+        entry.id === tabId ? { ...entry, archived: true } : entry
+      )),
+    };
+    return ensureAppState(nextState);
+  }
+
+  export function restoreTab(state, tabId) {
+    const tab = state.tabs.find(entry => entry.id === tabId);
+    if (!tab || !tab.archived) return ensureAppState(state);
+
+    return {
+      ...state,
+      tabs: state.tabs.map(entry => (
+        entry.id === tabId ? { ...entry, archived: false } : entry
+      )),
     };
   }
 

@@ -8,6 +8,7 @@ import {
   addTab,
   appendTrades,
   appendTrade,
+  archiveTab,
   computeTradeAnalytics,
   computeTradePerformanceSeries,
   computeCardmarketSurplus,
@@ -27,6 +28,7 @@ import {
   normalizeTrade,
   normalizeTransaction,
   setActiveTab,
+  restoreTab,
   updateTrade,
   validateTabName,
 } from '../profit-monitor-core.mjs';
@@ -59,6 +61,40 @@ test('tabs can be created, switched, deleted, and recreated when the last tab is
   const baseState = ensureAppState(null, {
     defaultTabId: 'default-tab',
     now: '2026-07-01T00:00:00Z',
+  });
+
+  test('tabs can be archived and restored while preserving tab data', () => {
+    const state = ensureAppState({
+      tabs: [
+        {
+          id: 'tab-a',
+          name: 'Tab A',
+          transactions: [{ type: TYPE_SELL, amount: 25, description: 'Sale A', date: '2026-09-01' }],
+          trades: [{ id: 1, givenItems: [{ cardName: 'A', quantity: 1, value: 10 }], receivedItems: [{ cardName: 'B', quantity: 1, value: 15 }] }],
+        },
+        {
+          id: 'tab-b',
+          name: 'Tab B',
+          transactions: [{ type: TYPE_BUY, amount: 10, description: 'Buy B', date: '2026-09-02' }],
+        },
+      ],
+      activeTabId: 'tab-a',
+      trades: [],
+    }, {
+      now: '2026-09-21T00:00:00Z',
+    });
+
+    const archived = archiveTab(state, 'tab-a');
+    assert.equal(archived.tabs.find(tab => tab.id === 'tab-a').archived, true);
+    assert.equal(archived.activeTabId, 'tab-b');
+    assert.equal(archived.tabs.find(tab => tab.id === 'tab-a').transactions.length, 1);
+    assert.equal(archived.tabs.find(tab => tab.id === 'tab-a').trades.length, 1);
+
+    const restored = restoreTab(archived, 'tab-a');
+    assert.equal(restored.tabs.find(tab => tab.id === 'tab-a').archived, false);
+
+    const unchanged = setActiveTab(archived, 'tab-a');
+    assert.equal(unchanged.activeTabId, 'tab-b');
   });
 
   assert.equal(validateTabName(baseState, '').valid, false);
