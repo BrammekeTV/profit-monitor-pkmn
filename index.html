@@ -179,6 +179,35 @@
       flex-wrap: wrap;
     }
 
+    .archive-panel {
+      margin-bottom: 14px;
+      padding: 10px 12px;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.02);
+    }
+
+    .archive-title {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .archive-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .archive-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
     .inline-btn {
       padding: 7px 10px;
       border: 1px solid var(--border);
@@ -1315,6 +1344,10 @@
       </div>
     </div>
     <div class="form-msg panel-message" id="tabMsg"></div>
+    <div class="archive-panel" id="tabArchivePanel" style="display:none;">
+      <div class="archive-title">Gearchiveerde tabs</div>
+      <div class="archive-list" id="tabArchiveList"></div>
+    </div>
 
     <!-- View toggle -->
     <div class="view-toggle-bar">
@@ -1808,14 +1841,14 @@
       <select class="form-select" id="importTabSelect">
         <option value="">— selecteer een tab —</option>
       </select>
-      <div class="form-hint" style="margin-top:4px;">Transacties worden toegevoegd aan de huidige actieve tab.</div>
+      <div class="form-hint" style="margin-top:4px;">Transacties en trades worden toegevoegd aan de huidige actieve tab/workspace.</div>
     </div>
     <button class="import-btn" id="importFromTabBtn">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M2 8h9M8 5l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M13 2v12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".4"/>
       </svg>
-      Importeer transacties
+      Importeer transacties + trades
     </button>
     <div class="form-msg" id="importTabMsg"></div>
 
@@ -1866,7 +1899,9 @@ import {
   addTab,
   appendTransaction,
   appendTransactions,
+  appendTrades,
   appendTrade,
+  archiveTab,
   clearAllData,
   computeCardmarketSurplus,
   computeProfitByCard,
@@ -1895,6 +1930,7 @@ import {
   setActiveTab,
   splitMultiLineDescription,
   todayISO,
+  restoreTab,
   updateTrade as updateStoredTrade,
   updateTransaction as updateStoredTransaction,
   validateTabName,
@@ -2009,7 +2045,8 @@ function syncTopbarTitle() {
 function renderTabs() {
   const activeTab = getActiveTabState(appState);
   const tabBar = document.getElementById('tabBar');
-  tabBar.innerHTML = appState.tabs.map(tab => `
+  const activeTabs = appState.tabs.filter(tab => !tab.archived);
+  tabBar.innerHTML = activeTabs.map(tab => `
     <button class="tab-btn ${tab.id === activeTab.id ? 'active' : ''}" data-tab-id="${escAttr(tab.id)}">
       ${escHTML(tab.name)}
     </button>
@@ -2021,6 +2058,34 @@ function renderTabs() {
       saveToStorage();
       refreshView();
       showMessage(tabMsg);
+    });
+  });
+}
+
+function renderArchivedTabs() {
+  const archivePanel = document.getElementById('tabArchivePanel');
+  const archiveList = document.getElementById('tabArchiveList');
+  const archivedTabs = appState.tabs.filter(tab => tab.archived);
+  if (!archivedTabs.length) {
+    archivePanel.style.display = 'none';
+    archiveList.innerHTML = '';
+    return;
+  }
+
+  archivePanel.style.display = '';
+  archiveList.innerHTML = archivedTabs.map(tab => `
+    <div class="archive-row">
+      <span>${escHTML(tab.name)} (${tab.transactions.length} transacties, ${(Array.isArray(tab.trades) ? tab.trades.length : 0)} trades)</span>
+      <button class="inline-btn" data-restore-tab-id="${escAttr(tab.id)}">Herstel</button>
+    </div>
+  `).join('');
+
+  archiveList.querySelectorAll('[data-restore-tab-id]').forEach(button => {
+    button.addEventListener('click', () => {
+      appState = restoreTab(appState, button.dataset.restoreTabId);
+      saveToStorage();
+      refreshView();
+      showMessage(tabMsg, 'success', 'Tab hersteld uit archief.');
     });
   });
 }
@@ -2096,10 +2161,10 @@ function filteredTransactions() {
 function renderImportTabSelect() {
   const sel = document.getElementById('importTabSelect');
   const activeTab = getActiveTabState(appState);
-  const otherTabs = appState.tabs.filter(t => t.id !== activeTab.id);
+  const otherTabs = appState.tabs.filter(t => !t.archived && t.id !== activeTab.id);
   sel.innerHTML = otherTabs.length
     ? ['<option value="">— selecteer een tab —</option>',
-       ...otherTabs.map(t => `<option value="${escAttr(t.id)}">${escHTML(t.name)} (${t.transactions.length} transacties)</option>`),
+       ...otherTabs.map(t => `<option value="${escAttr(t.id)}">${escHTML(t.name)} (${t.transactions.length} transacties, ${(Array.isArray(t.trades) ? t.trades.length : 0)} trades)</option>`),
       ].join('')
     : '<option value="">Geen andere tabs beschikbaar</option>';
 }
@@ -3389,6 +3454,17 @@ document.getElementById('customTo').addEventListener('change', e => {
 });
 
 // Import from tab
+function formatTabImportCountLabel(transactionCount, tradeCount) {
+  const parts = [];
+  if (transactionCount > 0) {
+    parts.push(`${transactionCount} transactie${transactionCount !== 1 ? 's' : ''}`);
+  }
+  if (tradeCount > 0) {
+    parts.push(`${tradeCount} trade${tradeCount !== 1 ? 's' : ''}`);
+  }
+  return parts.join(' en ');
+}
+
 document.getElementById('importFromTabBtn').addEventListener('click', () => {
   const importTabMsg = document.getElementById('importTabMsg');
   const sel = document.getElementById('importTabSelect');
@@ -3398,16 +3474,26 @@ document.getElementById('importFromTabBtn').addEventListener('click', () => {
     return;
   }
   const sourceTab = appState.tabs.find(t => t.id === sourceId);
-  if (!sourceTab || !sourceTab.transactions.length) {
-    showMessage(importTabMsg, 'error', 'Geselecteerde tab heeft geen transacties.');
+  const sourceTransactions = Array.isArray(sourceTab?.transactions) ? sourceTab.transactions : [];
+  const sourceTrades = Array.isArray(sourceTab?.trades) ? sourceTab.trades : [];
+  if (!sourceTab || (!sourceTransactions.length && !sourceTrades.length)) {
+    showMessage(importTabMsg, 'error', 'Geselecteerde tab heeft geen transacties of trades.');
     return;
   }
-  if (!confirm(`${sourceTab.transactions.length} transacties importeren uit "${sourceTab.name}"?`)) return;
-  appState = appendTransactions(appState, sourceTab.transactions);
+  const importLabel = formatTabImportCountLabel(sourceTransactions.length, sourceTrades.length);
+  if (!confirm(`${importLabel} importeren uit "${sourceTab.name}"?`)) return;
+  appState = appendTransactions(appState, sourceTransactions);
+  appState = appendTrades(appState, sourceTrades);
+  appState = archiveTab(appState, sourceTab.id);
   saveToStorage();
   refreshView();
-  showMessage(importTabMsg, 'success', `${sourceTab.transactions.length} transactie${sourceTab.transactions.length !== 1 ? 's' : ''} geïmporteerd uit "${sourceTab.name}".`);
+  showMessage(
+    importTabMsg,
+    'success',
+    `${importLabel} geïmporteerd uit "${sourceTab.name}".`,
+  );
   setTimeout(() => showMessage(importTabMsg), 4000);
+  showMessage(tabMsg, 'success', `Tab "${sourceTab.name}" is gearchiveerd.`);
 });
 
 function refreshView() {
@@ -3417,6 +3503,7 @@ function refreshView() {
   setSectionCollapsed('profitTable', collapsedSections.profitTable);
   setSectionCollapsed('profitCharts', collapsedSections.profitCharts);
   renderTabs();
+  renderArchivedTabs();
   renderImportTabSelect();
   renderSummary();
   renderTable();

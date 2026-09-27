@@ -266,8 +266,12 @@ export function createTab(name = DEFAULT_TAB_NAME, options = {}) {
     id: options.id ?? makeId('tab'),
     name: normalizeTabName(name) || DEFAULT_TAB_NAME,
     createdAt: options.createdAt ?? new Date(options.now ?? Date.now()).toISOString(),
+    archived: Boolean(options.archived),
     transactions: Array.isArray(options.transactions)
       ? options.transactions.map(txn => normalizeTransaction(txn, { now: options.now }))
+      : [],
+    trades: Array.isArray(options.trades)
+      ? options.trades.map(trade => normalizeTrade(trade, { now: options.now }))
       : [],
   };
 }
@@ -290,6 +294,7 @@ function normalizeTabs(rawTabs, options = {}) {
   const tabs = [];
   const usedNames = new Set();
   let nextId = 1;
+  let nextTradeId = 1;
 
   for (const rawTab of Array.isArray(rawTabs) ? rawTabs : []) {
     const fallbackName = `Tab ${tabs.length + 1}`;
@@ -297,7 +302,9 @@ function normalizeTabs(rawTabs, options = {}) {
       id: rawTab?.id ?? makeId('tab'),
       createdAt: rawTab?.createdAt,
       now: options.now,
+      archived: rawTab?.archived,
       transactions: Array.isArray(rawTab?.transactions) ? rawTab.transactions : [],
+      trades: Array.isArray(rawTab?.trades) ? rawTab.trades : [],
     });
 
     tab.name = uniquifyTabName(tab.name || fallbackName, usedNames);
@@ -305,6 +312,11 @@ function normalizeTabs(rawTabs, options = {}) {
       const id = Number.isInteger(transaction.id) ? transaction.id : nextId;
       nextId = Math.max(nextId, id + 1);
       return { ...transaction, id };
+    });
+    tab.trades = tab.trades.map(trade => {
+      const id = Number.isInteger(trade.id) ? trade.id : nextTradeId;
+      nextTradeId = Math.max(nextTradeId, id + 1);
+      return { ...trade, id };
     });
 
     tabs.push(tab);
@@ -351,9 +363,10 @@ export function ensureAppState(rawState, options = {}) {
     return { tabs: [defaultTab], activeTabId: defaultTab.id, trades: [] };
   }
 
-  const activeTabId = tabs.some(tab => tab.id === parsed?.activeTabId)
+  const firstAvailableTab = tabs.find(tab => !tab.archived) || tabs[0];
+  const activeTabId = tabs.some(tab => tab.id === parsed?.activeTabId && !tab.archived)
     ? parsed.activeTabId
-    : tabs[0].id;
+    : firstAvailableTab.id;
 
   const trades = (Array.isArray(parsed?.trades) ? parsed.trades : [])
     .map((trade, index) => {
@@ -368,7 +381,9 @@ export function ensureAppState(rawState, options = {}) {
 }
 
 export function getActiveTab(state) {
-  return state.tabs.find(tab => tab.id === state.activeTabId) || state.tabs[0];
+  const activeTab = state.tabs.find(tab => tab.id === state.activeTabId && !tab.archived);
+  if (activeTab) return activeTab;
+  return state.tabs.find(tab => !tab.archived) || state.tabs[0];
 }
 
 export function getActiveTransactions(state) {
@@ -402,7 +417,7 @@ export function validateTabName(state, name, excludeTabId = null) {
 }
 
 export function setActiveTab(state, tabId) {
-  if (!state.tabs.some(tab => tab.id === tabId)) return ensureAppState(state);
+  if (!state.tabs.some(tab => tab.id === tabId && !tab.archived)) return ensureAppState(state);
   return { ...state, activeTabId: tabId };
 }
 
@@ -468,6 +483,31 @@ export function deleteTab(state, tabId, options = {}) {
     tabs: remainingTabs,
     activeTabId,
   };
+}
+
+export function archiveTab(state, tabId) {
+  const tab = state.tabs.find(entry => entry.id === tabId);
+  if (!tab || tab.archived) return ensureAppState(state);
+
+  const nextState = {
+    ...state,
+    tabs: state.tabs.map(entry => (
+      entry.id === tabId ? { ...entry, archived: true } : entry
+    )),
+  };
+  return ensureAppState(nextState);
+}
+
+export function restoreTab(state, tabId) {
+  const tab = state.tabs.find(entry => entry.id === tabId);
+  if (!tab || !tab.archived) return ensureAppState(state);
+
+  return ensureAppState({
+    ...state,
+    tabs: state.tabs.map(entry => (
+      entry.id === tabId ? { ...entry, archived: false } : entry
+    )),
+  });
 }
 
 export function replaceActiveTabTransactions(state, transactions, options = {}) {
@@ -575,6 +615,22 @@ export function appendTrade(state, trade, options = {}) {
   return {
     ...state,
     trades: [...getTrades(state), { ...normalized, id }],
+  };
+}
+
+export function appendTrades(state, trades, options = {}) {
+  let id = nextTradeId(state);
+  const additions = (Array.isArray(trades) ? trades : []).map(trade => {
+    const normalized = normalizeTrade(trade, { now: options.now });
+    const withId = { ...normalized, id };
+    id += 1;
+    return withId;
+  });
+
+  if (!additions.length) return state;
+  return {
+    ...state,
+    trades: [...getTrades(state), ...additions],
   };
 }
 

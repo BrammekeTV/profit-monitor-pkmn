@@ -6,7 +6,9 @@ import {
   TYPE_BUY,
   TYPE_SELL,
   addTab,
+  appendTrades,
   appendTrade,
+  archiveTab,
   computeTradeAnalytics,
   computeTradePerformanceSeries,
   computeCardmarketSurplus,
@@ -26,6 +28,7 @@ import {
   normalizeTrade,
   normalizeTransaction,
   setActiveTab,
+  restoreTab,
   updateTrade,
   validateTabName,
 } from '../profit-monitor-core.mjs';
@@ -85,6 +88,40 @@ test('tabs can be created, switched, deleted, and recreated when the last tab is
   assert.equal(recreated.tabs.length, 1);
   assert.equal(recreated.tabs[0].name, DEFAULT_TAB_NAME);
   assert.equal(recreated.activeTabId, 'new-default');
+});
+
+test('tabs can be archived and restored while preserving tab data', () => {
+  const state = ensureAppState({
+    tabs: [
+      {
+        id: 'tab-a',
+        name: 'Tab A',
+        transactions: [{ type: TYPE_SELL, amount: 25, description: 'Sale A', date: '2026-09-01' }],
+        trades: [{ id: 1, givenItems: [{ cardName: 'A', quantity: 1, value: 10 }], receivedItems: [{ cardName: 'B', quantity: 1, value: 15 }] }],
+      },
+      {
+        id: 'tab-b',
+        name: 'Tab B',
+        transactions: [{ type: TYPE_BUY, amount: 10, description: 'Buy B', date: '2026-09-02' }],
+      },
+    ],
+    activeTabId: 'tab-a',
+    trades: [],
+  }, {
+    now: '2026-09-21T00:00:00Z',
+  });
+
+  const archived = archiveTab(state, 'tab-a');
+  assert.equal(archived.tabs.find(tab => tab.id === 'tab-a').archived, true);
+  assert.equal(archived.activeTabId, 'tab-b');
+  assert.equal(archived.tabs.find(tab => tab.id === 'tab-a').transactions.length, 1);
+  assert.equal(archived.tabs.find(tab => tab.id === 'tab-a').trades.length, 1);
+
+  const restored = restoreTab(archived, 'tab-a');
+  assert.equal(restored.tabs.find(tab => tab.id === 'tab-a').archived, false);
+
+  const unchanged = setActiveTab(archived, 'tab-a');
+  assert.equal(unchanged.activeTabId, 'tab-b');
 });
 
 test('profit per card uses FIFO matching and handles partial sales case-insensitively', () => {
@@ -263,6 +300,37 @@ test('trades are stored separately and support CRUD plus analytics', () => {
   assert.equal(state.tabs.length, 1);
 });
 
+test('appendTrades appends and normalizes multiple trades with new ids', () => {
+  const baseState = ensureAppState(null, {
+    defaultTabId: 'default-tab',
+    now: '2026-09-21T00:00:00Z',
+  });
+  const seeded = appendTrade(baseState, {
+    date: '2026-09-20',
+    givenItems: [{ cardName: 'Card A', quantity: 1, value: 10 }],
+    receivedItems: [{ cardName: 'Card B', quantity: 1, value: 12 }],
+  });
+
+  const next = appendTrades(seeded, [
+    {
+      id: 999,
+      date: '2026-09-22',
+      givenItems: [{ cardName: 'Card C', quantity: 1, value: 20, gradingCompany: 'psa', gradingValue: '10' }],
+      receivedItems: [{ cardName: 'Card D', quantity: 1, value: 30 }],
+    },
+    {
+      date: '2026-09-23',
+      givenItems: [{ cardName: 'Card E', quantity: 1, value: 5 }],
+      receivedItems: [{ cardName: 'Card F', quantity: 1, value: 7 }],
+    },
+  ]);
+
+  assert.equal(next.trades.length, 3);
+  assert.deepEqual(next.trades.map(trade => trade.id), [1, 2, 3]);
+  assert.equal(next.trades[1].givenItems[0].gradingCompany, 'PSA');
+  assert.equal(next.trades[1].givenItems[0].gradingLabel, 'Gem Mint');
+});
+
 test('trades support loose cash amounts alongside or without card rows', () => {
   let state = ensureAppState(null, {
     defaultTabId: 'default-tab',
@@ -325,6 +393,29 @@ test('persisted trades normalize graded item values on load', () => {
   assert.equal(state.trades[0].receivedCashAmount, 2.5);
   assert.equal(state.trades[0].totalGiven, 106.5);
   assert.equal(state.trades[0].totalReceived, 112.5);
+});
+
+test('tabs keep persisted trade arrays for tab-import migration support', () => {
+  const state = ensureAppState({
+    tabs: [{
+      id: 'tab-a',
+      name: 'Tab A',
+      transactions: [],
+      trades: [{
+        id: 40,
+        date: '2026-09-24',
+        givenItems: [{ cardName: 'Card G', quantity: 1, value: 50, gradingCompany: 'psa', gradingValue: '10' }],
+        receivedItems: [{ cardName: 'Card H', quantity: 1, value: 55 }],
+      }],
+    }],
+    activeTabId: 'tab-a',
+    trades: [],
+  });
+
+  assert.equal(state.tabs[0].trades.length, 1);
+  assert.equal(state.tabs[0].trades[0].id, 40);
+  assert.equal(state.tabs[0].trades[0].givenItems[0].gradingCompany, 'PSA');
+  assert.equal(state.tabs[0].trades[0].givenItems[0].gradingLabel, 'Gem Mint');
 });
 
 test('persisted trades normalize invalid or negative cash amounts', () => {
