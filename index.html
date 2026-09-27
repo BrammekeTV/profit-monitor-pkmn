@@ -3390,6 +3390,17 @@ document.getElementById('customTo').addEventListener('change', e => {
 });
 
 // Import from tab
+function formatTabImportCountLabel(transactionCount, tradeCount) {
+  const parts = [];
+  if (transactionCount > 0) {
+    parts.push(`${transactionCount} transactie${transactionCount !== 1 ? 's' : ''}`);
+  }
+  if (tradeCount > 0) {
+    parts.push(`${tradeCount} trade${tradeCount !== 1 ? 's' : ''}`);
+  }
+  return parts.join(' en ');
+}
+
 document.getElementById('importFromTabBtn').addEventListener('click', () => {
   const importTabMsg = document.getElementById('importTabMsg');
   const sel = document.getElementById('importTabSelect');
@@ -3405,7 +3416,8 @@ document.getElementById('importFromTabBtn').addEventListener('click', () => {
     showMessage(importTabMsg, 'error', 'Geselecteerde tab heeft geen transacties of trades.');
     return;
   }
-  if (!confirm(`${sourceTransactions.length} transacties en ${sourceTrades.length} trades importeren uit "${sourceTab.name}"?`)) return;
+  const importLabel = formatTabImportCountLabel(sourceTransactions.length, sourceTrades.length);
+  if (!confirm(`${importLabel} importeren uit "${sourceTab.name}"?`)) return;
   appState = appendTransactions(appState, sourceTransactions);
   appState = appendTrades(appState, sourceTrades);
   saveToStorage();
@@ -3413,7 +3425,7 @@ document.getElementById('importFromTabBtn').addEventListener('click', () => {
   showMessage(
     importTabMsg,
     'success',
-    `${sourceTransactions.length} transactie${sourceTransactions.length !== 1 ? 's' : ''} en ${sourceTrades.length} trade${sourceTrades.length !== 1 ? 's' : ''} geïmporteerd uit "${sourceTab.name}".`,
+    `${importLabel} geïmporteerd uit "${sourceTab.name}".`,
   );
   setTimeout(() => showMessage(importTabMsg), 4000);
 });
