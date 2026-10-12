@@ -156,8 +156,8 @@ test('average card profit margin averages matched cards and ignores Bulk entries
     { type: TYPE_BUY, cardName: 'Eevee', amount: 100, date: '2026-01-01' },
     { type: TYPE_SELL, cardName: 'Eevee', amount: 80, date: '2026-01-02' },
     { type: TYPE_SELL, cardName: 'Mew', amount: 50, date: '2026-01-02' },
-    { type: TYPE_BUY, cardName: 'Bulk kaarten', amount: 10, date: '2026-01-01' },
-    { type: TYPE_SELL, cardName: 'Bulk kaarten', amount: 50, date: '2026-01-02' },
+    { type: TYPE_BUY, cardName: 'Bulk kaarten', amount: 10, description: 'Bulk kaarten', date: '2026-01-01' },
+    { type: TYPE_SELL, cardName: 'Bulk kaarten', amount: 50, description: 'Bulk kaarten', date: '2026-01-02' },
   ];
 
   assert.equal(isBulkTransaction({ description: 'Verkoop BULK kaarten' }), true);
