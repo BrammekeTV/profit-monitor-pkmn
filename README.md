@@ -15,8 +15,10 @@ A static profit tracker for Pokémon TCG trading that runs entirely in the brows
 - Mark cards as graded with company-specific grade options (PSA/BGS/CGC/TAG) and show grading info in transaction rows
 - Delete individual transactions
 - Track realized profit per card name with FIFO matching on buy/sell quantities
+- Search the **Winst per kaart** table and view each card's profit margin
+- View transactions containing the word "Bulk" in a separate table
 - Profit visualizations: top-card profit chart and monthly net-result trend
-- Analyse dashboard with KPI widgets including current-month performance
+- Analyse dashboard with KPI widgets including current-month performance and average per-card profit margin
 - Trade registratie met duidelijke **IK GEEF / IK ONTVANG** invoer, live verschil/ROI, en bewerken/verwijderen
 - Aparte tab **Trades - Analyse** met trade-statistieken en performancegrafiek
 - Sold transactions with `#123456789` in the description show Cardmarket order links
@@ -51,6 +53,7 @@ Trades blijven volledig gescheiden van transacties: ze tellen alleen mee in **Tr
 ### Profit matching
 
 The **Winst per kaart** table groups transactions by normalized `cardName` (`trim()` + case-insensitive) and matches sold quantities against earlier buys using FIFO (first in, first out). Partial sales allocate only the sold quantity from the oldest open buy lots, so remaining inventory stays available for later sales.
+Profit margin is calculated as realized profit divided by the cost allocated to sold cards. The average margin is the arithmetic mean across cards with a matched purchase cost; transactions whose description contains the word "Bulk" are listed separately and excluded from per-card margins.
 
 ### Cardmarket order links
 

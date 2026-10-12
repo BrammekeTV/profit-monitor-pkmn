@@ -845,12 +845,29 @@ export function computeProfitByCard(transactions) {
       soldValue: roundMoney(soldValue),
       allocatedBuyCost: roundMoney(allocatedBuyCost),
       realizedProfit: roundMoney(soldValue - allocatedBuyCost),
+      profitMargin: allocatedBuyCost > 0
+        ? roundMoney(((soldValue - allocatedBuyCost) / allocatedBuyCost) * 100)
+        : null,
       remainingQty,
       remainingCost,
     });
   });
 
   return rows.sort((left, right) => left.cardName.localeCompare(right.cardName, 'nl', { sensitivity: 'base' }));
+}
+
+export function isBulkTransaction(transaction) {
+  return /\bbulk\b/i.test(String(transaction?.description ?? ''));
+}
+
+export function computeAverageCardProfitMargin(transactions) {
+  const margins = computeProfitByCard(transactions.filter(transaction => !isBulkTransaction(transaction)))
+    .map(row => row.profitMargin)
+    .filter(Number.isFinite);
+
+  return margins.length
+    ? roundMoney(margins.reduce((sum, margin) => sum + margin, 0) / margins.length)
+    : null;
 }
 
 export function extractCardmarketOrderIds(description = '') {

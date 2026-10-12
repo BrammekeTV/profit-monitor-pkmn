@@ -9,6 +9,7 @@ import {
   appendTrades,
   appendTrade,
   archiveTab,
+  computeAverageCardProfitMargin,
   computeTradeAnalytics,
   computeTradePerformanceSeries,
   computeCardmarketSurplus,
@@ -21,6 +22,7 @@ import {
   getGradingScale,
   getActiveTab,
   getCardmarketOrderLinks,
+  isBulkTransaction,
   normalizeGradingValue,
   parseTradeCashAmountInput,
   resolveTradeDraftCashAmount,
@@ -141,9 +143,27 @@ test('profit per card uses FIFO matching and handles partial sales case-insensit
     soldValue: 125,
     allocatedBuyCost: 80,
     realizedProfit: 45,
+    profitMargin: 56.25,
     remainingQty: 6,
     remainingCost: 60,
   });
+});
+
+test('average card profit margin averages matched cards and ignores Bulk entries', () => {
+  const transactions = [
+    { type: TYPE_BUY, cardName: 'Pikachu', amount: 100, date: '2026-01-01' },
+    { type: TYPE_SELL, cardName: 'Pikachu', amount: 125, date: '2026-01-02' },
+    { type: TYPE_BUY, cardName: 'Eevee', amount: 100, date: '2026-01-01' },
+    { type: TYPE_SELL, cardName: 'Eevee', amount: 80, date: '2026-01-02' },
+    { type: TYPE_SELL, cardName: 'Mew', amount: 50, date: '2026-01-02' },
+    { type: TYPE_BUY, cardName: 'Bulk kaarten', amount: 10, date: '2026-01-01' },
+    { type: TYPE_SELL, cardName: 'Bulk kaarten', amount: 50, date: '2026-01-02' },
+  ];
+
+  assert.equal(isBulkTransaction({ description: 'Verkoop BULK kaarten' }), true);
+  assert.equal(isBulkTransaction({ description: 'Bulky sleeve' }), false);
+  assert.equal(computeAverageCardProfitMargin(transactions), 2.5);
+  assert.equal(computeAverageCardProfitMargin([]), null);
 });
 
 test('profit per card respects explicit no-card entries while keeping legacy multiline splitting', () => {
