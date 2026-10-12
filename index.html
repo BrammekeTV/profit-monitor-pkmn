@@ -980,7 +980,7 @@
     .widget-chart { grid-column: span 4; }
 
     /* Info widgets: 2 per row */
-    .widget-info { grid-column: span 6; }
+    .widget-info { grid-column: span 4; }
 
     @media (max-width: 1200px) {
       .analyse-kpi-row {
@@ -1425,6 +1425,14 @@
     <div id="profitView" style="display:none;">
       <div class="section-header">
         <span class="section-title">Winst per kaart</span>
+        <input
+          type="search"
+          class="search-input"
+          id="profitSearchInput"
+          placeholder="Zoek kaart of Bulk-transactie…"
+          autocomplete="off"
+          aria-label="Zoek in Winst per kaart"
+        />
       </div>
 
       <!-- Profit table subsection -->
@@ -1443,14 +1451,34 @@
                 <th><button type="button" class="sort-btn" data-table="profit" data-sort-key="allocatedBuyCost">Inkoop verkocht</button></th>
                 <th><button type="button" class="sort-btn" data-table="profit" data-sort-key="soldValue">Omzet</button></th>
                 <th><button type="button" class="sort-btn" data-table="profit" data-sort-key="realizedProfit">Winst</button></th>
+                <th><button type="button" class="sort-btn" data-table="profit" data-sort-key="profitMargin">Winstmarge</button></th>
                 <th><button type="button" class="sort-btn" data-table="profit" data-sort-key="remainingQty">Voorraad</button></th>
               </tr>
             </thead>
             <tbody id="profitBody">
-              <tr><td colspan="7" class="empty">Nog geen kaartgegevens beschikbaar.</td></tr>
+              <tr><td colspan="8" class="empty">Nog geen kaartgegevens beschikbaar.</td></tr>
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div class="subsection-header">
+        <span class="subsection-title">Bulk-transacties</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Bedrag</th>
+              <th>Datum</th>
+              <th>Beschrijving</th>
+            </tr>
+          </thead>
+          <tbody id="bulkProfitBody">
+            <tr><td colspan="4" class="empty">Geen Bulk-transacties gevonden.</td></tr>
+          </tbody>
+        </table>
       </div>
 
       <!-- Profit charts subsection -->
@@ -1594,6 +1622,16 @@
             <button class="widget-expand-btn" data-widget="widgetCMSurplus" title="Vergroot">⤢</button>
           </div>
           <div class="widget-body" id="wbCMSurplus">
+            <div class="widget-empty">Laden…</div>
+          </div>
+        </div>
+
+        <div class="widget widget-info" id="widgetAverageCardMargin">
+          <div class="widget-header">
+            <span class="widget-title">Gem. winstpercentage per kaart</span>
+            <button class="widget-expand-btn" data-widget="widgetAverageCardMargin" title="Vergroot">⤢</button>
+          </div>
+          <div class="widget-body" id="wbAverageCardMargin">
             <div class="widget-empty">Laden…</div>
           </div>
         </div>
@@ -1903,6 +1941,7 @@ import {
   appendTrade,
   archiveTab,
   clearAllData,
+  computeAverageCardProfitMargin,
   computeCardmarketSurplus,
   computeProfitByCard,
   computeSummary,
@@ -1916,6 +1955,7 @@ import {
   getActiveTab as getActiveTabState,
   getActiveTransactions,
   getCardmarketOrderLinks,
+  isBulkTransaction,
   getGradeLabel,
   getGradingScale,
   inferQuantity,
@@ -1939,6 +1979,7 @@ import {
 let appState = ensureAppState(null);
 let activeFilter = 'all';
 let searchQuery = '';
+let profitSearchQuery = '';
 let editingId = null;
 let activeView = 'transactions'; // 'transactions' | 'profit' | 'analyse' | 'trades' | 'trades-analysis'
 let profitChart = null;
@@ -2439,29 +2480,49 @@ function renderMonthlyChart(transactions) {
 
 function renderProfitTable() {
   const periodTxns = filteredByPeriod();
-  const rows = applyProfitSort(computeProfitByCard(periodTxns));
+  const cardTransactions = periodTxns.filter(transaction => !isBulkTransaction(transaction));
+  const allRows = computeProfitByCard(cardTransactions);
+  const query = profitSearchQuery;
+  const rows = applyProfitSort(allRows.filter(row => row.cardName.toLocaleLowerCase('nl').includes(query)));
   const tbody = document.getElementById('profitBody');
 
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty">Nog geen kaartgegevens beschikbaar.</td></tr>';
-    renderProfitChart([]);
-    renderMonthlyChart([]);
-    return;
+    tbody.innerHTML = `<tr><td colspan="8" class="empty">${query ? 'Geen kaarten gevonden.' : 'Nog geen kaartgegevens beschikbaar.'}</td></tr>`;
+  } else {
+    tbody.innerHTML = rows.map(row => `
+      <tr>
+        <td>${escHTML(row.cardName)}</td>
+        <td>${row.boughtQty}</td>
+        <td>${row.soldQty}</td>
+        <td>${fmt(row.allocatedBuyCost)}</td>
+        <td>${fmt(row.soldValue)}</td>
+        <td class="amount-cell ${row.realizedProfit >= 0 ? 'positive' : 'negative'}">${fmt(row.realizedProfit)}</td>
+        <td>${row.profitMargin === null ? '—' : fmtPercent(row.profitMargin)}</td>
+        <td>${row.remainingQty} / ${fmt(row.remainingCost)}</td>
+      </tr>
+    `).join('');
   }
 
-  tbody.innerHTML = rows.map(row => `
-    <tr>
-      <td>${escHTML(row.cardName)}</td>
-      <td>${row.boughtQty}</td>
-      <td>${row.soldQty}</td>
-      <td>${fmt(row.allocatedBuyCost)}</td>
-      <td>${fmt(row.soldValue)}</td>
-      <td class="amount-cell ${row.realizedProfit >= 0 ? 'positive' : 'negative'}">${fmt(row.realizedProfit)}</td>
-      <td>${row.remainingQty} / ${fmt(row.remainingCost)}</td>
-    </tr>
-  `).join('');
+  const bulkRows = applyTransactionSort(periodTxns.filter(transaction => (
+    isBulkTransaction(transaction)
+    && normalizeTransaction(transaction).description.toLocaleLowerCase('nl').includes(query)
+  )));
+  const bulkBody = document.getElementById('bulkProfitBody');
+  if (!bulkRows.length) {
+    bulkBody.innerHTML = '<tr><td colspan="4" class="empty">Geen Bulk-transacties gevonden.</td></tr>';
+  } else {
+    bulkBody.innerHTML = bulkRows.map(transaction => {
+      const normalized = normalizeTransaction(transaction);
+      return `<tr>
+        <td>${escHTML(normalized.type)}</td>
+        <td class="amount-cell ${normalized.type === TYPE_SELL ? 'positive' : 'negative'}">${fmt(normalized.amount)}</td>
+        <td style="white-space:nowrap;">${escHTML(formatDate(normalized.date))}</td>
+        <td>${escHTML(normalized.description || '—')}</td>
+      </tr>`;
+    }).join('');
+  }
 
-  renderProfitChart(rows);
+  renderProfitChart(allRows);
   renderMonthlyChart(periodTxns);
 }
 
@@ -2544,6 +2605,7 @@ function renderAnalytics() {
   renderGrowthChart(monthly);
   renderOverviewWidget(txns);
   renderCardmarketSurplusWidget(txns);
+  renderAverageCardMarginWidget(txns);
 }
 
 // ── Analyse widgets ────────────────────────────────────────────────────
@@ -2598,6 +2660,16 @@ function renderCardmarketSurplusWidget(txns) {
       <span class="widget-stat-value neutral">${surplus.count}</span>
     </div>
   `;
+}
+
+function renderAverageCardMarginWidget(txns) {
+  const averageMargin = computeAverageCardProfitMargin(txns);
+  document.getElementById('wbAverageCardMargin').innerHTML = averageMargin === null
+    ? '<div class="widget-empty">Geen kaarten met berekenbare winstmarge.</div>'
+    : `<div class="widget-stat">
+        <span class="widget-stat-label">Gemiddeld per kaart</span>
+        <span class="widget-stat-value ${averageMargin >= 0 ? 'positive' : 'negative'}">${escHTML(fmtPercent(averageMargin))}</span>
+      </div>`;
 }
 
 function renderCumulativeChart(transactions) {
@@ -3922,6 +3994,11 @@ document.querySelectorAll('.filter-btn').forEach(button => {
 document.getElementById('searchInput').addEventListener('input', event => {
   searchQuery = event.target.value.toLowerCase().trim();
   renderTable();
+});
+
+document.getElementById('profitSearchInput').addEventListener('input', event => {
+  profitSearchQuery = event.target.value.toLocaleLowerCase('nl').trim();
+  if (activeView === 'profit') renderProfitTable();
 });
 
 function syncDescriptionParsing() {
