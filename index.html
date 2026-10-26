@@ -387,13 +387,21 @@
       letter-spacing: 0.02em;
     }
 
-    .grade-badge-company img {
+    .grade-badge-company .grade-logo {
       display: block;
-      height: 12px;
+      height: 11px;
       width: auto;
-      max-width: 44px;
+      max-width: 64px;
       object-fit: contain;
     }
+
+    /* PSA/BGS/CGC/TAG differ in proportions; nudge them to a similar visual size */
+    .grade-badge-company .grade-logo-psa { height: 13px; }
+    .grade-badge-company .grade-logo-bgs { height: 10px; }
+    .grade-badge-company .grade-logo-tag { height: 10px; }
+
+    /* The BGS logo file is near-black; show it white on the dark theme */
+    .grade-badge-company .grade-logo-bgs { filter: brightness(0) invert(1); }
 
     .grade-badge-value {
       display: inline-flex;
@@ -2315,7 +2323,7 @@ function gradeBadgeHTML(company, value, label = '') {
   if (!company || !value) return '';
   const logo = gradingLogos[company];
   const companyHTML = logo
-    ? `<img src="${escAttr(logo)}" alt="${escAttr(company)}">`
+    ? `<img class="grade-logo grade-logo-${escAttr(company.toLowerCase())}" src="${escAttr(logo)}" alt="${escAttr(company)}">`
     : escHTML(company);
   return `
     <span class="grade-badge" title="${escAttr(`${company} ${value}${label ? ` · ${label}` : ''}`)}">
@@ -2442,7 +2450,7 @@ function rowHTML(transaction) {
     metaItems.push(`
       <span class="meta-item meta-item-graded">
         ${gradeBadgeHTML(normalized.gradingCompany, normalized.gradingValue, gradeLabel)}
-        ${gradeLabel ? `<span class="grade-badge-label">${escHTML(gradeLabel)}</span>` : ''}
+        ${gradeLabel && gradeLabel !== normalized.gradingValue ? `<span class="grade-badge-label">${escHTML(gradeLabel)}</span>` : ''}
       </span>
     `);
   }

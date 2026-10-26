@@ -66,7 +66,7 @@ For sold transactions, any description token in the form `#1289784654` is conver
 
 ### Grading company logos
 
-Put logo files in `assets/grading/` named after the company (`psa.svg`, `bgs.svg`, `cgc.svg`, `tag.svg`; `.png` also works). The app picks them up automatically and shows them in the grading badge; without a file it shows the company name as text. Light-coloured logos work best on the dark theme.
+Logo files live in `assets/grading/` (`psa.svg`, `bgs.svg`, `cgc.svg`, `tag.png`; either `.svg` or `.png` works per company). To replace one, drop in a new file with the same name. The app picks them up automatically and shows them in the grading badge; without a file it shows the company name as text. Light-coloured logos work best on the dark theme.
 
 ## Import format (.xlsm / .xlsx)
 
