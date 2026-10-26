@@ -64,18 +64,72 @@ export function roundMoney(value) {
   return Math.round((Number(value) || 0) * 100) / 100;
 }
 
+function pad2(value) {
+  return String(value).padStart(2, '0');
+}
+
+// Formats a Date as YYYY-MM-DD using the *local* calendar date (not UTC),
+// so a sale entered at 00:30 in Amsterdam is stored under that same day.
+export function localDateISO(date) {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
 export function todayISO(now = new Date()) {
   const date = now instanceof Date ? now : new Date(now);
+  return localDateISO(date);
+}
+
+function buildValidDate(year, month, day) {
+  const y = Number(year);
+  const m = Number(month);
+  const d = Number(day);
+  if (!Number.isInteger(y) || !Number.isInteger(m) || !Number.isInteger(d)) return null;
+  if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+  // Reject impossible dates like 2026-02-31.
+  const check = new Date(Date.UTC(y, m - 1, d));
+  if (check.getUTCFullYear() !== y || check.getUTCMonth() !== m - 1 || check.getUTCDate() !== d) return null;
+  return `${String(y).padStart(4, '0')}-${pad2(m)}-${pad2(d)}`;
+}
+
+// Excel stores dates as serial day numbers counted from 1899-12-30.
+// Only values in this range (≈1927–2173) are treated as dates.
+const EXCEL_SERIAL_MIN = 10000;
+const EXCEL_SERIAL_MAX = 99999;
+const EXCEL_EPOCH_MS = Date.UTC(1899, 11, 30);
+
+export function excelSerialToISO(serial) {
+  const value = Number(serial);
+  if (!Number.isFinite(value) || value < EXCEL_SERIAL_MIN || value > EXCEL_SERIAL_MAX) return null;
+  const date = new Date(EXCEL_EPOCH_MS + Math.floor(value) * 86400000);
   return date.toISOString().slice(0, 10);
 }
 
 export function normalizeDate(value, fallback = todayISO()) {
+  if (typeof value === 'number') {
+    return excelSerialToISO(value) ?? fallback;
+  }
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? fallback : localDateISO(value);
+  }
   if (typeof value !== 'string') return fallback;
   const trimmed = value.trim();
   if (!trimmed) return fallback;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+
+  // Excel serial number stored as text, e.g. "46022" or "46022.5"
+  if (/^\d+(\.\d+)?$/.test(trimmed)) {
+    return excelSerialToISO(trimmed) ?? fallback;
+  }
+
+  // ISO: 2026-10-26 (optionally followed by a time part)
+  const iso = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:$|[T\s])/);
+  if (iso) return buildValidDate(iso[1], iso[2], iso[3]) ?? fallback;
+
+  // Dutch/European: 26-10-2026, 26/10/2026, 26.10.2026 (day first)
+  const european = trimmed.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  if (european) return buildValidDate(european[3], european[2], european[1]) ?? fallback;
+
   const parsed = new Date(trimmed);
-  return Number.isNaN(parsed.getTime()) ? fallback : parsed.toISOString().slice(0, 10);
+  return Number.isNaN(parsed.getTime()) ? fallback : localDateISO(parsed);
 }
 
 export function normalizeQuantity(value) {
@@ -290,11 +344,29 @@ function uniquifyTabName(name, usedNames) {
   return uniqueName;
 }
 
+// Gives every item a unique positive integer id. Existing unique ids are kept;
+// missing, invalid or duplicate ids get a fresh id after the current maximum.
+export function assignUniqueIds(items, startAfter = 0) {
+  const list = Array.isArray(items) ? items : [];
+  const used = new Set();
+  let maxId = startAfter;
+  for (const item of list) {
+    if (Number.isInteger(item?.id) && item.id > 0) maxId = Math.max(maxId, item.id);
+  }
+  return list.map(item => {
+    let id = item?.id;
+    if (!Number.isInteger(id) || id <= 0 || used.has(id)) {
+      maxId += 1;
+      id = maxId;
+    }
+    used.add(id);
+    return { ...item, id };
+  });
+}
+
 function normalizeTabs(rawTabs, options = {}) {
   const tabs = [];
   const usedNames = new Set();
-  let nextId = 1;
-  let nextTradeId = 1;
 
   for (const rawTab of Array.isArray(rawTabs) ? rawTabs : []) {
     const fallbackName = `Tab ${tabs.length + 1}`;
@@ -308,21 +380,17 @@ function normalizeTabs(rawTabs, options = {}) {
     });
 
     tab.name = uniquifyTabName(tab.name || fallbackName, usedNames);
-    tab.transactions = tab.transactions.map(transaction => {
-      const id = Number.isInteger(transaction.id) ? transaction.id : nextId;
-      nextId = Math.max(nextId, id + 1);
-      return { ...transaction, id };
-    });
-    tab.trades = tab.trades.map(trade => {
-      const id = Number.isInteger(trade.id) ? trade.id : nextTradeId;
-      nextTradeId = Math.max(nextTradeId, id + 1);
-      return { ...trade, id };
-    });
-
+    tab.trades = assignUniqueIds(tab.trades);
     tabs.push(tab);
   }
 
-  return { tabs, nextTransactionId: nextId };
+  // Transaction ids are unique across all tabs, because edit/delete look them up by id.
+  const flat = tabs.flatMap((tab, tabIndex) => tab.transactions.map(txn => ({ txn, tabIndex })));
+  const withIds = assignUniqueIds(flat.map(entry => entry.txn));
+  tabs.forEach(tab => { tab.transactions = []; });
+  withIds.forEach((txn, index) => { tabs[flat[index].tabIndex].transactions.push(txn); });
+
+  return { tabs };
 }
 
 export function ensureAppState(rawState, options = {}) {
@@ -368,14 +436,8 @@ export function ensureAppState(rawState, options = {}) {
     ? parsed.activeTabId
     : firstAvailableTab.id;
 
-  const trades = (Array.isArray(parsed?.trades) ? parsed.trades : [])
-    .map((trade, index) => {
-      const normalized = normalizeTrade(trade, options);
-      return {
-        ...normalized,
-        id: Number.isInteger(trade?.id) ? trade.id : index + 1,
-      };
-    });
+  const trades = assignUniqueIds((Array.isArray(parsed?.trades) ? parsed.trades : [])
+    .map(trade => normalizeTrade(trade, options)));
 
   return { tabs, activeTabId, trades };
 }
@@ -469,6 +531,7 @@ export function deleteTab(state, tabId, options = {}) {
       now: options.now,
     });
     return {
+      ...state,
       tabs: [defaultTab],
       activeTabId: defaultTab.id,
     };
@@ -480,6 +543,7 @@ export function deleteTab(state, tabId, options = {}) {
   );
 
   return {
+    ...state,
     tabs: remainingTabs,
     activeTabId,
   };
@@ -747,10 +811,14 @@ export function splitMultiLineDescription(description, amount) {
 export function computeProfitByCard(transactions) {
   const groups = new Map();
 
+  // Graded copies are a different product than raw copies (and a PSA 10 differs
+  // from a PSA 9), so each card + grading combination gets its own FIFO pool.
   function addRecord(record) {
-    const key = normalizeCardKey(record.cardName);
+    const gradingCompany = record.gradingCompany || '';
+    const gradingValue = gradingCompany ? (record.gradingValue || '') : '';
+    const key = `${normalizeCardKey(record.cardName)}|${gradingCompany}|${gradingValue}`;
     if (!groups.has(key)) {
-      groups.set(key, { cardName: record.cardName, records: [] });
+      groups.set(key, { cardName: record.cardName, gradingCompany, gradingValue, records: [] });
     }
     groups.get(key).records.push(record);
   }
@@ -837,8 +905,12 @@ export function computeProfitByCard(transactions) {
     const remainingQty = inventory.reduce((sum, lot) => sum + lot.quantity, 0);
     const remainingCost = roundMoney(inventory.reduce((sum, lot) => sum + (lot.quantity * lot.unitCost), 0));
 
+    const gradeText = [group.gradingCompany, group.gradingValue].filter(Boolean).join(' ');
     rows.push({
       cardName: group.cardName,
+      gradingCompany: group.gradingCompany,
+      gradingValue: group.gradingValue,
+      displayName: gradeText ? `${group.cardName} [${gradeText}]` : group.cardName,
       boughtQty,
       soldQty,
       boughtValue: roundMoney(boughtValue),
@@ -853,7 +925,61 @@ export function computeProfitByCard(transactions) {
     });
   });
 
-  return rows.sort((left, right) => left.cardName.localeCompare(right.cardName, 'nl', { sensitivity: 'base' }));
+  return rows.sort((left, right) => left.displayName.localeCompare(right.displayName, 'nl', { sensitivity: 'base' }));
+}
+
+// Fields that identify "the same" transaction when re-importing a spreadsheet.
+// The date is only compared when the imported row actually had a date; rows
+// without one get today's date on import, which would differ on every re-import.
+function importSignature(transaction, includeDate) {
+  const t = normalizeTransaction(transaction);
+  return [
+    t.type,
+    t.amount.toFixed(2),
+    t.description.toLocaleLowerCase(),
+    normalizeCardKey(t.cardName),
+    t.quantity,
+    includeDate ? t.date : '',
+  ].join('\u0001');
+}
+
+// Splits incoming rows into new ones and ones already present in `existing`.
+// Each existing row can absorb at most one incoming row, so a file that
+// legitimately contains two identical rows still imports both the first time.
+// Incoming rows may set `importHasDate: false` to skip the date comparison.
+export function filterDuplicateTransactions(existing = [], incoming = []) {
+  const pools = { dated: new Map(), undated: new Map() };
+  const take = (map, key) => {
+    const count = map.get(key) || 0;
+    if (!count) return false;
+    map.set(key, count - 1);
+    return true;
+  };
+  const existingList = Array.isArray(existing) ? existing : [];
+  for (const transaction of existingList) {
+    const dated = importSignature(transaction, true);
+    const undated = importSignature(transaction, false);
+    pools.dated.set(dated, (pools.dated.get(dated) || 0) + 1);
+    pools.undated.set(undated, (pools.undated.get(undated) || 0) + 1);
+  }
+
+  const added = [];
+  let skipped = 0;
+  for (const transaction of Array.isArray(incoming) ? incoming : []) {
+    const hasDate = transaction?.importHasDate !== false;
+    const dated = importSignature(transaction, true);
+    const undated = importSignature(transaction, false);
+    const isDuplicate = hasDate
+      ? take(pools.dated, dated) && (take(pools.undated, undated) || true)
+      : take(pools.undated, undated);
+    if (isDuplicate) {
+      skipped += 1;
+    } else {
+      added.push(transaction);
+    }
+  }
+
+  return { added, skipped };
 }
 
 export function isBulkTransaction(transaction) {

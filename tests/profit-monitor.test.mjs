@@ -33,6 +33,11 @@ import {
   restoreTab,
   updateTrade,
   validateTabName,
+  normalizeDate,
+  todayISO,
+  excelSerialToISO,
+  filterDuplicateTransactions,
+  assignUniqueIds,
 } from '../profit-monitor-core.mjs';
 
 test('legacy data migrates into a default tab and repairs invalid active tabs', () => {
@@ -137,6 +142,9 @@ test('profit per card uses FIFO matching and handles partial sales case-insensit
   assert.equal(rows.length, 1);
   assert.deepEqual(rows[0], {
     cardName: 'Pikachu',
+    gradingCompany: '',
+    gradingValue: '',
+    displayName: 'Pikachu',
     boughtQty: 14,
     soldQty: 8,
     boughtValue: 140,
@@ -492,4 +500,114 @@ test('normalizeTrade removes empty default rows when no cash amount is present',
   assert.equal(trade.receivedCashAmount, 0);
   assert.equal(trade.totalGiven, 0);
   assert.equal(trade.totalReceived, 0);
+});
+
+// ── Data-integrity fixes ──────────────────────────────────────────────
+
+test('deleting a tab keeps the trades', () => {
+  let state = ensureAppState(null, { defaultTabId: 'tab-1' });
+  state = addTab(state, 'Second', { id: 'tab-2' }).state;
+  state = appendTrade(state, {
+    givenItems: [{ cardName: 'Moltres (PPS9 PFL 014)', value: 10 }],
+    receivedItems: [{ cardName: 'Zapdos (PPS9 PFL 015)', value: 12 }],
+  });
+  assert.equal(state.trades.length, 1);
+
+  const afterDelete = deleteTab(state, 'tab-2');
+  assert.equal(afterDelete.trades.length, 1);
+  assert.equal(afterDelete.tabs.length, 1);
+
+  const afterDeletingLastTab = deleteTab(afterDelete, 'tab-1', { defaultTabId: 'fresh' });
+  assert.equal(afterDeletingLastTab.trades.length, 1);
+  assert.equal(afterDeletingLastTab.activeTabId, 'fresh');
+});
+
+test('re-importing the same rows is detected as duplicates', () => {
+  const existing = [
+    { id: 1, type: TYPE_SELL, amount: 12.5, description: 'Moltres (PPS9 PFL 014) #1289784654', date: '2026-10-01' },
+    { id: 2, type: TYPE_BUY, amount: -5, description: 'Bulk', date: '2026-10-02' },
+  ];
+  const incoming = [
+    { type: TYPE_SELL, amount: 12.5, description: 'Moltres (PPS9 PFL 014) #1289784654', date: '2026-10-01' },
+    { type: TYPE_BUY, amount: 5, description: 'bulk', date: '2026-10-02' },
+    { type: TYPE_SELL, amount: 3, description: 'Nieuwe verkoop', date: '2026-10-03' },
+  ];
+  const { added, skipped } = filterDuplicateTransactions(existing, incoming);
+  assert.equal(skipped, 2);
+  assert.deepEqual(added.map(t => t.description), ['Nieuwe verkoop']);
+});
+
+test('identical rows in one file are all imported the first time, but only once', () => {
+  const row = { type: TYPE_SELL, amount: 1, description: 'Bulk', date: '2026-10-01' };
+  const first = filterDuplicateTransactions([], [row, row]);
+  assert.equal(first.added.length, 2);
+
+  const existing = first.added.map((t, i) => ({ ...t, id: i + 1 }));
+  const second = filterDuplicateTransactions(existing, [row, row, row]);
+  assert.equal(second.skipped, 2);
+  assert.equal(second.added.length, 1);
+});
+
+test('rows without a date in the file ignore the date when checking duplicates', () => {
+  const existing = [{ id: 1, type: TYPE_SELL, amount: 7, description: 'Vinted', date: '2026-09-01' }];
+  const incoming = [{ type: TYPE_SELL, amount: 7, description: 'Vinted', date: '2026-10-26', importHasDate: false }];
+  assert.equal(filterDuplicateTransactions(existing, incoming).skipped, 1);
+
+  const dated = [{ type: TYPE_SELL, amount: 7, description: 'Vinted', date: '2026-10-26' }];
+  assert.equal(filterDuplicateTransactions(existing, dated).skipped, 0);
+});
+
+test('Excel serial dates and Dutch date formats are parsed correctly', () => {
+  assert.equal(excelSerialToISO(46022), '2025-12-31');
+  assert.equal(normalizeDate('46022', 'FALLBACK'), '2025-12-31');
+  assert.equal(normalizeDate('46022.75', 'FALLBACK'), '2025-12-31');
+  assert.equal(normalizeDate(46022, 'FALLBACK'), '2025-12-31');
+  assert.equal(normalizeDate('05-03-2026', 'FALLBACK'), '2026-03-05');
+  assert.equal(normalizeDate('5/3/2026', 'FALLBACK'), '2026-03-05');
+  assert.equal(normalizeDate('26.10.2026', 'FALLBACK'), '2026-10-26');
+  assert.equal(normalizeDate('2026-10-26', 'FALLBACK'), '2026-10-26');
+  assert.equal(normalizeDate('2026-10-26T23:30:00', 'FALLBACK'), '2026-10-26');
+  assert.equal(normalizeDate('31-02-2026', 'FALLBACK'), 'FALLBACK');
+  assert.equal(normalizeDate('12', 'FALLBACK'), 'FALLBACK');
+  assert.equal(normalizeDate('onzin', 'FALLBACK'), 'FALLBACK');
+});
+
+test('today uses the local calendar date, not UTC', () => {
+  const justAfterMidnight = new Date(2026, 9, 27, 0, 30);
+  assert.equal(todayISO(justAfterMidnight), '2026-10-27');
+  const firstOfMonth = new Date(2026, 9, 1);
+  assert.equal(todayISO(firstOfMonth), '2026-10-01');
+});
+
+test('graded and raw copies of a card are matched separately', () => {
+  const rows = computeProfitByCard([
+    { type: TYPE_BUY, cardName: 'Charizard', amount: 10, date: '2026-01-01' },
+    { type: TYPE_BUY, cardName: 'Charizard', amount: 300, gradingCompany: 'PSA', gradingValue: '10', date: '2026-01-02' },
+    { type: TYPE_SELL, cardName: 'charizard', amount: 400, gradingCompany: 'PSA', gradingValue: '10', date: '2026-02-01' },
+    { type: TYPE_BUY, cardName: 'Charizard', amount: 150, gradingCompany: 'PSA', gradingValue: '9', date: '2026-01-03' },
+  ]);
+
+  const byName = Object.fromEntries(rows.map(row => [row.displayName, row]));
+  assert.deepEqual(Object.keys(byName).sort(), ['Charizard', 'Charizard [PSA 10]', 'Charizard [PSA 9]']);
+  assert.equal(byName['Charizard [PSA 10]'].realizedProfit, 100);
+  assert.equal(byName['Charizard'].remainingQty, 1);
+  assert.equal(byName['Charizard'].realizedProfit, 0);
+  assert.equal(byName['Charizard [PSA 9]'].remainingCost, 150);
+});
+
+test('missing or duplicate ids are replaced with unique ones on load', () => {
+  assert.deepEqual(assignUniqueIds([{}, { id: 1 }, { id: 1 }, { id: 'x' }]).map(t => t.id), [2, 1, 3, 4]);
+
+  const state = ensureAppState({
+    tabs: [
+      { id: 'a', name: 'A', transactions: [{ id: 1, type: TYPE_SELL, amount: 1 }, { type: TYPE_SELL, amount: 2 }] },
+      { id: 'b', name: 'B', transactions: [{ id: 1, type: TYPE_SELL, amount: 3 }] },
+    ],
+    activeTabId: 'a',
+    trades: [{}, { id: 1 }],
+  });
+  assert.deepEqual(state.trades.map(t => t.id).sort(), [1, 2]);
+  const txnIds = state.tabs.flatMap(tab => tab.transactions.map(t => t.id));
+  assert.equal(new Set(txnIds).size, txnIds.length);
+  assert.deepEqual(state.tabs.map(tab => tab.transactions.length), [2, 1]);
 });
