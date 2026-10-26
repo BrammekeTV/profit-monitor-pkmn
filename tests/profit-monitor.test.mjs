@@ -38,6 +38,8 @@ import {
   excelSerialToISO,
   filterDuplicateTransactions,
   assignUniqueIds,
+  getGradeNumber,
+  formatGrade,
 } from '../profit-monitor-core.mjs';
 
 test('legacy data migrates into a default tab and repairs invalid active tabs', () => {
@@ -247,9 +249,11 @@ test('computeCardmarketSurplus returns zero values when no matching transactions
 
 test('grading normalization keeps only valid company-specific grades', () => {
   assert.equal(normalizeGradingValue('PSA', '9.5'), '');
+  assert.equal(normalizeGradingValue('PSA', '8.5'), '8.5');
   assert.equal(normalizeGradingValue('BGS', '9.5'), '9.5');
   assert.equal(normalizeGradingValue('TAG', '9.5'), '');
-  assert.equal(getGradeLabel('CGC', '10'), 'Pristine');
+  assert.equal(getGradeLabel('CGC', '10'), 'Gem Mint');
+  assert.equal(getGradeLabel('CGC', '10-pristine'), 'Pristine');
   assert.equal(getGradingScale('TAG').map(option => option.value).includes('9.5'), false);
 
   const normalized = normalizeTransaction({
@@ -293,7 +297,7 @@ test('trades are stored separately and support CRUD plus analytics', () => {
   assert.equal(state.trades[0].givenItems[0].gradingLabel, 'Gem Mint');
   assert.equal(state.trades[0].receivedItems[0].gradingCompany, 'TAG');
   assert.equal(state.trades[0].receivedItems[0].gradingValue, '9');
-  assert.equal(state.trades[0].receivedItems[0].gradingLabel, '9');
+  assert.equal(state.trades[0].receivedItems[0].gradingLabel, 'Mint');
 
   state = updateTrade(state, state.trades[0].id, {
     ...state.trades[0],
@@ -416,7 +420,7 @@ test('persisted trades normalize graded item values on load', () => {
   assert.equal(state.trades[0].givenItems[0].gradingLabel, 'Gem Mint');
   assert.equal(state.trades[0].receivedItems[0].gradingCompany, 'TAG');
   assert.equal(state.trades[0].receivedItems[0].gradingValue, '10');
-  assert.equal(state.trades[0].receivedItems[0].gradingLabel, '10');
+  assert.equal(state.trades[0].receivedItems[0].gradingLabel, 'Gem Mint');
   assert.equal(state.trades[0].givenCashAmount, 7.5);
   assert.equal(state.trades[0].receivedCashAmount, 2.5);
   assert.equal(state.trades[0].totalGiven, 106.5);
@@ -610,4 +614,45 @@ test('missing or duplicate ids are replaced with unique ones on load', () => {
   const txnIds = state.tabs.flatMap(tab => tab.transactions.map(t => t.id));
   assert.equal(new Set(txnIds).size, txnIds.length);
   assert.deepEqual(state.tabs.map(tab => tab.transactions.length), [2, 1]);
+});
+
+test('grading scales follow the official company scales', () => {
+  const values = company => getGradingScale(company).map(option => option.value);
+  // PSA: whole grades plus half grades 1.5–8.5, no 9.5
+  assert.deepEqual(values('PSA'), ['10', '9', '8.5', '8', '7.5', '7', '6.5', '6', '5.5', '5', '4.5', '4', '3.5', '3', '2.5', '2', '1.5', '1']);
+  // TAG: Pristine and Gem Mint 10, no 9.5, halves down to 1.5
+  assert.equal(values('TAG').includes('9.5'), false);
+  assert.equal(values('TAG').length, 19);
+  assert.equal(values('CGC').length, 20);
+  assert.equal(values('BGS').length, 20);
+
+  assert.equal(formatGrade('TAG', '8.5'), 'TAG 8.5 · NM MT+');
+  assert.equal(formatGrade('TAG', '10-pristine'), 'TAG 10 · Pristine');
+  assert.equal(formatGrade('CGC', '9.5'), 'CGC 9.5 · Mint+');
+  assert.equal(formatGrade('BGS', '10-black'), 'BGS 10 · Black Label Pristine');
+  assert.equal(formatGrade('PSA', '1.5'), 'PSA 1.5 · Fair');
+  assert.equal(getGradeNumber('CGC', '10-pristine'), '10');
+  assert.equal(getGradeNumber('CGC', 'nonsense'), '');
+});
+
+test('existing stored grades stay valid after the scale update', () => {
+  const previouslyStored = {
+    PSA: ['10', '9', '8', '7', '6', '5', '4', '3', '2', '1'],
+    BGS: ['10', '9.5', '9', '8.5', '8', '7', '6', '5', '4', '3', '2', '1'],
+    CGC: ['10', '9.5', '9', '8.5', '8', '7', '6', '5', '4', '3', '2', '1'],
+    TAG: ['10', '9', '8', '7', '6', '5', '4', '3', '2', '1'],
+  };
+  for (const [company, grades] of Object.entries(previouslyStored)) {
+    for (const grade of grades) {
+      assert.equal(normalizeGradingValue(company, grade), grade, `${company} ${grade}`);
+    }
+  }
+});
+
+test('Pristine and Gem Mint 10s are separate rows in profit per card', () => {
+  const rows = computeProfitByCard([
+    { type: TYPE_BUY, cardName: 'Mew ex (MEW 151)', amount: 100, gradingCompany: 'CGC', gradingValue: '10', date: '2026-01-01' },
+    { type: TYPE_BUY, cardName: 'Mew ex (MEW 151)', amount: 250, gradingCompany: 'CGC', gradingValue: '10-pristine', date: '2026-01-02' },
+  ]);
+  assert.deepEqual(rows.map(row => row.displayName).sort(), ['Mew ex (MEW 151) [CGC 10 Pristine]', 'Mew ex (MEW 151) [CGC 10]']);
 });

@@ -5,58 +5,103 @@ export const TYPE_BUY = 'Gekocht';
 export const TRADE_SIDE_GIVEN = 'givenItems';
 export const TRADE_SIDE_RECEIVED = 'receivedItems';
 export const GRADING_COMPANY_OPTIONS = ['PSA', 'BGS', 'CGC', 'TAG'];
+// Official grading scales, top grade first.
+//   value: what is stored on a transaction (unique per company)
+//   grade: the number printed on the slab
+//   label: the grade name
+// CGC and TAG both have two kinds of 10 (Pristine and Gem Mint) and Beckett
+// has Black Label and Pristine 10s, so those special 10s get their own value.
+// Sources: taggrading.com/pages/scale, psacard.com/gradingstandards,
+// beckett.com/grading#scale, cgcgrading.com/grading-scales
+function scale(entries) {
+  return Object.freeze(entries.map(([value, label, grade = value]) => Object.freeze({ value, grade, label })));
+}
+
 export const GRADING_SCALE_BY_COMPANY = Object.freeze({
-  PSA: Object.freeze([
-    Object.freeze({ value: '10', label: 'Gem Mint' }),
-    Object.freeze({ value: '9', label: 'Mint' }),
-    Object.freeze({ value: '8', label: 'NM-MT' }),
-    Object.freeze({ value: '7', label: 'Near Mint' }),
-    Object.freeze({ value: '6', label: 'EX-MT' }),
-    Object.freeze({ value: '5', label: 'Excellent' }),
-    Object.freeze({ value: '4', label: 'VG-EX' }),
-    Object.freeze({ value: '3', label: 'Very Good' }),
-    Object.freeze({ value: '2', label: 'Good' }),
-    Object.freeze({ value: '1', label: 'Poor' }),
+  PSA: scale([
+    ['10', 'Gem Mint'],
+    ['9', 'Mint'],
+    ['8.5', 'NM-MT'],
+    ['8', 'NM-MT'],
+    ['7.5', 'Near Mint'],
+    ['7', 'Near Mint'],
+    ['6.5', 'EX-MT'],
+    ['6', 'EX-MT'],
+    ['5.5', 'Excellent'],
+    ['5', 'Excellent'],
+    ['4.5', 'VG-EX'],
+    ['4', 'VG-EX'],
+    ['3.5', 'Very Good'],
+    ['3', 'Very Good'],
+    ['2.5', 'Good'],
+    ['2', 'Good'],
+    ['1.5', 'Fair'],
+    ['1', 'Poor'],
   ]),
-  BGS: Object.freeze([
-    Object.freeze({ value: '10', label: 'Pristine / Black Label' }),
-    Object.freeze({ value: '9.5', label: 'Gem Mint' }),
-    Object.freeze({ value: '9', label: 'Mint' }),
-    Object.freeze({ value: '8.5', label: 'NM-MT+' }),
-    Object.freeze({ value: '8', label: 'NM-MT' }),
-    Object.freeze({ value: '7', label: 'Near Mint' }),
-    Object.freeze({ value: '6', label: 'EX-MT' }),
-    Object.freeze({ value: '5', label: 'Excellent' }),
-    Object.freeze({ value: '4', label: 'VG-EX' }),
-    Object.freeze({ value: '3', label: 'Very Good' }),
-    Object.freeze({ value: '2', label: 'Good' }),
-    Object.freeze({ value: '1', label: 'Poor' }),
+  BGS: scale([
+    ['10-black', 'Black Label Pristine', '10'],
+    ['10', 'Pristine'],
+    ['9.5', 'Gem Mint'],
+    ['9', 'Mint'],
+    ['8.5', 'NM-MT+'],
+    ['8', 'NM-MT'],
+    ['7.5', 'NM+'],
+    ['7', 'NM'],
+    ['6.5', 'EX-MT+'],
+    ['6', 'EX-MT'],
+    ['5.5', 'EX+'],
+    ['5', 'EX'],
+    ['4.5', 'VG-EX+'],
+    ['4', 'VG-EX'],
+    ['3.5', 'VG+'],
+    ['3', 'VG'],
+    ['2.5', 'Good+'],
+    ['2', 'Good'],
+    ['1.5', 'Fair'],
+    ['1', 'Poor'],
   ]),
-  CGC: Object.freeze([
-    Object.freeze({ value: '10', label: 'Pristine' }),
-    Object.freeze({ value: '9.5', label: 'Gem Mint' }),
-    Object.freeze({ value: '9', label: 'Mint' }),
-    Object.freeze({ value: '8.5', label: 'NM-MT+' }),
-    Object.freeze({ value: '8', label: 'NM-MT' }),
-    Object.freeze({ value: '7', label: 'Near Mint' }),
-    Object.freeze({ value: '6', label: 'EX-MT' }),
-    Object.freeze({ value: '5', label: 'Excellent' }),
-    Object.freeze({ value: '4', label: 'VG-EX' }),
-    Object.freeze({ value: '3', label: 'Very Good' }),
-    Object.freeze({ value: '2', label: 'Good' }),
-    Object.freeze({ value: '1', label: 'Poor' }),
+  CGC: scale([
+    ['10-pristine', 'Pristine', '10'],
+    ['10', 'Gem Mint'],
+    ['9.5', 'Mint+'],
+    ['9', 'Mint'],
+    ['8.5', 'NM/Mint+'],
+    ['8', 'NM/Mint'],
+    ['7.5', 'Near Mint+'],
+    ['7', 'Near Mint'],
+    ['6.5', 'Ex/NM+'],
+    ['6', 'Ex/NM'],
+    ['5.5', 'Excellent+'],
+    ['5', 'Excellent'],
+    ['4.5', 'VG/Ex+'],
+    ['4', 'VG/Ex'],
+    ['3.5', 'Very Good+'],
+    ['3', 'Very Good'],
+    ['2.5', 'Good+'],
+    ['2', 'Good'],
+    ['1.5', 'Fair'],
+    ['1', 'Poor'],
   ]),
-  TAG: Object.freeze([
-    Object.freeze({ value: '10', label: '10' }),
-    Object.freeze({ value: '9', label: '9' }),
-    Object.freeze({ value: '8', label: '8' }),
-    Object.freeze({ value: '7', label: '7' }),
-    Object.freeze({ value: '6', label: '6' }),
-    Object.freeze({ value: '5', label: '5' }),
-    Object.freeze({ value: '4', label: '4' }),
-    Object.freeze({ value: '3', label: '3' }),
-    Object.freeze({ value: '2', label: '2' }),
-    Object.freeze({ value: '1', label: '1' }),
+  TAG: scale([
+    ['10-pristine', 'Pristine', '10'],
+    ['10', 'Gem Mint'],
+    ['9', 'Mint'],
+    ['8.5', 'NM MT+'],
+    ['8', 'NM MT'],
+    ['7.5', 'NM+'],
+    ['7', 'NM'],
+    ['6.5', 'EX MT+'],
+    ['6', 'EX MT'],
+    ['5.5', 'EX+'],
+    ['5', 'EX'],
+    ['4.5', 'VG EX+'],
+    ['4', 'VG EX'],
+    ['3.5', 'VG+'],
+    ['3', 'VG'],
+    ['2.5', 'Good+'],
+    ['2', 'Good'],
+    ['1.5', 'Fair'],
+    ['1', 'Poor'],
   ]),
 });
 
@@ -193,6 +238,22 @@ export function normalizeGradingValue(company, value) {
   if (!gradingValue) return '';
   const allowed = getGradingScale(company);
   return allowed.some(option => option.value === gradingValue) ? gradingValue : '';
+}
+
+// The number printed on the slab for a stored value ("10-pristine" -> "10").
+export function getGradeNumber(company, value) {
+  const normalizedValue = normalizeGradingValue(company, value);
+  if (!normalizedValue) return '';
+  const option = getGradingScale(company).find(item => item.value === normalizedValue);
+  return option?.grade ?? normalizedValue;
+}
+
+// Human-readable grade, e.g. "PSA 10 · Gem Mint" or "CGC 10 · Pristine".
+export function formatGrade(company, value) {
+  const grade = getGradeNumber(company, value);
+  if (!grade) return '';
+  const label = getGradeLabel(company, value);
+  return `${normalizeGradingCompany(company)} ${grade}${label ? ` · ${label}` : ''}`;
 }
 
 export function getGradeLabel(company, value) {
@@ -905,7 +966,11 @@ export function computeProfitByCard(transactions) {
     const remainingQty = inventory.reduce((sum, lot) => sum + lot.quantity, 0);
     const remainingCost = roundMoney(inventory.reduce((sum, lot) => sum + (lot.quantity * lot.unitCost), 0));
 
-    const gradeText = [group.gradingCompany, group.gradingValue].filter(Boolean).join(' ');
+    const gradeNumber = getGradeNumber(group.gradingCompany, group.gradingValue);
+    const isSpecialTen = gradeNumber && gradeNumber !== group.gradingValue;
+    const gradeText = group.gradingCompany && gradeNumber
+      ? `${group.gradingCompany} ${gradeNumber}${isSpecialTen ? ` ${getGradeLabel(group.gradingCompany, group.gradingValue)}` : ''}`
+      : '';
     rows.push({
       cardName: group.cardName,
       gradingCompany: group.gradingCompany,
