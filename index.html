@@ -22,6 +22,9 @@
       --red:      #ef4444;
       --btn:      #52525b;
       --btn-h:    #71717a;
+      --graded:   #d4b062;
+      --graded-bg: rgba(212, 176, 98, 0.045);
+      --graded-bg-hover: rgba(212, 176, 98, 0.08);
     }
 
     html, body {
@@ -116,6 +119,8 @@
 
     .filter-bar {
       display: flex;
+      flex-wrap: wrap;
+      align-items: center;
       gap: 8px;
     }
 
@@ -355,41 +360,101 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      color: var(--text);
     }
 
-    .grading-logo {
+    /* Grading badge: looks like a slab label — company | grade */
+    .grade-badge {
+      display: inline-flex;
+      align-items: stretch;
+      height: 20px;
+      border: 1px solid var(--graded);
+      border-radius: 4px;
+      overflow: hidden;
+      font-size: 11px;
+      line-height: 1;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
+    .grade-badge-company {
       display: inline-flex;
       align-items: center;
-      justify-content: center;
-      min-width: 34px;
-      height: 18px;
       padding: 0 6px;
-      border-radius: 999px;
-      font-size: 10px;
+      background: var(--graded-bg-hover);
+      color: var(--text);
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .grade-badge-company img {
+      display: block;
+      height: 12px;
+      width: auto;
+      max-width: 44px;
+      object-fit: contain;
+    }
+
+    .grade-badge-value {
+      display: inline-flex;
+      align-items: center;
+      padding: 0 7px;
+      border-left: 1px solid var(--graded);
+      color: var(--graded);
       font-weight: 700;
-      letter-spacing: 0.03em;
-      border: 1px solid transparent;
-      color: #fff;
+      font-variant-numeric: tabular-nums;
     }
 
-    .grading-logo-psa {
-      background: linear-gradient(135deg, #1d4ed8, #dc2626);
-      border-color: rgba(255,255,255,0.2);
+    .grade-badge-label {
+      color: var(--muted);
     }
 
-    .grading-logo-bgs {
-      background: #111827;
-      border-color: #f59e0b;
+    /* Graded rows: thin accent on the left and a faint tint */
+    tbody tr.is-graded {
+      background: var(--graded-bg);
+      box-shadow: inset 2px 0 0 var(--graded);
     }
 
-    .grading-logo-cgc {
-      background: linear-gradient(135deg, #0f172a, #475569);
-      border-color: #22d3ee;
+    tbody tr.is-graded:hover {
+      background: var(--graded-bg-hover);
     }
 
-    .grading-logo-tag {
-      background: #14532d;
-      border-color: #22c55e;
+    .profit-card-name {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .filter-divider {
+      width: 1px;
+      align-self: stretch;
+      background: var(--border);
+      margin: 2px 2px;
+    }
+
+    .filter-btn .filter-count {
+      margin-left: 5px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .filter-btn.graded-toggle.active {
+      border-color: var(--graded);
+      color: var(--text);
+    }
+
+    .filter-btn.graded-toggle.active .filter-count {
+      color: var(--graded);
+    }
+
+    .grading-company-bar {
+      display: none;
+      gap: 6px;
+    }
+
+    .grading-company-bar.visible {
+      display: flex;
     }
 
     .order-links {
@@ -1377,6 +1442,9 @@
             <button class="filter-btn active" data-filter="all">Alles</button>
             <button class="filter-btn" data-filter="Verkocht">Verkocht</button>
             <button class="filter-btn" data-filter="Gekocht">Gekocht</button>
+            <span class="filter-divider" aria-hidden="true"></span>
+            <button class="filter-btn graded-toggle" id="gradedFilterBtn" type="button" aria-pressed="false" title="Toon alleen gegradeerde kaarten">Gegradeerd<span class="filter-count" id="gradedFilterCount"></span></button>
+            <div class="grading-company-bar" id="gradingCompanyBar" role="group" aria-label="Filter op gradingbedrijf"></div>
           </div>
           <button class="collapse-btn" id="toggleTransactionsSection">Inklappen</button>
         </div>
@@ -1979,6 +2047,10 @@ import {
 
 let appState = ensureAppState(null);
 let activeFilter = 'all';
+let gradedOnly = false;
+let gradedCompanyFilter = '';
+// Filled at startup when logo files exist in assets/grading/ (psa.svg, bgs.png, …)
+const gradingLogos = {};
 let searchQuery = '';
 let profitSearchQuery = '';
 let editingId = null;
@@ -2191,12 +2263,83 @@ function filteredByPeriod() {
   return applyPeriodFilter(activeTransactions());
 }
 
+function isGradedTransaction(transaction) {
+  const normalized = normalizeTransaction(transaction);
+  return Boolean(normalized.gradingCompany && normalized.gradingValue);
+}
+
 function filteredTransactions() {
   return applyPeriodFilter(activeTransactions()).filter(transaction => {
     if (activeFilter !== 'all' && transaction.type !== activeFilter) return false;
+    if (gradedOnly) {
+      if (!isGradedTransaction(transaction)) return false;
+      if (gradedCompanyFilter && normalizeTransaction(transaction).gradingCompany !== gradedCompanyFilter) return false;
+    }
     if (!searchQuery) return true;
-    const haystack = `${transaction.description}\n${transaction.cardName || ''}`.toLowerCase();
+    const normalized = normalizeTransaction(transaction);
+    const gradeText = normalized.gradingCompany && normalized.gradingValue
+      ? `${normalized.gradingCompany} ${normalized.gradingValue} ${normalized.gradingLabel}`
+      : '';
+    const haystack = `${transaction.description}\n${transaction.cardName || ''}\n${gradeText}`.toLowerCase();
     return haystack.includes(searchQuery);
+  });
+}
+
+// Graded filter: a toggle with a count, plus per-company chips while it is on.
+function renderGradedFilter() {
+  const graded = applyPeriodFilter(activeTransactions()).filter(isGradedTransaction);
+  const countsByCompany = new Map();
+  graded.forEach(transaction => {
+    const company = normalizeTransaction(transaction).gradingCompany;
+    countsByCompany.set(company, (countsByCompany.get(company) || 0) + 1);
+  });
+  if (gradedCompanyFilter && !countsByCompany.has(gradedCompanyFilter)) gradedCompanyFilter = '';
+
+  const toggle = document.getElementById('gradedFilterBtn');
+  toggle.classList.toggle('active', gradedOnly);
+  toggle.setAttribute('aria-pressed', String(gradedOnly));
+  document.getElementById('gradedFilterCount').textContent = graded.length ? String(graded.length) : '';
+
+  const bar = document.getElementById('gradingCompanyBar');
+  const companies = GRADING_COMPANY_OPTIONS.filter(company => countsByCompany.has(company));
+  bar.classList.toggle('visible', gradedOnly && companies.length > 1);
+  bar.innerHTML = companies.map(company => `
+    <button type="button" class="filter-btn graded-company-btn${gradedCompanyFilter === company ? ' active' : ''}"
+      data-company="${escAttr(company)}" aria-pressed="${gradedCompanyFilter === company}">
+      ${escHTML(company)}<span class="filter-count">${countsByCompany.get(company)}</span>
+    </button>
+  `).join('');
+}
+
+function gradeBadgeHTML(company, value, label = '') {
+  if (!company || !value) return '';
+  const logo = gradingLogos[company];
+  const companyHTML = logo
+    ? `<img src="${escAttr(logo)}" alt="${escAttr(company)}">`
+    : escHTML(company);
+  return `
+    <span class="grade-badge" title="${escAttr(`${company} ${value}${label ? ` · ${label}` : ''}`)}">
+      <span class="grade-badge-company">${companyHTML}</span>
+      <span class="grade-badge-value">${escHTML(value)}</span>
+    </span>`;
+}
+
+// Looks for assets/grading/<company>.svg or .png once at startup.
+function loadGradingLogos() {
+  GRADING_COMPANY_OPTIONS.forEach(company => {
+    const base = `assets/grading/${company.toLowerCase()}`;
+    const tryLoad = extensions => {
+      if (!extensions.length) return;
+      const src = `${base}.${extensions[0]}`;
+      const image = new Image();
+      image.onload = () => {
+        gradingLogos[company] = src;
+        refreshView();
+      };
+      image.onerror = () => tryLoad(extensions.slice(1));
+      image.src = src;
+    };
+    tryLoad(['svg', 'png']);
   });
 }
 
@@ -2251,6 +2394,7 @@ function updateSortButtons() {
 }
 
 function renderTable() {
+  renderGradedFilter();
   const rows = applyTransactionSort(filteredTransactions());
   const total = activeTransactions().length;
   document.getElementById('visibleCount').textContent = rows.length !== total
@@ -2295,11 +2439,10 @@ function rowHTML(transaction) {
   }
   if (normalized.gradingCompany && normalized.gradingValue) {
     const gradeLabel = normalized.gradingLabel || getGradeLabel(normalized.gradingCompany, normalized.gradingValue);
-    const gradeText = gradeLabel ? `${normalized.gradingValue} · ${gradeLabel}` : normalized.gradingValue;
     metaItems.push(`
       <span class="meta-item meta-item-graded">
-        <span class="grading-logo grading-logo-${normalized.gradingCompany.toLowerCase()}">${escHTML(normalized.gradingCompany)}</span>
-        <span>Grade: ${escHTML(gradeText)}</span>
+        ${gradeBadgeHTML(normalized.gradingCompany, normalized.gradingValue, gradeLabel)}
+        ${gradeLabel ? `<span class="grade-badge-label">${escHTML(gradeLabel)}</span>` : ''}
       </span>
     `);
   }
@@ -2320,7 +2463,8 @@ function rowHTML(transaction) {
     </div>
   ` : '';
 
-  return `<tr data-id="${normalized.id}">
+  const isGraded = Boolean(normalized.gradingCompany && normalized.gradingValue);
+  return `<tr data-id="${normalized.id}"${isGraded ? ' class="is-graded"' : ''}>
     <td><span class="type-badge ${badgeCls}">${badgeLabel}</span></td>
     <td class="amount-cell ${amountClass}">${fmt(normalized.amount)}</td>
     <td style="white-space:nowrap;font-size:13px;color:var(--muted);">${escHTML(formatDate(normalized.date))}</td>
@@ -2491,8 +2635,8 @@ function renderProfitTable() {
     tbody.innerHTML = `<tr><td colspan="8" class="empty">${query ? 'Geen kaarten gevonden.' : 'Nog geen kaartgegevens beschikbaar.'}</td></tr>`;
   } else {
     tbody.innerHTML = rows.map(row => `
-      <tr>
-        <td>${escHTML(row.displayName)}</td>
+      <tr${row.gradingCompany && row.gradingValue ? ' class="is-graded"' : ''}>
+        <td><span class="profit-card-name">${escHTML(row.cardName)}${gradeBadgeHTML(row.gradingCompany, row.gradingValue)}</span></td>
         <td>${row.boughtQty}</td>
         <td>${row.soldQty}</td>
         <td>${fmt(row.allocatedBuyCost)}</td>
@@ -3993,9 +4137,22 @@ function getCellValue(cell, sharedStrings, namespace) {
   return valueNode.textContent;
 }
 
-document.querySelectorAll('.filter-btn').forEach(button => {
+document.getElementById('gradedFilterBtn').addEventListener('click', () => {
+  gradedOnly = !gradedOnly;
+  if (!gradedOnly) gradedCompanyFilter = '';
+  renderTable();
+});
+
+document.getElementById('gradingCompanyBar').addEventListener('click', event => {
+  const button = event.target.closest('[data-company]');
+  if (!button) return;
+  gradedCompanyFilter = gradedCompanyFilter === button.dataset.company ? '' : button.dataset.company;
+  renderTable();
+});
+
+document.querySelectorAll('.filter-btn[data-filter]').forEach(button => {
   button.addEventListener('click', () => {
-    document.querySelectorAll('.filter-btn').forEach(candidate => candidate.classList.remove('active'));
+    document.querySelectorAll('.filter-btn[data-filter]').forEach(candidate => candidate.classList.remove('active'));
     button.classList.add('active');
     activeFilter = button.dataset.filter;
     renderTable();
@@ -4091,6 +4248,7 @@ syncDescriptionParsing();
 syncGradingParsing();
 loadFromStorage();
 refreshView();
+loadGradingLogos();
 </script>
 </body>
 </html>

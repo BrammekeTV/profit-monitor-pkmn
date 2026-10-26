@@ -12,7 +12,8 @@ A static profit tracker for Pokémon TCG trading that runs entirely in the brows
 - Sort columns in both transaction and profit tables
 - Collapse/expand transaction and profit sections for a cleaner overview
 - Add new transactions — saved to browser localStorage
-- Mark cards as graded with company-specific grade options (PSA/BGS/CGC/TAG) and show grading info in transaction rows
+- Mark cards as graded with company-specific grade options (PSA/BGS/CGC/TAG); graded rows get a subtle gold accent and a company | grade badge
+- **Gegradeerd** filter next to the type filters (with count), plus per-company chips; search also matches grades like "psa 10" or "gem mint"
 - Delete individual transactions
 - Track realized profit per card name with FIFO matching on buy/sell quantities
 - Search the **Winst per kaart** table and view each card's profit margin
@@ -62,6 +63,10 @@ For sold transactions, any description token in the form `#1289784654` is conver
 `https://www.cardmarket.com/en/Pokemon/Orders/1289784654`
 
 > **Note:** Card image lookups contact external services: the [Pokémon TCG API](https://pokemontcg.io) (when using the Flask server) and [Cardmarket](https://www.cardmarket.com) as a fallback for cards not listed in that API. Only the card name, set code, and number are sent — no personal or transaction data.
+
+### Grading company logos
+
+Put logo files in `assets/grading/` named after the company (`psa.svg`, `bgs.svg`, `cgc.svg`, `tag.svg`; `.png` also works). The app picks them up automatically and shows them in the grading badge; without a file it shows the company name as text. Light-coloured logos work best on the dark theme.
 
 ## Import format (.xlsm / .xlsx)
 
