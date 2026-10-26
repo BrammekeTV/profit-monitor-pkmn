@@ -22,7 +22,7 @@ A static profit tracker for Pokémon TCG trading that runs entirely in the brows
 - Trade registratie met duidelijke **IK GEEF / IK ONTVANG** invoer, live verschil/ROI, en bewerken/verwijderen
 - Aparte tab **Trades - Analyse** met trade-statistieken en performancegrafiek
 - Sold transactions with `#123456789` in the description show Cardmarket order links
-- **Import from `.xlsm` / `.xlsx`** — reads your existing spreadsheet client-side and merges the data (duplicates skipped)
+- **Import from `.xlsm` / `.xlsx`** — reads your existing spreadsheet client-side and merges the data into the active tab; rows that already exist there are skipped, so re-importing the same file is safe
 - Pokémon card image lookup: descriptions in the format `CardName (SETCODE NUMBER)` show images from the [Pokémon TCG API](https://pokemontcg.io), with links to Cardmarket
 
 ## Data storage
@@ -52,7 +52,7 @@ Trades blijven volledig gescheiden van transacties: ze tellen alleen mee in **Tr
 
 ### Profit matching
 
-The **Winst per kaart** table groups transactions by normalized `cardName` (`trim()` + case-insensitive) and matches sold quantities against earlier buys using FIFO (first in, first out). Partial sales allocate only the sold quantity from the oldest open buy lots, so remaining inventory stays available for later sales.
+The **Winst per kaart** table groups transactions by normalized `cardName` (`trim()` + case-insensitive) plus grading (company + grade), so raw copies, a PSA 9 and a PSA 10 of the same card each have their own row, and matches sold quantities against earlier buys using FIFO (first in, first out). Partial sales allocate only the sold quantity from the oldest open buy lots, so remaining inventory stays available for later sales.
 Profit margin is calculated as realized profit divided by the cost allocated to sold cards. The average margin is the arithmetic mean across cards with a matched purchase cost; transactions whose description contains the word "Bulk" are listed separately and excluded from per-card margins.
 
 ### Cardmarket order links

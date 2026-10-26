@@ -1445,7 +1445,7 @@
           <table>
             <thead>
               <tr>
-                <th><button type="button" class="sort-btn" data-table="profit" data-sort-key="cardName">Kaart</button></th>
+                <th><button type="button" class="sort-btn" data-table="profit" data-sort-key="displayName">Kaart</button></th>
                 <th><button type="button" class="sort-btn" data-table="profit" data-sort-key="boughtQty">Gekocht</button></th>
                 <th><button type="button" class="sort-btn" data-table="profit" data-sort-key="soldQty">Verkocht</button></th>
                 <th><button type="button" class="sort-btn" data-table="profit" data-sort-key="allocatedBuyCost">Inkoop verkocht</button></th>
@@ -1937,6 +1937,7 @@ import {
   addTab,
   appendTransaction,
   appendTransactions,
+  filterDuplicateTransactions,
   appendTrades,
   appendTrade,
   archiveTab,
@@ -2355,7 +2356,7 @@ function renderProfitChart(rows) {
 
   // Show top 20 cards by absolute realized profit
   const sorted = rows.slice().sort((a, b) => Math.abs(b.realizedProfit) - Math.abs(a.realizedProfit)).slice(0, 20);
-  const labels = sorted.map(r => r.cardName);
+  const labels = sorted.map(r => r.displayName);
   const values = sorted.map(r => r.realizedProfit);
   const colors = values.map(v => v >= 0 ? 'rgba(34,197,94,0.75)' : 'rgba(239,68,68,0.75)');
   const borderColors = values.map(v => v >= 0 ? 'rgba(34,197,94,1)' : 'rgba(239,68,68,1)');
@@ -2483,7 +2484,7 @@ function renderProfitTable() {
   const cardTransactions = periodTxns.filter(transaction => !isBulkTransaction(transaction));
   const allRows = computeProfitByCard(cardTransactions);
   const query = profitSearchQuery;
-  const rows = applyProfitSort(allRows.filter(row => row.cardName.toLocaleLowerCase('nl').includes(query)));
+  const rows = applyProfitSort(allRows.filter(row => row.displayName.toLocaleLowerCase('nl').includes(query)));
   const tbody = document.getElementById('profitBody');
 
   if (!rows.length) {
@@ -2491,7 +2492,7 @@ function renderProfitTable() {
   } else {
     tbody.innerHTML = rows.map(row => `
       <tr>
-        <td>${escHTML(row.cardName)}</td>
+        <td>${escHTML(row.displayName)}</td>
         <td>${row.boughtQty}</td>
         <td>${row.soldQty}</td>
         <td>${fmt(row.allocatedBuyCost)}</td>
@@ -3824,10 +3825,19 @@ document.getElementById('xlsmFile').addEventListener('change', async function ha
       return;
     }
 
-    appState = appendTransactions(appState, transactions);
+    const { added, skipped } = filterDuplicateTransactions(activeTransactions(), transactions);
+    const skippedText = skipped
+      ? ` ${skipped} dubbele rij${skipped !== 1 ? 'en' : ''} overgeslagen.`
+      : '';
+    if (!added.length) {
+      showMessage(importMsg, 'success', `Niets nieuws om te importeren.${skippedText}`);
+      return;
+    }
+
+    appState = appendTransactions(appState, added);
     saveToStorage();
     refreshView();
-    showMessage(importMsg, 'success', `${transactions.length} rij${transactions.length !== 1 ? 'en' : ''} geïmporteerd.`);
+    showMessage(importMsg, 'success', `${added.length} rij${added.length !== 1 ? 'en' : ''} geïmporteerd.${skippedText}`);
   } catch (error) {
     showMessage(importMsg, 'error', `Fout bij het lezen van het bestand: ${error.message}`);
   }
@@ -3927,29 +3937,30 @@ async function parseXlsmFile(file) {
     if (type !== TYPE_BUY && type !== TYPE_SELL) continue;
     if (Number.isNaN(amount)) continue;
 
-    const dateValue = cells.D ? normalizeDate(cells.D) : todayISO();
+    const hasDate = Boolean(cells.D && String(cells.D).trim());
+    const dateValue = hasDate ? normalizeDate(cells.D) : todayISO();
 
     // Split multi-line descriptions into per-card transactions
     const parts = splitMultiLineDescription(description, amount);
     if (parts) {
       for (const part of parts) {
-        transactions.push(normalizeTransaction({
+        transactions.push({ ...normalizeTransaction({
           type,
           amount: part.amount,
           description: part.description,
           cardName: part.cardName,
           quantity: part.quantity,
           date: dateValue,
-        }));
+        }), importHasDate: hasDate });
       }
     } else {
-      transactions.push(normalizeTransaction({
+      transactions.push({ ...normalizeTransaction({
         type,
         amount,
         description,
         quantity: 1,
         date: dateValue,
-      }));
+      }), importHasDate: hasDate });
     }
   }
 
