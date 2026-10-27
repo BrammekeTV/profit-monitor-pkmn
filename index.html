@@ -9,6 +9,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
   <!-- JSZip for client-side .xlsm (ZIP) parsing -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- Chart.js for profit graph -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -60,7 +62,7 @@
       grid-template-columns: minmax(0, 1fr) 400px;
       grid-template-rows: auto 1fr;
       column-gap: 40px;
-      row-gap: 28px;
+      row-gap: 22px;
       max-width: 1840px;
       margin: 0 auto;
       padding: 22px max(16px, 2.5vw) 48px;
@@ -72,7 +74,7 @@
       grid-column: 1 / -1;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 12px;
     }
 
     .topbar-row {
@@ -213,7 +215,8 @@
       align-items: center;
       justify-content: space-between;
       gap: 14px 16px;
-      margin-bottom: 18px;
+      min-height: 44px;
+      margin-bottom: 16px;
     }
 
     .section-title {
@@ -983,7 +986,8 @@
       margin: 26px 0 14px;
     }
 
-    .subsection-header:first-of-type { margin-top: 0; }
+    .subsection-header:first-of-type,
+    .section-header + .subsection-header { margin-top: 0; }
 
     .subsection-title {
       display: inline-flex;
@@ -1026,22 +1030,6 @@
       border-bottom: 5px solid var(--accent);
     }
 
-    .svg-chart { width: 100%; min-width: 0; }
-    .svg-chart-svg { display: block; width: 100%; height: auto; overflow: visible; }
-    .svg-chart-svg text { font-family: var(--font); font-variant-numeric: tabular-nums; }
-    .svg-chart-svg g:hover polygon,
-    .svg-chart-svg g:hover rect { filter: brightness(1.2); }
-
-    .ranked-bars { list-style: none; display: flex; flex-direction: column; gap: 14px; padding: 4px 2px 6px; }
-    .ranked-bars li { display: flex; flex-direction: column; gap: 6px; }
-    .ranked-bars-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-    .ranked-bars-name { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 14px; font-weight: 600; line-height: 1.25; }
-    .ranked-bars-value { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .ranked-bars-track { height: 12px; background: #2a2725; }
-    .ranked-bars-fill { height: 100%; transform: var(--slant); transform-origin: bottom left; }
-    .ranked-bars-fill.positive { background: var(--green); }
-    .ranked-bars-fill.negative { background: var(--red); }
-
     /* ── period filter ── */
     .period-row {
       display: flex;
@@ -1079,7 +1067,7 @@
     }
 
     .kpi-value {
-      font-size: 26px;
+      font-size: 25px;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
       line-height: 1.05;
@@ -1107,14 +1095,14 @@
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 22px;
-      margin-bottom: 28px;
+      margin-bottom: 22px;
       align-items: stretch;
     }
 
     .analyse-widget-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 28px;
+      gap: 22px;
       align-items: stretch;
     }
 
@@ -1134,8 +1122,8 @@
       align-items: center;
       justify-content: space-between;
       gap: 10px;
-      min-height: 40px;
-      padding: 0 5px 0 16px;
+      min-height: 36px;
+      padding: 0 4px 0 16px;
       background: var(--ink);
     }
 
@@ -1174,16 +1162,17 @@
 
     .widget-expand-btn:hover { border-color: var(--text); }
 
-    .widget-body { padding: 10px 16px 12px; }
-    .widget-kpi .widget-body { padding: 12px 14px 14px; }
-    .widget-body-chart { padding: 14px 14px 10px; min-height: 200px; }
+    .widget-body { padding: 6px 16px 8px; }
+    .widget-kpi .widget-body { padding: 10px 14px 12px; }
+    .widget-body-chart { position: relative; height: 150px; min-height: 0; padding: 8px 12px 6px; }
+    .widget.expanded .widget-body-chart { height: 320px; }
 
     .widget-stat {
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 12px;
-      padding: 9px 0;
+      padding: 6px 0;
       border-top: 1px solid var(--line);
     }
 
@@ -1197,7 +1186,7 @@
     }
 
     .widget-stat-value {
-      font-size: 18px;
+      font-size: 17px;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
       text-align: right;
@@ -1450,7 +1439,7 @@
     }
 
     .trade-analysis-layout .chart-wrap { margin-top: 0; display: flex; flex-direction: column; }
-    .trade-analysis-layout .chart-wrap .svg-chart { margin: auto 0; }
+    .trade-analysis-layout .chart-wrap canvas { margin: auto 0; }
 
     #profitChartsContent {
       display: grid;
@@ -1709,19 +1698,19 @@
       <div id="profitChartsContent">
         <div class="chart-wrap" id="profitChartWrap" style="display:none;">
           <div class="chart-title">Top kaarten op gerealiseerde winst</div>
-          <div class="svg-chart" id="profitChart"></div>
+          <canvas id="profitChart"></canvas>
         </div>
 
         <div class="chart-wrap" id="monthlyChartWrap" style="display:none;">
           <div class="chart-title">Netto resultaat per maand</div>
-          <div class="svg-chart" id="monthlyProfitChart"></div>
+          <canvas id="monthlyProfitChart"></canvas>
         </div>
       </div>
     </div>
 
     <!-- Analyse view -->
     <div id="analyseView" style="display:none;">
-      <div class="section-header" style="margin-bottom:16px;">
+      <div class="section-header">
         <span class="section-title">Analyse</span>
       </div>
 
@@ -1798,7 +1787,7 @@
             <button class="widget-expand-btn" data-widget="widgetCumulative" title="Vergroot">⤢</button>
           </div>
           <div class="widget-body widget-body-chart">
-            <div class="svg-chart" id="cumulativeChart"></div>
+            <canvas id="cumulativeChart"></canvas>
           </div>
         </div>
 
@@ -1809,7 +1798,7 @@
             <button class="widget-expand-btn" data-widget="widgetMonthly" title="Vergroot">⤢</button>
           </div>
           <div class="widget-body widget-body-chart">
-            <div class="svg-chart" id="monthlyCompareChart"></div>
+            <canvas id="monthlyCompareChart"></canvas>
           </div>
         </div>
 
@@ -1820,7 +1809,7 @@
             <button class="widget-expand-btn" data-widget="widgetGrowthChart" title="Vergroot">⤢</button>
           </div>
           <div class="widget-body widget-body-chart">
-            <div class="svg-chart" id="growthChart"></div>
+            <canvas id="growthChart"></canvas>
           </div>
         </div>
 
@@ -1942,7 +1931,7 @@
         <div class="trade-analysis-grid" id="tradeAnalysisGrid"></div>
         <div class="chart-wrap" id="tradePerformanceChartWrap" style="display:none;">
           <div class="chart-title">Trade performance over tijd</div>
-          <div class="svg-chart" id="tradePerformanceChart"></div>
+          <canvas id="tradePerformanceChart"></canvas>
         </div>
       </div>
     </div>
@@ -2221,238 +2210,12 @@ import {
   validateTabName,
 } from './profit-monitor-core.mjs';
 
-// ── Charts ────────────────────────────────────────────────────────────────
-// Hand-drawn SVG charts in the app's style (slanted bars, square markers,
-// dashed gridlines). No chart library needed; each chart redraws at its
-// container's width, also when the window is resized.
-const CHART_COLORS = {
-  pos: '#5fd88a',
-  neg: '#dc6b62',
-  text: '#f3f0ea',
-  text2: '#cfc9c0',
-  muted: '#a8a199',
-  grid: '#3d3935',
-  accent: '#dc6b62',
-};
-
-const chartRenderers = new Map();
-
-function drawChart(id, render) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  chartRenderers.set(id, render);
-  el.innerHTML = render(el.clientWidth || el.parentElement?.clientWidth || 600);
-}
-
-function clearChart(id) {
-  chartRenderers.delete(id);
-  const el = document.getElementById(id);
-  if (el) el.innerHTML = '';
-}
-
-let chartResizeTimer = null;
-window.addEventListener('resize', () => {
-  clearTimeout(chartResizeTimer);
-  chartResizeTimer = setTimeout(() => {
-    chartRenderers.forEach((render, id) => {
-      const el = document.getElementById(id);
-      if (el && el.offsetParent !== null) el.innerHTML = render(el.clientWidth || 600);
-    });
-  }, 120);
-});
-
-// Charts inside hidden views measure 0 wide; redraw them once they are shown.
-function redrawVisibleCharts() {
-  chartRenderers.forEach((render, id) => {
-    const el = document.getElementById(id);
-    if (el && el.offsetParent !== null) el.innerHTML = render(el.clientWidth || 600);
-  });
-}
-
-function niceStep(range, targetTicks) {
-  const raw = range / Math.max(1, targetTicks);
-  const mag = 10 ** Math.floor(Math.log10(raw || 1));
-  const norm = raw / mag;
-  const step = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10;
-  return step * mag;
-}
-
-function chartScale(values, targetTicks = 4) {
-  let min = Math.min(0, ...values);
-  let max = Math.max(0, ...values);
-  if (min === max) max = min + 1;
-  const step = niceStep(max - min, targetTicks);
-  min = Math.floor(min / step) * step;
-  max = Math.ceil(max / step) * step;
-  const ticks = [];
-  for (let v = min; v <= max + step / 2; v += step) ticks.push(roundMoney(v));
-  return { min, max, ticks };
-}
-
-function fmtEuroShort(value) {
-  const abs = Math.abs(value);
-  const text = new Intl.NumberFormat('nl-NL', { maximumFractionDigits: abs >= 100 ? 0 : 2 }).format(abs);
-  return `${value < 0 ? '− ' : value > 0 ? '+ ' : ''}€ ${text}`;
-}
-
-function fmtEuroAxis(value) {
-  const text = new Intl.NumberFormat('nl-NL', { maximumFractionDigits: 0 }).format(Math.abs(value));
-  return `${value < 0 ? '− ' : ''}€ ${text}`;
-}
-
-function fmtPctShort(value) {
-  return `${value > 0 ? '+' : value < 0 ? '−' : ''}${Math.round(Math.abs(value))}%`;
-}
-
-function svgText(x, y, text, { anchor = 'middle', size = 12, weight = 700, fill = CHART_COLORS.text2, spacing = 0 } = {}) {
-  return `<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="${size}" font-weight="${weight}" fill="${fill}"${spacing ? ` letter-spacing="${spacing}"` : ''}>${escHTML(text)}</text>`;
-}
-
-// Picks every nth x label so they never overlap.
-function labelStride(count, slot, longest) {
-  const needed = Math.max(36, longest * 7.5 + 10);
-  return Math.max(1, Math.ceil(needed / Math.max(slot, 1)));
-}
-
-// Shared frame: y gridlines with labels, zero line, plot area.
-function chartFrame(width, height, scale, axisFormat, padLeft) {
-  const pad = { top: 30, right: 14, bottom: 34, left: padLeft };
-  const plotW = Math.max(40, width - pad.left - pad.right);
-  const plotH = Math.max(40, height - pad.top - pad.bottom);
-  const y = v => pad.top + (scale.max - v) / (scale.max - scale.min) * plotH;
-  let svg = '';
-  scale.ticks.forEach(t => {
-    const ty = y(t);
-    if (t === 0) return;
-    svg += `<line x1="${pad.left}" y1="${ty}" x2="${pad.left + plotW}" y2="${ty}" stroke="${CHART_COLORS.grid}" stroke-width="1" stroke-dasharray="5 5"/>`;
-    svg += svgText(pad.left - 10, ty + 4, axisFormat(t), { anchor: 'end', weight: 600, fill: CHART_COLORS.muted });
-  });
-  const zy = y(0);
-  const zeroLine = `<line x1="${pad.left}" y1="${zy}" x2="${pad.left + plotW}" y2="${zy}" stroke="${CHART_COLORS.text}" stroke-width="2"/>`
-    + svgText(pad.left - 10, zy + 4, axisFormat(0), { anchor: 'end', fill: CHART_COLORS.text });
-  return { pad, plotW, plotH, y, svg, zeroLine };
-}
-
-function svgWrap(width, height, label, body) {
-  return `<svg class="svg-chart-svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="${escAttr(label)}">${body}</svg>`;
-}
-
-// Slanted bar, drawn as a parallelogram leaning right like the rest of the UI.
-function slantedBar(x, top, w, h, fill) {
-  const s = Math.min(8, h * 0.18);
-  return `<polygon points="${x},${top + h} ${x + w},${top + h} ${x + w + s},${top} ${x + s},${top}" fill="${fill}"/>`;
-}
-
-/**
- * Vertical bar chart. options: labels, values, valueFormat, axisFormat,
- * tooltip (i => string), height, label (accessible description).
- */
-function barChartSVG(width, opts) {
-  const { labels, values, valueFormat, axisFormat, tooltip, height = 250, label } = opts;
-  const scale = chartScale(values);
-  const f = chartFrame(width, height, scale, axisFormat, 70);
-  const n = values.length;
-  const slot = f.plotW / n;
-  const barW = Math.min(64, Math.max(6, slot * 0.5));
-  const showValues = slot >= 46;
-  const longest = Math.max(...labels.map(l => l.length));
-  const stride = labelStride(n, slot, longest);
-  const zy = f.y(0);
-  let body = f.svg;
-  values.forEach((v, i) => {
-    const cx = f.pad.left + slot * i + slot / 2;
-    const top = v >= 0 ? f.y(v) : zy;
-    const h = Math.max(2, Math.abs(f.y(v) - zy));
-    const color = v >= 0 ? CHART_COLORS.pos : CHART_COLORS.neg;
-    body += `<g><title>${escHTML(tooltip ? tooltip(i) : `${labels[i]}: ${valueFormat(v)}`)}</title>${slantedBar(cx - barW / 2, top, barW, h, color)}</g>`;
-    if (showValues) {
-      // Positive values sit above their bar; negative ones below it when there is
-      // room above the month labels, otherwise just above the zero line.
-      const plotBottom = f.pad.top + f.plotH;
-      const ly = v >= 0 ? top - 8 : (top + h + 18 <= plotBottom ? top + h + 16 : zy - 8);
-      body += svgText(cx, ly, valueFormat(v), { fill: color });
-    }
-    if (i % stride === 0) {
-      body += svgText(cx, height - 10, labels[i], { fill: CHART_COLORS.text2, spacing: 1 });
-    }
-  });
-  body += f.zeroLine;
-  return svgWrap(width, height, label, body);
-}
-
-/**
- * Line chart with area fill to zero and square markers; the last point is
- * highlighted. options as barChartSVG, plus bars (optional per-point values
- * drawn as slanted bars behind the line).
- */
-function lineChartSVG(width, opts) {
-  const { labels, values, valueFormat, axisFormat, tooltip, height = 250, label, bars } = opts;
-  const scale = chartScale(bars ? [...values, ...bars] : values);
-  const f = chartFrame(width, height, scale, axisFormat, 70);
-  const n = values.length;
-  const slot = f.plotW / n;
-  const xs = values.map((_, i) => f.pad.left + slot * i + slot / 2);
-  const ys = values.map(v => f.y(v));
-  const zy = f.y(0);
-  const last = values[n - 1];
-  const lineColor = bars ? CHART_COLORS.text : (last >= 0 ? CHART_COLORS.pos : CHART_COLORS.neg);
-  const longest = Math.max(...labels.map(l => l.length));
-  const stride = labelStride(n, slot, longest);
-  let body = f.svg;
-
-  if (bars) {
-    const barW = Math.min(64, Math.max(6, slot * 0.45));
-    bars.forEach((v, i) => {
-      const top = v >= 0 ? f.y(v) : zy;
-      const h = Math.max(2, Math.abs(f.y(v) - zy));
-      const color = v >= 0 ? CHART_COLORS.pos : CHART_COLORS.neg;
-      body += `<g><title>${escHTML(`${labels[i]}: ${valueFormat(v)} deze trade`)}</title>${slantedBar(xs[i] - barW / 2, top, barW, h, color)}</g>`;
-      if (slot >= 46) body += svgText(xs[i], height - 26, valueFormat(v), { fill: color, size: 11 });
-    });
-  } else {
-    const area = [`${xs[0]},${zy}`, ...xs.map((x, i) => `${x},${ys[i]}`), `${xs[n - 1]},${zy}`].join(' ');
-    body += `<polygon points="${area}" fill="${lineColor}" fill-opacity="0.13"/>`;
-  }
-
-  body += f.zeroLine;
-  body += `<polyline points="${xs.map((x, i) => `${x},${ys[i]}`).join(' ')}" fill="none" stroke="${lineColor}" stroke-width="4" stroke-linejoin="miter"/>`;
-
-  const labelAll = n <= 8 && slot >= 60;
-  values.forEach((v, i) => {
-    const isLast = i === n - 1;
-    const size = isLast ? 18 : 12;
-    const tip = escHTML(tooltip ? tooltip(i) : `${labels[i]}: ${valueFormat(v)}`);
-    body += `<g><title>${tip}</title><rect x="${xs[i] - size / 2}" y="${ys[i] - size / 2}" width="${size}" height="${size}" fill="${lineColor}"${isLast ? ` stroke="${CHART_COLORS.text}" stroke-width="2"` : ''}/></g>`;
-    if (labelAll || isLast) {
-      const plotBottom = f.pad.top + f.plotH;
-      const wantsBelow = !isLast && i > 0 && v < values[i - 1];
-      const below = wantsBelow && ys[i] + 24 <= plotBottom - 4;
-      const ly = below ? ys[i] + 24 : ys[i] - (isLast ? 18 : 12);
-      const anchor = isLast && xs[i] > width - 60 ? 'end' : 'middle';
-      const lx = anchor === 'end' ? Math.min(xs[i] + 10, width - 4) : xs[i];
-      body += svgText(lx, Math.max(14, ly), valueFormat(v), { anchor, size: isLast ? 14 : 12, fill: isLast ? lineColor : CHART_COLORS.text2 });
-    }
-    if (i % stride === 0 || isLast && (n - 1) % stride === 0) {
-      body += svgText(xs[i], height - 10, labels[i], { fill: CHART_COLORS.text2, spacing: 1 });
-    }
-  });
-  return svgWrap(width, height, label, body);
-}
-
-/** Horizontal ranked bars as HTML (long card names stay readable). */
-function rankedBarsHTML(rows) {
-  const maxAbs = Math.max(...rows.map(r => Math.abs(r.value)), 1);
-  return `<ol class="ranked-bars">${rows.map(r => `
-    <li title="${escAttr(`${r.name}: ${fmt(r.value)}`)}">
-      <div class="ranked-bars-head"><span class="ranked-bars-name">${r.nameHTML}</span><span class="ranked-bars-value ${r.value >= 0 ? 'positive' : 'negative'}">${escHTML(fmtEuroShort(r.value))}</span></div>
-      <div class="ranked-bars-track"><div class="ranked-bars-fill ${r.value >= 0 ? 'positive' : 'negative'}" style="width:${Math.max(1, Math.round(Math.abs(r.value) / maxAbs * 100))}%"></div></div>
-    </li>`).join('')}</ol>`;
-}
-
-function shortMonthLabel(monthKey) {
-  const [year, month] = monthKey.split('-').map(Number);
-  const name = new Intl.DateTimeFormat('nl-NL', { month: 'short' }).format(new Date(year, month - 1, 1)).replace('.', '');
-  return `${name.toUpperCase()} ${String(year).slice(2)}`;
+// Charts follow the app's dark theme and typeface.
+if (window.Chart) {
+  Chart.defaults.font.family = "'Chakra Petch', system-ui, sans-serif";
+  Chart.defaults.font.weight = '600';
+  Chart.defaults.color = '#a8a199';
+  Chart.defaults.borderColor = '#2e2b28';
 }
 
 let appState = ensureAppState(null);
@@ -2465,6 +2228,12 @@ let searchQuery = '';
 let profitSearchQuery = '';
 let editingId = null;
 let activeView = 'transactions'; // 'transactions' | 'profit' | 'analyse' | 'trades' | 'trades-analysis'
+let profitChart = null;
+let monthlyChart = null;
+let cumulativeChart = null;
+let monthlyCompareChart = null;
+let growthChart = null;
+let tradePerformanceChart = null;
 let editingTradeId = null;
 let tradeDraft = {
   date: todayISO(),
@@ -2901,49 +2670,133 @@ function renderProfitChart(rows) {
   const wrap = document.getElementById('profitChartWrap');
   if (!rows.length) {
     wrap.style.display = 'none';
-    document.getElementById('profitChart').innerHTML = '';
+    if (profitChart) { profitChart.destroy(); profitChart = null; }
     return;
   }
 
-  // Top 20 cards by absolute realized profit
+  // Show top 20 cards by absolute realized profit
   const sorted = rows.slice().sort((a, b) => Math.abs(b.realizedProfit) - Math.abs(a.realizedProfit)).slice(0, 20);
+  const labels = sorted.map(r => r.displayName);
+  const values = sorted.map(r => r.realizedProfit);
+  const colors = values.map(v => v >= 0 ? 'rgba(95,216,138,0.75)' : 'rgba(220,107,98,0.75)');
+  const borderColors = values.map(v => v >= 0 ? 'rgba(95,216,138,1)' : 'rgba(220,107,98,1)');
+
   wrap.style.display = '';
-  document.getElementById('profitChart').innerHTML = rankedBarsHTML(sorted.map(row => ({
-    name: row.displayName,
-    nameHTML: `${escHTML(row.cardName)} ${gradeBadgeHTML(row.gradingCompany, row.gradingValue)}`,
-    value: row.realizedProfit,
-  })));
+
+  if (profitChart) { profitChart.destroy(); profitChart = null; }
+
+  const ctx = document.getElementById('profitChart').getContext('2d');
+  profitChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Gerealiseerde winst (€)',
+        data: values,
+        backgroundColor: colors,
+        borderColor: borderColors,
+        borderWidth: 1,
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: context => fmt(context.parsed.y),
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: '#a8a199', font: { size: 11 }, maxRotation: 45 },
+          grid: { color: '#2e2b28' },
+        },
+        y: {
+          ticks: {
+            color: '#a8a199',
+            font: { size: 11 },
+            callback: value => fmt(value),
+          },
+          grid: { color: '#2e2b28' },
+        },
+      },
+    },
+  });
 }
 
-function monthlyTotals(transactions) {
+function renderMonthlyChart(transactions) {
+  const wrap = document.getElementById('monthlyChartWrap');
+  if (!transactions.length) {
+    wrap.style.display = 'none';
+    if (monthlyChart) { monthlyChart.destroy(); monthlyChart = null; }
+    return;
+  }
+
   const monthMap = new Map();
   transactions.forEach(transaction => {
     const normalized = normalizeTransaction(transaction);
     const monthKey = normalized.date.slice(0, 7);
     monthMap.set(monthKey, roundMoney((monthMap.get(monthKey) || 0) + normalized.amount));
   });
-  return Array.from(monthMap.entries()).sort(([left], [right]) => left.localeCompare(right));
-}
 
-function renderMonthlyChart(transactions) {
-  const wrap = document.getElementById('monthlyChartWrap');
-  const entries = transactions.length ? monthlyTotals(transactions) : [];
-  if (!entries.length) {
+  const entries = Array.from(monthMap.entries()).sort(([left], [right]) => left.localeCompare(right));
+  const labels = entries.map(([month]) => month);
+  const values = entries.map(([, value]) => value);
+
+  if (!values.length) {
     wrap.style.display = 'none';
-    clearChart('monthlyProfitChart');
+    if (monthlyChart) { monthlyChart.destroy(); monthlyChart = null; }
     return;
   }
 
   wrap.style.display = '';
-  drawChart('monthlyProfitChart', width => barChartSVG(width, {
-    labels: entries.map(([month]) => shortMonthLabel(month)),
-    values: entries.map(([, value]) => value),
-    valueFormat: fmtEuroShort,
-    axisFormat: fmtEuroAxis,
-    tooltip: i => `${formatMonthLabel(entries[i][0])}: ${fmt(entries[i][1])}`,
-    height: 260,
-    label: 'Netto resultaat per maand',
-  }));
+  if (monthlyChart) { monthlyChart.destroy(); monthlyChart = null; }
+
+  const ctx = document.getElementById('monthlyProfitChart').getContext('2d');
+  monthlyChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Netto resultaat (€)',
+        data: values,
+        borderColor: 'rgba(243,240,234,0.85)',
+        backgroundColor: 'rgba(243,240,234,0.12)',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 4,
+        tension: 0.2,
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: context => fmt(context.parsed.y),
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: '#a8a199', font: { size: 11 } },
+          grid: { color: '#2e2b28' },
+        },
+        y: {
+          ticks: {
+            color: '#a8a199',
+            font: { size: 11 },
+            callback: value => fmt(value),
+          },
+          grid: { color: '#2e2b28' },
+        },
+      },
+    },
+  });
 }
 
 function renderProfitTable() {
@@ -3141,35 +2994,104 @@ function renderAverageCardMarginWidget(txns) {
 }
 
 function renderCumulativeChart(transactions) {
-  const entries = transactions.length ? monthlyTotals(transactions) : [];
-  if (!entries.length) { clearChart('cumulativeChart'); return; }
+  const el = document.getElementById('cumulativeChart');
+  if (!el) return;
+  if (cumulativeChart) { cumulativeChart.destroy(); cumulativeChart = null; }
+  if (!transactions.length) return;
 
+  const monthMap = new Map();
+  transactions.forEach(t => {
+    const normalized = normalizeTransaction(t);
+    const key = normalized.date.slice(0, 7);
+    monthMap.set(key, roundMoney((monthMap.get(key) || 0) + normalized.amount));
+  });
+  const entries = Array.from(monthMap.entries()).sort(([a], [b]) => a.localeCompare(b));
   let cumulative = 0;
-  const values = entries.map(([, profit]) => (cumulative = roundMoney(cumulative + profit)));
-  drawChart('cumulativeChart', width => lineChartSVG(width, {
-    labels: entries.map(([month]) => shortMonthLabel(month)),
-    values,
-    valueFormat: fmtEuroShort,
-    axisFormat: fmtEuroAxis,
-    tooltip: i => `${formatMonthLabel(entries[i][0])}: ${fmt(values[i])} cumulatief`,
-    label: 'Cumulatieve winst per maand',
-  }));
+  const labels = [];
+  const values = [];
+  entries.forEach(([month, profit]) => {
+    cumulative = roundMoney(cumulative + profit);
+    labels.push(formatMonthLabel(month));
+    values.push(cumulative);
+  });
+
+  const ctx = el.getContext('2d');
+  cumulativeChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Cumulatieve winst',
+        data: values,
+        borderColor: 'rgba(95,216,138,0.9)',
+        backgroundColor: 'rgba(95,216,138,0.08)',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        tension: 0.3,
+        fill: true,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => fmt(ctx.parsed.y) } },
+      },
+      scales: {
+        x: { ticks: { color: '#a8a199', font: { size: 11 }, maxRotation: 45 }, grid: { color: '#2e2b28' } },
+        y: { ticks: { color: '#a8a199', font: { size: 11 }, callback: v => fmt(v) }, grid: { color: '#2e2b28' } },
+      },
+    },
+  });
 }
 
 function renderMonthlyCompareChart(monthly) {
-  if (!monthly.length) { clearChart('monthlyCompareChart'); return; }
-  drawChart('monthlyCompareChart', width => barChartSVG(width, {
-    labels: monthly.map(m => shortMonthLabel(m.month)),
-    values: monthly.map(m => m.profit),
-    valueFormat: fmtEuroShort,
-    axisFormat: fmtEuroAxis,
-    tooltip: i => `${formatMonthLabel(monthly[i].month)}: ${fmt(monthly[i].profit)}`,
-    label: 'Netto resultaat per maand',
-  }));
+  const el = document.getElementById('monthlyCompareChart');
+  if (!el) return;
+  if (monthlyCompareChart) { monthlyCompareChart.destroy(); monthlyCompareChart = null; }
+  if (!monthly.length) return;
+
+  const labels = monthly.map(m => formatMonthLabel(m.month));
+  const values = monthly.map(m => m.profit);
+  const colors = values.map(v => v >= 0 ? 'rgba(95,216,138,0.75)' : 'rgba(220,107,98,0.75)');
+  const borderColors = values.map(v => v >= 0 ? 'rgba(95,216,138,1)' : 'rgba(220,107,98,1)');
+
+  const ctx = el.getContext('2d');
+  monthlyCompareChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Netto resultaat',
+        data: values,
+        backgroundColor: colors,
+        borderColor: borderColors,
+        borderWidth: 1,
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => fmt(ctx.parsed.y) } },
+      },
+      scales: {
+        x: { ticks: { color: '#a8a199', font: { size: 11 }, maxRotation: 45 }, grid: { color: '#2e2b28' } },
+        y: { ticks: { color: '#a8a199', font: { size: 11 }, callback: v => fmt(v) }, grid: { color: '#2e2b28' } },
+      },
+    },
+  });
 }
 
 function renderGrowthChart(monthly) {
-  if (monthly.length < 2) { clearChart('growthChart'); return; }
+  const el = document.getElementById('growthChart');
+  if (!el) return;
+  if (growthChart) { growthChart.destroy(); growthChart = null; }
+  if (monthly.length < 2) return;
 
   const growthData = monthly.slice(1).map((m, i) => {
     const prev = monthly[i].profit;
@@ -3177,16 +3099,43 @@ function renderGrowthChart(monthly) {
     return { month: m.month, growth: pct };
   }).filter(d => d.growth !== null);
 
-  if (!growthData.length) { clearChart('growthChart'); return; }
+  if (!growthData.length) return;
 
-  drawChart('growthChart', width => barChartSVG(width, {
-    labels: growthData.map(d => shortMonthLabel(d.month)),
-    values: growthData.map(d => d.growth),
-    valueFormat: fmtPctShort,
-    axisFormat: fmtPctShort,
-    tooltip: i => `${formatMonthLabel(growthData[i].month)}: ${growthData[i].growth > 0 ? '+' : ''}${growthData[i].growth}% t.o.v. vorige maand`,
-    label: 'Groei per maand ten opzichte van de vorige maand',
-  }));
+  const labels = growthData.map(d => formatMonthLabel(d.month));
+  const values = growthData.map(d => d.growth);
+  const colors = values.map(v => v >= 0 ? 'rgba(95,216,138,0.75)' : 'rgba(220,107,98,0.75)');
+  const borderColors = values.map(v => v >= 0 ? 'rgba(95,216,138,1)' : 'rgba(220,107,98,1)');
+
+  const ctx = el.getContext('2d');
+  growthChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Groei (%)',
+        data: values,
+        backgroundColor: colors,
+        borderColor: borderColors,
+        borderWidth: 1,
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => `${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y}%` } },
+      },
+      scales: {
+        x: { ticks: { color: '#a8a199', font: { size: 11 }, maxRotation: 45 }, grid: { color: '#2e2b28' } },
+        y: {
+          ticks: { color: '#a8a199', font: { size: 11 }, callback: v => `${v >= 0 ? '+' : ''}${v}%` },
+          grid: { color: '#2e2b28' },
+        },
+      },
+    },
+  });
 }
 
 function emptyTradeItem() {
@@ -3473,25 +3422,41 @@ function closeTradeDetail() {
 
 function renderTradePerformanceChart(trades) {
   const wrap = document.getElementById('tradePerformanceChartWrap');
+  if (tradePerformanceChart) { tradePerformanceChart.destroy(); tradePerformanceChart = null; }
   const points = computeTradePerformanceSeries(trades);
   if (!points.length) {
     wrap.style.display = 'none';
-    clearChart('tradePerformanceChart');
     return;
   }
 
   wrap.style.display = '';
-  const label = point => `#${point.id} · ${formatDate(point.date).replace(/-\d{4}$/, '')}`;
-  drawChart('tradePerformanceChart', width => lineChartSVG(width, {
-    labels: points.map(label),
-    values: points.map(point => point.cumulativeDifference),
-    bars: points.map(point => point.difference),
-    valueFormat: fmtEuroShort,
-    axisFormat: fmtEuroAxis,
-    tooltip: i => `Trade #${points[i].id} (${formatDate(points[i].date)}): ${fmt(points[i].cumulativeDifference)} cumulatief`,
-    height: 380,
-    label: 'Verschil per trade en cumulatief verschil over tijd',
-  }));
+  const ctx = document.getElementById('tradePerformanceChart').getContext('2d');
+  tradePerformanceChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: points.map(point => formatDate(point.date)),
+      datasets: [{
+        label: 'Cumulatief verschil',
+        data: points.map(point => point.cumulativeDifference),
+        borderColor: 'rgba(243,240,234,0.85)',
+        backgroundColor: 'rgba(243,240,234,0.12)',
+        borderWidth: 2,
+        pointRadius: 3,
+        tension: 0.25,
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: context => fmt(context.parsed.y) } },
+      },
+      scales: {
+        x: { ticks: { color: '#a8a199', font: { size: 11 } }, grid: { color: '#2e2b28' } },
+        y: { ticks: { color: '#a8a199', font: { size: 11 }, callback: value => fmt(value) }, grid: { color: '#2e2b28' } },
+      },
+    },
+  });
 }
 
 function renderTradesAnalysis() {
@@ -3655,7 +3620,6 @@ function setSectionCollapsed(section, collapsed) {
   const button = document.getElementById(config.buttonId);
   if (content) content.style.display = collapsed ? 'none' : '';
   if (button) button.textContent = collapsed ? 'Uitklappen' : 'Inklappen';
-  if (!collapsed) requestAnimationFrame(redrawVisibleCharts);
 }
 
 function toggleSort(tableName, sortKey) {
@@ -3849,8 +3813,10 @@ document.getElementById('analyseView').addEventListener('click', e => {
   const isExpanded = widget.classList.toggle('expanded');
   btn.title = isExpanded ? 'Verkleinen' : 'Vergroot';
   btn.textContent = isExpanded ? '⤡' : '⤢';
-  // Redraw charts at the widget's new width
-  requestAnimationFrame(redrawVisibleCharts);
+  // Resize charts if present inside this widget so Chart.js adapts to new column width
+  requestAnimationFrame(() => {
+    [cumulativeChart, monthlyCompareChart, growthChart].forEach(c => { if (c) c.resize(); });
+  });
 });
 
 // Period filter
