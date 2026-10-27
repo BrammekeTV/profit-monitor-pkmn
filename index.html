@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Profit Monitor — Pokémon</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
   <!-- JSZip for client-side .xlsm (ZIP) parsing -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <!-- Chart.js for profit graph -->
@@ -11,36 +14,58 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* Dark theme in the style of the T'Collectief beurzenkalender:
+       black outlines, hard block shadows, a 10° slant and Chakra Petch. */
     :root {
-      --bg:       #18181b;
-      --surface:  #27272a;
-      --surface2: #1f1f22;
-      --border:   #3f3f46;
-      --text:     #fafafa;
-      --muted:    #a1a1aa;
-      --green:    #22c55e;
-      --red:      #ef4444;
-      --btn:      #52525b;
-      --btn-h:    #71717a;
-      --graded:   #d4b062;
-      --graded-bg: rgba(212, 176, 98, 0.045);
-      --graded-bg-hover: rgba(212, 176, 98, 0.08);
+      --bg:        #0f0e0d;
+      --surface:   #1b1a19;
+      --surface2:  #242220;
+      --field:     #0f0e0d;
+      --ink:       #000000;
+      --border:    #3d3935;
+      --line:      #2e2b28;
+      --text:      #f3f0ea;
+      --text2:     #cfc9c0;
+      --muted:     #a8a199;
+      --green:     #5fd88a;
+      --red:       #dc6b62;
+      --accent:    #dc6b62;
+      --on-accent: #1a0e0c;
+      --red-dim:   #6e3a35;
+      --graded:    #d4b062;
+      --graded-bg: rgba(212, 176, 98, 0.07);
+      --graded-bg-hover: rgba(212, 176, 98, 0.12);
+      --font: 'Chakra Petch', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      --slant: skewX(-10deg);
+      --unslant: skewX(10deg);
+      --block: 6px 8px 0 var(--ink);
+      --block-sm: 4px 5px 0 var(--ink);
+      color-scheme: dark;
     }
 
     html, body {
       background: var(--bg);
       color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-      font-size: 14px;
-      line-height: 1.5;
-      height: 100%;
+      font-family: var(--font);
+      font-size: 15px;
+      line-height: 1.45;
+      min-height: 100%;
     }
+
+    button, input, select, textarea { font-family: inherit; }
+
+    :focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 
     /* ── layout ── */
     .layout {
       display: grid;
-      grid-template-columns: 1fr 300px;
+      grid-template-columns: minmax(0, 1fr) 400px;
       grid-template-rows: auto 1fr;
+      column-gap: 40px;
+      row-gap: 22px;
+      max-width: 1840px;
+      margin: 0 auto;
+      padding: 22px max(16px, 2.5vw) 48px;
       min-height: 100vh;
     }
 
@@ -48,215 +73,374 @@
     .topbar {
       grid-column: 1 / -1;
       display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .topbar-row {
+      display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      gap: 24px;
-      padding: 0 24px;
-      height: 52px;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface2);
+      justify-content: space-between;
+      gap: 14px 28px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      min-width: 0;
     }
 
     .topbar-title {
-      font-size: 14px;
-      font-weight: 600;
+      display: inline-block;
+      font-size: 36px;
+      font-weight: 700;
+      line-height: 1;
+      text-transform: uppercase;
       color: var(--text);
+      text-shadow: 4px 4px 0 var(--accent);
+      transform: var(--slant);
       white-space: nowrap;
     }
 
-    .topbar-divider {
-      width: 1px;
-      height: 20px;
-      background: var(--border);
+    .topbar-tab {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
+
+    .topbar-divider { display: none; }
 
     .summary-row {
       display: flex;
-      gap: 24px;
-      align-items: center;
-      flex: 1;
+      flex-wrap: wrap;
+      gap: 14px 20px;
+      justify-content: flex-end;
     }
 
     .stat {
       display: flex;
-      align-items: center;
-      gap: 6px;
+      align-items: stretch;
+      height: 46px;
+      background: var(--surface);
+      border: 3px solid var(--ink);
+      box-shadow: var(--block-sm);
+      transform: var(--slant);
     }
 
     .stat-label {
-      color: var(--muted);
-      font-size: 13px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      background: var(--ink);
+      color: var(--text2);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      white-space: nowrap;
     }
 
+    .stat:nth-child(3) .stat-label { background: var(--accent); color: var(--on-accent); }
+
     .stat-value {
-      font-size: 13px;
-      font-weight: 600;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      font-size: 22px;
+      font-weight: 700;
       font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
 
     .stat-value.positive { color: var(--green); }
     .stat-value.negative { color: var(--red); }
     .stat-value.neutral  { color: var(--text); }
 
-    /* ── main content ── */
-    .main {
-      padding: 20px 24px;
-      overflow-y: auto;
+    /* ── shared controls ── */
+    .filter-btn,
+    .period-btn,
+    .tab-btn,
+    .view-toggle-btn,
+    .collapse-btn,
+    .inline-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 0 14px;
+      border: 2px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      line-height: 1;
+      text-transform: uppercase;
+      white-space: nowrap;
+      cursor: pointer;
+      transform: var(--slant);
+      transition: border-color 120ms, background 120ms, color 120ms;
     }
+
+    .filter-btn:hover,
+    .period-btn:hover,
+    .tab-btn:hover,
+    .view-toggle-btn:hover,
+    .collapse-btn:hover,
+    .inline-btn:hover:not(:disabled) {
+      border-color: var(--text);
+    }
+
+    .filter-btn.active,
+    .period-btn.active,
+    .view-toggle-btn.active {
+      background: var(--text);
+      border-color: var(--text);
+      color: var(--ink);
+    }
+
+    .inline-btn:disabled { opacity: 0.5; cursor: default; }
 
     .section-header {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 12px;
-      gap: 12px;
+      gap: 14px 16px;
+      min-height: 44px;
+      margin-bottom: 16px;
     }
 
     .section-title {
-      font-size: 14px;
-      font-weight: 600;
+      display: inline-block;
+      font-size: 30px;
+      font-weight: 700;
+      line-height: 1;
+      text-transform: uppercase;
       color: var(--text);
+      text-shadow: 3px 4px 0 var(--accent);
+      transform: var(--slant);
     }
+
+    .section-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .count-label {
+      display: inline-block;
+      padding: 5px 10px;
+      background: var(--ink);
+      color: var(--text2);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      transform: var(--slant);
+    }
+
+    .count-label:empty { display: none; }
 
     .filter-bar {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
     }
 
-    .filter-btn {
-      padding: 4px 10px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background: transparent;
-      color: var(--muted);
-      font-size: 12px;
-      cursor: pointer;
-      transition: background 120ms, color 120ms, border-color 120ms;
-      font-family: inherit;
+    .filter-divider {
+      width: 3px;
+      height: 30px;
+      background: var(--border);
+      margin: 0 2px;
     }
 
-    .filter-btn:hover,
-    .filter-btn.active {
-      background: var(--surface);
+    .filter-btn .filter-count {
+      padding: 3px 6px;
+      background: var(--ink);
       color: var(--text);
-      border-color: var(--btn-h);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
     }
 
+    .filter-btn .filter-count:empty { display: none; }
+
+    .filter-btn.graded-toggle {
+      border-color: var(--graded);
+      color: var(--graded);
+    }
+
+    .filter-btn.graded-toggle.active {
+      background: var(--graded);
+      border-color: var(--graded);
+      color: var(--ink);
+    }
+
+    .grading-company-bar {
+      display: none;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .grading-company-bar.visible { display: flex; }
+
+    .search-input {
+      min-height: 40px;
+      width: 260px;
+      max-width: 100%;
+      padding: 0 12px;
+      background: var(--field);
+      border: 2px solid var(--border);
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 600;
+      outline: none;
+      transition: border-color 120ms;
+    }
+
+    .search-input:focus { border-color: var(--accent); }
+    .search-input::placeholder { color: #8f887f; }
+
+    /* ── workspace (tabs) bar ── */
     .workspace-bar {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 16px;
+      gap: 10px 20px;
       flex-wrap: wrap;
+      padding: 8px 14px;
+      background: var(--surface);
+      border: 3px solid var(--ink);
+      box-shadow: var(--block);
+    }
+
+    .workspace-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
     }
 
     .tab-list {
       display: flex;
       align-items: center;
-      gap: 4px;
-      flex-wrap: wrap;
+      gap: 10px;
+      flex: 1 1 320px;
+      min-width: 0;
+      overflow-x: auto;
+      padding: 4px 8px 6px 6px;
     }
 
-    .tab-btn {
-      padding: 7px 12px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background: transparent;
-      color: var(--muted);
-      font-size: 13px;
-      cursor: pointer;
-      font-family: inherit;
-      transition: background 120ms, color 120ms, border-color 120ms;
-    }
+    .tab-btn { flex-shrink: 0; }
 
-    .tab-btn:hover,
     .tab-btn.active {
-      background: var(--surface);
-      color: var(--text);
-      border-color: var(--btn-h);
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--on-accent);
     }
 
     .tab-actions {
       display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
+      flex-shrink: 0;
+      border: 2px solid var(--border);
+      background: var(--surface2);
+      transform: var(--slant);
     }
 
+    .tab-actions .inline-btn {
+      min-height: 36px;
+      border: 0;
+      border-left: 2px solid var(--border);
+      background: transparent;
+      font-size: 12px;
+      transform: none;
+    }
+
+    .tab-actions .inline-btn:first-child { border-left: 0; }
+    .tab-actions .inline-btn:hover:not(:disabled) { background: #2f2c29; }
+    .tab-actions .inline-btn.danger { color: var(--red); }
+    .tab-actions svg { flex-shrink: 0; }
+
     .archive-panel {
-      margin-bottom: 14px;
-      padding: 10px 12px;
-      border: 1px dashed var(--border);
-      border-radius: 8px;
-      background: rgba(255,255,255,0.02);
+      padding: 12px 14px;
+      border: 2px dashed var(--border);
+      background: var(--surface);
     }
 
     .archive-title {
       font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
       color: var(--muted);
-      margin-bottom: 8px;
+      margin-bottom: 10px;
     }
 
-    .archive-list {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
+    .archive-list { display: flex; flex-direction: column; gap: 8px; }
 
     .archive-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
-      font-size: 12px;
-      color: var(--muted);
+      gap: 10px;
+      font-size: 14px;
+      color: var(--text2);
     }
 
-    .inline-btn {
-      padding: 7px 10px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background: transparent;
-      color: var(--muted);
-      font-size: 12px;
-      cursor: pointer;
-      font-family: inherit;
-      transition: background 120ms, color 120ms, border-color 120ms;
+    .view-toggle-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
     }
 
-    .inline-btn:hover:not(:disabled) {
-      background: var(--surface);
-      color: var(--text);
-      border-color: var(--btn-h);
+    .view-toggle-btn {
+      min-height: 44px;
+      padding: 0 20px;
+      font-size: 14px;
     }
 
-    .inline-btn:disabled {
-      opacity: 0.5;
-      cursor: default;
-    }
+    .view-toggle-btn.active { box-shadow: 4px 5px 0 var(--accent); }
 
-    /* ── table ── */
+    /* ── main content ── */
+    .main { min-width: 0; }
+
+    .panel-message { margin: 0; }
+
+    /* ── tables ── */
     .table-wrap {
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
+      background: var(--surface);
+      border: 3px solid var(--ink);
+      box-shadow: var(--block);
+      overflow-x: auto;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
+      font-variant-numeric: tabular-nums;
     }
 
     thead th {
-      padding: 10px 14px;
+      padding: 13px 14px;
       text-align: left;
       font-size: 12px;
-      font-weight: 600;
-      color: var(--muted);
-      background: var(--surface2);
-      border-bottom: 1px solid var(--border);
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text2);
+      background: var(--ink);
       white-space: nowrap;
+      vertical-align: middle;
     }
 
     .sort-btn {
@@ -267,124 +451,113 @@
       background: transparent;
       color: inherit;
       font: inherit;
+      letter-spacing: inherit;
+      text-transform: inherit;
       cursor: pointer;
       padding: 0;
     }
 
-    .sort-btn::after {
-      content: '↕';
-      color: var(--border);
-      font-size: 11px;
-    }
-
-    .sort-btn.active::after {
-      color: var(--text);
-    }
-
+    .sort-btn::after { content: '↕'; color: #6f6961; font-size: 11px; }
+    .sort-btn.active { color: var(--text); }
+    .sort-btn.active::after { color: var(--accent); }
     .sort-btn.active[data-direction="asc"]::after { content: '↑'; }
     .sort-btn.active[data-direction="desc"]::after { content: '↓'; }
 
-    tbody tr {
-      border-bottom: 1px solid var(--border);
-      transition: background 100ms;
-    }
-
-    tbody tr:last-child {
-      border-bottom: none;
-    }
-
-    tbody tr:hover {
-      background: var(--surface);
-    }
+    tbody tr { border-top: 1px solid var(--line); transition: background 100ms; }
+    tbody tr:first-child { border-top: none; }
+    tbody tr:hover { background: #221f1d; }
 
     tbody td {
-      padding: 10px 14px;
-      font-size: 13px;
-      vertical-align: top;
+      padding: 12px 14px;
+      font-size: 15px;
+      font-weight: 600;
+      vertical-align: middle;
     }
 
     .type-badge {
-      display: inline-block;
-      padding: 2px 7px;
-      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 96px;
+      height: 26px;
+      padding: 0 10px;
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
       white-space: nowrap;
+      transform: var(--slant);
     }
 
-    .type-badge.sold {
-      background: rgba(34,197,94,0.12);
-      color: var(--green);
-      border: 1px solid rgba(34,197,94,0.25);
-    }
-
-    .type-badge.bought {
-      background: rgba(239,68,68,0.12);
-      color: var(--red);
-      border: 1px solid rgba(239,68,68,0.25);
-    }
+    .type-badge.sold { background: var(--green); color: var(--ink); }
+    .type-badge.bought { border: 2px solid var(--red); color: var(--red); }
 
     .amount-cell {
       font-variant-numeric: tabular-nums;
-      font-weight: 500;
+      font-weight: 700;
       white-space: nowrap;
     }
 
-    .amount-cell.positive { color: var(--green); }
-    .amount-cell.negative { color: var(--red); }
+    .amount-cell.positive, .positive { color: var(--green); }
+    .amount-cell.negative, .negative { color: var(--red); }
+    .neutral { color: var(--text); }
 
-    .desc-cell {
-      max-width: 340px;
-    }
+    .desc-cell { min-width: 240px; }
 
     .desc-text {
       white-space: pre-line;
       color: var(--text);
-      line-height: 1.4;
+      line-height: 1.35;
     }
 
     .txn-meta {
       display: flex;
       flex-wrap: wrap;
+      align-items: center;
       gap: 8px;
       margin-top: 8px;
       font-size: 12px;
       color: var(--muted);
     }
 
+    .txn-meta:empty { display: none; }
+
     .meta-item {
+      display: inline-flex;
+      align-items: center;
+      height: 24px;
+      padding: 0 8px;
+      border: 1px solid var(--border);
       white-space: nowrap;
     }
 
     .meta-item-graded {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      color: var(--text);
+      height: auto;
+      padding: 0;
+      border: 0;
     }
 
-    /* Grading badge: looks like a slab label — company | grade */
+    /* Grade tag: slab-style label — logo | grade | scale name */
     .grade-badge {
       display: inline-flex;
       align-items: stretch;
-      height: 20px;
-      border: 1px solid var(--graded);
-      border-radius: 4px;
-      overflow: hidden;
+      height: 26px;
+      border: 2px solid var(--graded);
       font-size: 11px;
       line-height: 1;
       white-space: nowrap;
       vertical-align: middle;
+      transform: var(--slant);
     }
 
     .grade-badge-company {
       display: inline-flex;
       align-items: center;
-      padding: 0 6px;
-      background: var(--graded-bg-hover);
+      padding: 0 8px;
+      background: var(--ink);
       color: var(--text);
-      font-weight: 600;
-      letter-spacing: 0.02em;
+      font-weight: 700;
+      letter-spacing: 1px;
     }
 
     .grade-badge-company .grade-logo {
@@ -393,459 +566,298 @@
       width: auto;
       max-width: 64px;
       object-fit: contain;
+      transform: var(--unslant);
+      filter: brightness(0) invert(1);
     }
 
     /* PSA/BGS/CGC/TAG differ in proportions; nudge them to a similar visual size */
-    .grade-badge-company .grade-logo-psa { height: 13px; }
+    .grade-badge-company .grade-logo-psa { height: 14px; }
     .grade-badge-company .grade-logo-bgs { height: 10px; }
     .grade-badge-company .grade-logo-tag { height: 10px; }
-
-    /* Show every logo in plain white, whatever colour the file is */
-    .grade-badge-company .grade-logo { filter: brightness(0) invert(1); }
-
-    .grade-badge-special {
-      display: inline-flex;
-      align-items: center;
-      padding: 0 7px;
-      border-left: 1px solid var(--graded);
-      background: var(--graded);
-      color: #18181b;
-      font-weight: 700;
-      font-size: 10px;
-      letter-spacing: 0.02em;
-    }
-
-    .grade-badge-special-black {
-      background: #000;
-      color: #fff;
-    }
 
     .grade-badge-value {
       display: inline-flex;
       align-items: center;
-      padding: 0 7px;
-      border-left: 1px solid var(--graded);
-      color: var(--graded);
+      padding: 0 8px;
+      background: var(--graded);
+      color: var(--ink);
+      font-size: 14px;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
     }
 
-    .grade-badge-label {
-      color: var(--muted);
+    .grade-badge-special {
+      display: inline-flex;
+      align-items: center;
+      padding: 0 9px;
+      color: var(--graded);
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
     }
 
-    /* Graded rows: thin accent on the left and a faint tint */
-    tbody tr.is-graded {
-      background: var(--graded-bg);
-      box-shadow: inset 2px 0 0 var(--graded);
+    .grade-badge-special-black {
+      background: var(--ink);
+      color: var(--text);
     }
 
-    tbody tr.is-graded:hover {
-      background: var(--graded-bg-hover);
-    }
+    .grade-badge-label { color: var(--muted); }
+
+    tbody tr.is-graded { background: var(--graded-bg); }
+    tbody tr.is-graded:hover { background: var(--graded-bg-hover); }
 
     .profit-card-name {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 8px 10px;
       flex-wrap: wrap;
     }
 
-    .filter-divider {
-      width: 1px;
-      align-self: stretch;
-      background: var(--border);
-      margin: 2px 2px;
-    }
-
-    .filter-btn .filter-count {
-      margin-left: 5px;
-      color: var(--muted);
-      font-variant-numeric: tabular-nums;
-    }
-
-    .filter-btn.graded-toggle.active {
-      border-color: var(--graded);
-      color: var(--text);
-    }
-
-    .filter-btn.graded-toggle.active .filter-count {
-      color: var(--graded);
-    }
-
-    .grading-company-bar {
-      display: none;
-      gap: 6px;
-    }
-
-    .grading-company-bar.visible {
-      display: flex;
-    }
-
-    .order-links {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
+    .order-links { display: flex; gap: 8px; flex-wrap: wrap; }
 
     .order-link {
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      padding: 3px 7px;
-      border: 1px solid var(--border);
-      border-radius: 4px;
       color: var(--text);
-      text-decoration: none;
-      background: var(--surface2);
+      font-weight: 700;
+      font-size: 13px;
+      text-decoration: underline;
+      text-decoration-color: var(--accent);
+      text-decoration-thickness: 2px;
+      text-underline-offset: 4px;
     }
 
-    .order-link:hover {
-      border-color: var(--btn-h);
-      background: var(--surface);
-    }
+    .order-link::after { content: '↗'; }
+    .order-link:hover { color: #fff; text-decoration-color: #fff; }
 
+    .edit-btn,
     .delete-btn {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      padding: 2px 7px;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      background: transparent;
-      color: var(--muted);
-      font-size: 11px;
-      cursor: pointer;
-      font-family: inherit;
-      transition: background 120ms, color 120ms;
-    }
-
-    .delete-btn:hover {
-      background: rgba(239,68,68,0.12);
-      color: var(--red);
-      border-color: rgba(239,68,68,0.3);
-    }
-
-    .edit-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 2px 7px;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      background: transparent;
-      color: var(--muted);
-      font-size: 11px;
-      cursor: pointer;
-      font-family: inherit;
-      transition: background 120ms, color 120ms;
-      margin-right: 4px;
-    }
-
-    .edit-btn:hover {
-      background: var(--surface);
-      color: var(--text);
-      border-color: var(--btn-h);
-    }
-
-    .grading-table-wrap {
-      margin-top: 8px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      overflow-x: auto;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      border: 2px solid var(--border);
       background: var(--surface2);
+      color: var(--text);
+      cursor: pointer;
+      transition: border-color 120ms, color 120ms;
     }
 
-    .grading-table-wrap table {
-      min-width: 360px;
-      font-size: 11px;
-    }
-
-    .grading-table-wrap th,
-    .grading-table-wrap td {
-      padding: 6px 8px;
-      border-bottom: 1px solid var(--border);
-      white-space: nowrap;
-    }
-
-    .grading-table-wrap tbody tr:last-child td {
-      border-bottom: none;
-    }
+    .edit-btn { margin-right: 6px; }
+    .edit-btn svg, .delete-btn svg { width: 15px; height: 15px; }
+    .edit-btn:hover { border-color: var(--text); }
+    .delete-btn { color: var(--red); }
+    .delete-btn:hover { border-color: var(--red); }
 
     .empty {
       padding: 32px;
       text-align: center;
       color: var(--muted);
-      font-size: 13px;
+      font-size: 14px;
     }
 
     /* ── sidebar ── */
     .sidebar {
-      border-left: 1px solid var(--border);
-      background: var(--surface2);
-      padding: 20px;
-      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 30px;
+      min-width: 0;
+      align-self: start;
+    }
+
+    .side-panel {
+      background: var(--surface);
+      border: 3px solid var(--ink);
+      box-shadow: var(--block);
+    }
+
+    .side-panel-body {
+      padding: 18px 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
     }
 
     .form-title {
-      font-size: 13px;
-      font-weight: 600;
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 0 18px;
+      background: var(--ink);
       color: var(--text);
-      margin-bottom: 16px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
     }
 
-    .form-group {
-      margin-bottom: 12px;
-    }
+    .side-panel-primary .form-title { border-bottom: 6px solid var(--accent); }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
 
     .form-label {
       display: block;
       font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 4px;
-      font-weight: 500;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text2);
     }
 
     .form-input,
     .form-select,
-    .form-textarea {
+    .form-textarea,
+    .trade-input,
+    .date-range-input {
       width: 100%;
-      padding: 7px 10px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
+      min-height: 44px;
+      padding: 0 12px;
+      background: var(--field);
+      border: 2px solid var(--border);
       color: var(--text);
-      font-size: 13px;
-      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
       outline: none;
       transition: border-color 120ms;
-      appearance: none;
-      -webkit-appearance: none;
     }
 
+    .form-input::placeholder,
+    .form-textarea::placeholder,
+    .trade-input::placeholder { color: #8f887f; }
+
     .form-select {
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a1a1aa' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23cfc9c0' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
-      background-position: right 10px center;
-      padding-right: 28px;
+      background-position: right 12px center;
+      padding-right: 32px;
     }
+
+    .form-select:disabled, .trade-input:disabled { color: #6f6961; }
 
     .form-input:focus,
     .form-select:focus,
-    .form-textarea:focus {
-      border-color: var(--btn-h);
-    }
+    .form-textarea:focus,
+    .trade-input:focus,
+    .date-range-input:focus { border-color: var(--accent); }
 
     .form-textarea {
+      min-height: 84px;
+      padding: 10px 12px;
       resize: vertical;
-      min-height: 72px;
       line-height: 1.4;
     }
 
     .form-hint {
-      font-size: 11px;
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.45;
       color: var(--muted);
-      margin-top: 3px;
     }
 
     .submit-btn {
-      width: 100%;
-      padding: 8px 12px;
-      background: var(--btn);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text);
-      font-size: 13px;
-      font-weight: 500;
+      flex: 1;
+      min-height: 52px;
+      padding: 0 18px;
+      background: var(--accent);
+      border: 3px solid var(--ink);
+      box-shadow: 5px 7px 0 var(--ink);
+      color: var(--on-accent);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
       cursor: pointer;
-      transition: background 120ms;
-      font-family: inherit;
+      transform: var(--slant);
+      transition: filter 120ms;
     }
 
-    .submit-btn:hover:not(:disabled) {
-      background: var(--btn-h);
+    .submit-btn:hover:not(:disabled) { filter: brightness(1.1); }
+    .submit-btn:disabled { opacity: 0.5; cursor: default; }
+
+    .cancel-btn {
+      min-height: 52px;
+      padding: 0 18px;
+      background: var(--surface2);
+      border: 2px solid var(--border);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      white-space: nowrap;
+      transform: var(--slant);
     }
 
-    .submit-btn:disabled {
-      opacity: 0.5;
-      cursor: default;
-    }
+    .cancel-btn:hover { border-color: var(--text); }
+
+    .form-btn-row { display: flex; gap: 14px; margin-top: 4px; }
 
     .form-msg {
-      margin-top: 10px;
-      font-size: 12px;
-      padding: 6px 10px;
-      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 12px;
       display: none;
     }
 
     .form-msg.success {
       display: block;
-      background: rgba(34,197,94,0.1);
+      background: rgba(95, 216, 138, 0.1);
       color: var(--green);
-      border: 1px solid rgba(34,197,94,0.2);
+      border: 2px solid rgba(95, 216, 138, 0.35);
     }
 
     .form-msg.error {
       display: block;
-      background: rgba(239,68,68,0.1);
+      background: rgba(220, 107, 98, 0.1);
       color: var(--red);
-      border: 1px solid rgba(239,68,68,0.2);
+      border: 2px solid rgba(220, 107, 98, 0.35);
     }
 
-    .sidebar-divider {
-      border: none;
-      border-top: 1px solid var(--border);
-      margin: 16px 0;
-    }
+    .sidebar-divider { display: none; }
 
-    .count-label {
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .panel-message {
-      margin-bottom: 12px;
-    }
-
-    .search-input {
-      padding: 5px 10px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text);
-      font-size: 12px;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 120ms;
-      width: 180px;
-    }
-
-    .search-input:focus { border-color: var(--btn-h); }
-    .search-input::placeholder { color: var(--muted); }
-
-    /* import button */
-    .import-btn {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 7px 10px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      font-family: inherit;
-      transition: background 120ms, color 120ms, border-color 120ms;
-      width: 100%;
-    }
-
-    .import-btn:hover {
-      background: var(--surface);
-      color: var(--text);
-      border-color: var(--btn-h);
-    }
-
-    /* clear data button */
+    .import-btn,
     .danger-btn {
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
-      padding: 7px 10px;
-      background: transparent;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      font-family: inherit;
-      transition: background 120ms, color 120ms, border-color 120ms;
       width: 100%;
-    }
-
-    .danger-btn:hover {
-      background: rgba(239,68,68,0.1);
-      color: var(--red);
-      border-color: rgba(239,68,68,0.3);
-    }
-
-    .profit-section {
-      margin-top: 24px;
-    }
-
-    .view-toggle-bar {
-      display: flex;
-      gap: 4px;
-      margin-bottom: 16px;
-    }
-
-    .view-toggle-btn {
-      padding: 6px 14px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background: transparent;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      font-family: inherit;
-      transition: background 120ms, color 120ms, border-color 120ms;
-    }
-
-    .view-toggle-btn.active,
-    .view-toggle-btn:hover {
-      background: var(--surface);
-      color: var(--text);
-      border-color: var(--btn-h);
-    }
-
-    .section-controls {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .collapse-btn {
-      padding: 4px 10px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background: transparent;
-      color: var(--muted);
-      font-size: 12px;
-      cursor: pointer;
-      font-family: inherit;
-    }
-
-    .collapse-btn:hover {
-      background: var(--surface);
-      color: var(--text);
-      border-color: var(--btn-h);
-    }
-
-    .chart-wrap {
-      margin-top: 20px;
+      min-height: 46px;
+      padding: 0 14px;
+      border: 2px solid var(--border);
       background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px;
-      position: relative;
-      min-height: 240px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transform: var(--slant);
+      transition: border-color 120ms, filter 120ms;
     }
 
-    .chart-title {
-      font-size: 12px;
+    .import-btn:hover { border-color: var(--text); }
+    .import-btn.light { background: var(--text); border-color: var(--text); color: var(--ink); }
+    .import-btn.light:hover { filter: brightness(0.92); }
+    .danger-btn { color: var(--red); border-color: var(--red-dim); }
+    .danger-btn:hover { border-color: var(--red); }
+
+    .side-note {
+      font-size: 13px;
+      line-height: 1.5;
       color: var(--muted);
-      margin-bottom: 10px;
     }
 
     .toggle-switch {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 12px;
+      min-height: 40px;
       cursor: pointer;
       user-select: none;
     }
@@ -859,486 +871,598 @@
     }
 
     .toggle-track {
-      width: 32px;
-      height: 18px;
-      background: var(--border);
-      border-radius: 9px;
+      width: 50px;
+      height: 26px;
+      border: 2px solid var(--border);
+      background: var(--field);
       position: relative;
       flex-shrink: 0;
-      transition: background 120ms;
+      transform: var(--slant);
+      transition: background 120ms, border-color 120ms;
     }
 
     .toggle-track::after {
       content: '';
       position: absolute;
-      top: 3px;
-      left: 3px;
-      width: 12px;
-      height: 12px;
-      background: #fff;
-      border-radius: 50%;
-      transition: transform 120ms;
+      top: 4px;
+      left: 4px;
+      width: 16px;
+      height: 14px;
+      background: #8f887f;
+      transition: transform 120ms, background 120ms;
     }
 
     .toggle-switch input[type="checkbox"]:checked + .toggle-track {
-      background: var(--green);
+      background: var(--accent);
+      border-color: var(--accent);
     }
 
     .toggle-switch input[type="checkbox"]:checked + .toggle-track::after {
-      transform: translateX(14px);
+      transform: translateX(22px);
+      background: var(--on-accent);
     }
 
-    .form-btn-row {
+    .toggle-switch input[type="checkbox"]:focus-visible + .toggle-track {
+      outline: 2px solid var(--text);
+      outline-offset: 3px;
+    }
+
+    .toggle-switch .form-label { margin: 0; }
+
+    .graded-fields {
       display: flex;
-      gap: 8px;
+      flex-direction: column;
+      gap: 14px;
+      padding: 14px;
+      border: 2px solid var(--graded);
+      background: rgba(212, 176, 98, 0.06);
     }
 
-    .form-btn-row .submit-btn {
-      flex: 1;
+    .graded-fields[hidden] { display: none; }
+
+    .graded-fields-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
     }
 
-    .cancel-btn {
-      padding: 8px 12px;
-      background: transparent;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      font-family: inherit;
-      transition: background 120ms, color 120ms;
+    .graded-fields .form-select:focus { border-color: var(--graded); }
+
+    .grade-preview {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 30px;
+    }
+
+    .grade-preview-empty { font-size: 13px; color: var(--muted); }
+
+    #fIsGraded:checked + .toggle-track { background: var(--graded); border-color: var(--graded); }
+    #fIsGraded:checked + .toggle-track::after { background: var(--ink); }
+
+    .grading-th-logo {
+      display: block;
+      height: 9px;
+      width: auto;
+      filter: brightness(0) invert(1);
+    }
+
+    .grading-th-logo-psa { height: 12px; }
+
+    .graded-fields .grading-table-wrap { margin-top: 0; }
+    .graded-fields .grading-table-wrap table { min-width: 0; table-layout: fixed; }
+    .graded-fields .grading-table-wrap th,
+    .graded-fields .grading-table-wrap td { padding: 5px 4px; font-size: 11px; white-space: normal; line-height: 1.25; }
+    .graded-fields .grading-table-wrap th:first-child,
+    .graded-fields .grading-table-wrap td:first-child { width: 54px; padding-left: 8px; letter-spacing: 0; }
+    .graded-fields .grading-table-wrap tbody tr:first-child { background: rgba(212, 176, 98, 0.14); }
+
+    .grading-table-wrap {
+      margin-top: 10px;
+      border: 2px solid var(--ink);
+      overflow-x: auto;
+      background: var(--field);
+    }
+
+    .grading-table-wrap table { min-width: 340px; font-size: 12px; }
+
+    .grading-table-wrap th,
+    .grading-table-wrap td {
+      padding: 6px 8px;
       white-space: nowrap;
+      font-size: 12px;
     }
 
-    .cancel-btn:hover {
-      background: var(--surface);
+    .grading-table-wrap td { color: var(--text2); font-weight: 600; }
+    .grading-table-wrap td:first-child { color: var(--text); }
+    .grading-table-wrap tbody tr { border-top: 1px solid var(--line); }
+
+    /* ── collapsibles, subsections and charts ── */
+    .subsection-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 26px 0 14px;
+    }
+
+    .subsection-header:first-of-type,
+    .section-header + .subsection-header { margin-top: 0; }
+
+    .subsection-title {
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      padding: 0 14px;
+      background: var(--ink);
       color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      transform: var(--slant);
     }
 
-    @media (max-width: 980px) {
-      .layout {
-        grid-template-columns: 1fr;
-      }
+    .collapse-btn { min-height: 34px; font-size: 12px; }
 
-      .sidebar {
-        border-left: none;
-        border-top: 1px solid var(--border);
-      }
+    .chart-wrap {
+      margin-top: 24px;
+      background: var(--surface);
+      border: 3px solid var(--ink);
+      box-shadow: var(--block);
+      padding: 0 16px 16px;
+      position: relative;
+      min-height: 240px;
+    }
 
-      .topbar {
-        height: auto;
-        padding: 12px 24px;
-        flex-wrap: wrap;
-      }
-
-      .summary-row {
-        flex-wrap: wrap;
-        gap: 12px 20px;
-      }
+    .chart-title {
+      margin: 0 -16px 16px;
+      padding: 0 16px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      background: var(--ink);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      border-bottom: 5px solid var(--accent);
     }
 
     /* ── period filter ── */
     .period-row {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 12px;
+      gap: 10px;
+      margin-bottom: 18px;
       flex-wrap: wrap;
     }
+
     .period-label {
       font-size: 12px;
-      color: var(--muted);
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .period-bar { display: flex; gap: 4px; flex-wrap: wrap; }
-    .period-btn {
-      padding: 4px 10px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background: transparent;
-      color: var(--muted);
-      font-size: 12px;
-      cursor: pointer;
-      font-family: inherit;
-      transition: background 120ms, color 120ms, border-color 120ms;
-      white-space: nowrap;
-    }
-    .period-btn:hover,
-    .period-btn.active {
-      background: var(--surface);
-      color: var(--text);
-      border-color: var(--btn-h);
-    }
-    .custom-range {
-      display: none;
-      align-items: center;
-      gap: 6px;
-    }
-    .custom-range.visible { display: flex; }
-    .date-range-input {
-      padding: 4px 8px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text);
-      font-size: 12px;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 120ms;
-    }
-    .date-range-input::-webkit-calendar-picker-indicator { filter: invert(0.7); }
-    .date-range-input:focus { border-color: var(--btn-h); }
-    .date-range-sep { color: var(--muted); font-size: 12px; }
-
-    /* ── subsection headers (winst per kaart) ── */
-    .subsection-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin: 20px 0 10px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--border);
-    }
-    .subsection-header:first-of-type { margin-top: 0; }
-    .subsection-title {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--muted);
+      font-weight: 700;
+      letter-spacing: 2px;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      color: var(--text2);
+      white-space: nowrap;
+      margin-right: 4px;
     }
 
-    /* ── analytics (Analyse tab) ── */
+    .period-bar { display: flex; gap: 10px; flex-wrap: wrap; }
+    .period-btn { min-height: 34px; font-size: 12px; padding: 0 12px; }
+    .custom-range { display: none; align-items: center; gap: 8px; }
+    .custom-range.visible { display: flex; }
+    .date-range-input { width: auto; min-height: 36px; font-size: 14px; }
+    .date-range-input::-webkit-calendar-picker-indicator { filter: invert(0.8); }
+    .date-range-sep { color: var(--muted); }
+
+    /* ── analyse ── */
     .kpi-label {
       font-size: 11px;
       color: var(--muted);
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 2px;
       margin-bottom: 6px;
     }
+
     .kpi-value {
-      font-size: 20px;
+      font-size: 25px;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
-      line-height: 1.2;
+      line-height: 1.05;
+      white-space: nowrap;
     }
+
     .kpi-value.positive { color: var(--green); }
     .kpi-value.negative { color: var(--red); }
     .kpi-value.neutral  { color: var(--text); }
+
     .kpi-sub {
       font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
       color: var(--muted);
-      margin-top: 4px;
+      margin-top: 6px;
     }
+
     .growth-positive { color: var(--green); }
     .growth-negative { color: var(--red); }
     .growth-neutral  { color: var(--muted); }
 
-    /* ── analyse widgets ── */
     .analyse-kpi-row {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 12px;
-      margin-bottom: 12px;
-      align-items: start;
+      gap: 22px;
+      margin-bottom: 22px;
+      align-items: stretch;
     }
 
     .analyse-widget-grid {
       display: grid;
-      grid-template-columns: repeat(12, 1fr);
-      gap: 12px;
-      align-items: start;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 22px;
+      align-items: stretch;
     }
 
     .widget {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
+      background: var(--surface);
+      border: 3px solid var(--ink);
+      box-shadow: var(--block);
+      min-width: 0;
     }
 
-    .widget.expanded {
-      grid-column: 1 / -1;
-    }
+    .widget.expanded { grid-column: 1 / -1; }
 
-    /* KPI widgets */
-    .analyse-kpi-row .widget-kpi { grid-column: auto; }
-
-    /* Chart widgets: 3 per row */
-    .widget-chart { grid-column: span 4; }
-
-    /* Info widgets: 2 per row */
-    .widget-info { grid-column: span 4; }
-
-    @media (max-width: 1200px) {
-      .analyse-kpi-row {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
-    }
-
-    @media (max-width: 800px) {
-      .analyse-kpi-row {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-    }
-
-    .widget-body-chart {
-      padding: 10px 12px;
-      min-height: 200px;
-    }
-
-    .widget-kpi .widget-body {
-      padding: 14px 16px;
-    }
+    .widget-kpi { transform: var(--slant); box-shadow: 5px 6px 0 var(--ink); }
 
     .widget-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 7px 10px;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
+      gap: 10px;
+      min-height: 36px;
+      padding: 0 4px 0 16px;
+      background: var(--ink);
     }
 
+    .widget-kpi .widget-header { min-height: 32px; padding-left: 14px; }
+    #widgetKpiTotal .widget-header,
+    #widgetCumulative .widget-header,
+    #widgetAverageCardMargin .widget-header { box-shadow: inset 0 -5px 0 var(--accent); }
+    #widgetKpiTotal .widget-header { background: var(--accent); box-shadow: none; }
+    #widgetKpiTotal .widget-title { color: var(--on-accent); }
+
     .widget-title {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 2.5px;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
+      color: var(--text);
     }
+
+    .widget-kpi .widget-title { font-size: 11px; letter-spacing: 2px; color: var(--text2); }
 
     .widget-expand-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 20px;
-      height: 20px;
-      background: none;
-      border: none;
-      color: var(--muted);
-      cursor: pointer;
-      border-radius: 3px;
-      font-size: 13px;
-      transition: background 120ms, color 120ms;
-      font-family: inherit;
-    }
-
-    .widget-expand-btn:hover {
-      background: var(--btn);
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+      background: transparent;
+      border: 2px solid var(--border);
       color: var(--text);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      transition: border-color 120ms;
     }
 
-    .widget-body {
-      padding: 10px 12px;
-    }
+    .widget-expand-btn:hover { border-color: var(--text); }
+
+    .widget-body { padding: 6px 16px 8px; }
+    .widget-kpi .widget-body { padding: 10px 14px 12px; }
+    .widget-body-chart { position: relative; height: 150px; min-height: 0; padding: 8px 12px 6px; }
+    .widget.expanded .widget-body-chart { height: 320px; }
 
     .widget-stat {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 5px 0;
-      border-bottom: 1px solid var(--border);
-      gap: 8px;
+      gap: 12px;
+      padding: 6px 0;
+      border-top: 1px solid var(--line);
     }
 
-    .widget-stat:last-child {
-      border-bottom: none;
-    }
+    .widget-stat:first-child { border-top: none; }
 
     .widget-stat-label {
-      color: var(--muted);
-      font-size: 12px;
+      color: var(--text2);
+      font-size: 14px;
+      font-weight: 600;
       white-space: nowrap;
     }
 
     .widget-stat-value {
-      font-weight: 600;
+      font-size: 17px;
+      font-weight: 700;
       font-variant-numeric: tabular-nums;
-      font-size: 13px;
       text-align: right;
+      white-space: nowrap;
     }
 
     .widget-stat-value.positive { color: var(--green); }
     .widget-stat-value.negative { color: var(--red); }
     .widget-stat-value.neutral  { color: var(--text); }
 
+    #wbAverageCardMargin .widget-stat { flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px 0; }
+    #wbAverageCardMargin .widget-stat-value { font-size: 56px; line-height: 1; order: -1; transform: var(--slant); }
+    #wbAverageCardMargin .widget-stat-label { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+
     .widget-empty {
       padding: 16px;
       text-align: center;
       color: var(--muted);
-      font-size: 12px;
+      font-size: 13px;
     }
 
-    .widget-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
+    .widget-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .widget-table th { padding: 6px 8px; text-align: left; color: var(--muted); font-weight: 700; font-size: 11px; white-space: nowrap; background: transparent; }
+    .widget-table td { padding: 6px 8px; border-top: 1px solid var(--line); vertical-align: middle; }
+
+    /* ── trades ── */
+    .trade-form {
+      background: var(--surface);
+      border: 3px solid var(--ink);
+      box-shadow: var(--block);
+      padding: 16px;
+      margin-bottom: 26px;
     }
 
-    .widget-table th {
-      padding: 5px 8px;
-      text-align: left;
-      color: var(--muted);
-      font-weight: 600;
-      font-size: 11px;
-      border-bottom: 1px solid var(--border);
-      white-space: nowrap;
+    .trade-form .trade-input,
+    .trade-form .form-select { min-height: 38px; font-size: 14px; padding: 0 10px; }
+
+    .trade-meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 14px;
     }
 
-    .widget-table td {
-      padding: 5px 8px;
-      border-bottom: 1px solid var(--border);
-      vertical-align: middle;
-    }
-
-    .widget-table tr:last-child td {
-      border-bottom: none;
-    }
-
-    .widget-table tr:hover td {
-      background: var(--bg);
-    }
+    .trade-meta-row > :first-child { flex: 0 1 200px; }
+    .trade-meta-row > :last-child { flex: 1 1 260px; }
+    .trade-meta-row .form-label { margin-bottom: 5px; }
 
     .trade-entry-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 16px;
     }
 
     .trade-side {
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
+      border: 2px solid var(--border);
+      background: #161514;
+      display: flex;
+      flex-direction: column;
+      padding-bottom: 10px;
+      min-width: 0;
     }
 
     .trade-side-header {
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface2);
-      font-size: 12px;
-      font-weight: 600;
+      display: flex;
+      align-items: center;
+      min-height: 36px;
+      padding: 0 12px;
+      background: var(--ink);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 4px;
+    }
+
+    .trade-side:last-child .trade-side-header { background: var(--accent); color: var(--on-accent); }
+
+    /* Card rows: name, quantity, value and remove on one line; grading below */
+    .trade-items-head,
+    .trade-item-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 60px 120px 38px;
+      gap: 6px;
+    }
+
+    .trade-items-head {
+      padding: 8px 18px 0;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
       color: var(--muted);
     }
+
+    .trade-items-head:has(+ .trade-items:empty) { display: none; }
 
     .trade-items {
       display: grid;
-      gap: 8px;
-      padding: 10px;
+      gap: 6px;
+      padding: 6px 10px 8px;
     }
+
+    .trade-items:empty { display: none; }
 
     .trade-item-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 90px 120px 88px 150px auto;
-      gap: 8px;
-      align-items: center;
+      grid-template-areas:
+        "name qty value remove"
+        "company grade grade grade";
+      padding: 6px;
+      border: 1px solid var(--line);
+      background: #1f1d1b;
     }
 
-    .trade-input {
-      width: 100%;
-      padding: 7px 9px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--surface2);
-      color: var(--text);
-      font-size: 13px;
-      font-family: inherit;
-    }
-
-    .trade-input:focus {
-      outline: none;
-      border-color: var(--btn-h);
-    }
+    .trade-item-row > :nth-child(1) { grid-area: name; }
+    .trade-item-row > :nth-child(2) { grid-area: qty; }
+    .trade-item-row > :nth-child(3) { grid-area: value; }
+    .trade-item-row > :nth-child(4) { grid-area: company; }
+    .trade-item-row > :nth-child(5) { grid-area: grade; }
+    .trade-item-row > :nth-child(6) { grid-area: remove; }
 
     .trade-item-remove {
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--muted);
+      width: 38px;
+      height: 38px;
+      border: 2px solid var(--red-dim);
+      background: var(--surface2);
+      color: var(--red);
+      font-size: 18px;
       cursor: pointer;
-      font-family: inherit;
     }
 
-    .trade-item-remove:hover {
-      color: var(--text);
-      border-color: var(--btn-h);
-      background: var(--surface);
-    }
+    .trade-item-remove:hover { border-color: var(--red); }
 
     .trade-add-btn {
-      margin: 0 10px 10px;
-      padding: 7px 9px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
+      margin: 0 10px;
+      min-height: 34px;
+      border: 2px dashed var(--border);
       background: transparent;
-      color: var(--muted);
+      color: var(--text);
       font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
       cursor: pointer;
-      font-family: inherit;
     }
 
-    .trade-add-btn:hover {
-      color: var(--text);
-      border-color: var(--btn-h);
-      background: var(--surface);
+    .trade-items:empty + .trade-add-btn { margin-top: 10px; }
+    .trade-add-btn:hover { border-color: var(--text); }
+
+    .trade-side-foot {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 14px;
+      margin: 10px 10px 0;
+      padding-top: 10px;
+      border-top: 2px solid var(--border);
     }
+
+    .trade-side-foot .form-label { margin-bottom: 5px; }
 
     .trade-total {
-      padding: 0 10px 10px;
-      color: var(--muted);
-      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+      color: var(--text2);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .trade-total span {
+      color: var(--text);
+      font-size: 22px;
+      letter-spacing: 0;
+      line-height: 38px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .trade-summary {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 14px 22px;
+      margin-top: 14px;
     }
 
     .trade-result {
-      margin-top: 12px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px;
+      flex: 1 1 520px;
       display: grid;
-      gap: 6px;
-      background: var(--surface2);
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      border: 2px solid var(--border);
+      background: #161514;
     }
 
     .trade-result-row {
       display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      font-size: 13px;
+      flex-direction: column;
+      gap: 4px;
+      padding: 8px 14px;
+      border-right: 1px solid var(--line);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text2);
+      min-width: 0;
     }
+
+    .trade-result-row:last-child { border-right: 0; }
+
+    .trade-result-row strong {
+      font-size: 20px;
+      letter-spacing: 0;
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .trade-result-row strong.positive { color: var(--green); }
+    .trade-result-row strong.negative { color: var(--red); }
 
     .trade-actions-row {
       display: flex;
-      gap: 8px;
-      margin-top: 12px;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+
+    .trade-actions-row .submit-btn { flex: 0 1 auto; min-height: 48px; padding: 0 26px; font-size: 16px; }
+    .trade-actions-row .cancel-btn { min-height: 48px; }
+
+    .trade-form .form-msg { margin-top: 10px; }
+
+    #tradesBody td:first-child { white-space: nowrap; }
+    #tradesBody .inline-btn { transform: none; min-height: 36px; font-size: 12px; margin-right: 4px; }
+    #tradesBody [data-trade-action="delete"] { color: var(--red); border-color: var(--red-dim); }
+
+    .trade-analysis-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+      gap: 30px;
+      align-items: stretch;
     }
 
     .trade-analysis-grid {
       display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      margin-bottom: 16px;
+      gap: 22px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-content: start;
     }
 
-    .trade-analysis-grid .widget-kpi .widget-body {
-      padding: 12px 14px;
-    }
+    .trade-analysis-grid .widget-kpi .widget-body { padding: 12px 14px 14px; }
 
     .trade-kpi-title {
-      display: block;
-      color: var(--muted);
-      font-size: 12px;
-      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      min-height: 32px;
+      margin: -12px -14px 12px;
+      padding: 0 14px;
+      background: var(--ink);
+      color: var(--text2);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
     }
 
     .trade-kpi-number {
-      font-size: 22px;
-      font-weight: 600;
+      font-size: 28px;
+      font-weight: 700;
       font-variant-numeric: tabular-nums;
-      line-height: 1.2;
+      line-height: 1.05;
+      white-space: nowrap;
     }
 
     .trade-kpi-number.positive { color: var(--green); }
@@ -1348,25 +1472,29 @@
     .trade-kpi-hint {
       margin-top: 6px;
       font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
       color: var(--muted);
     }
 
-    @media (max-width: 1200px) {
-      .trade-analysis-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
+    .trade-analysis-layout .chart-wrap { margin-top: 0; display: flex; flex-direction: column; }
+    .chart-canvas { position: relative; height: 420px; }
+    .trade-analysis-layout .chart-wrap .chart-canvas { margin: auto 0; }
+
+    #profitChartsContent {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+      gap: 28px;
+      align-items: start;
     }
 
-    @media (max-width: 800px) {
-      .trade-analysis-grid {
-        grid-template-columns: 1fr;
-      }
-    }
+    #profitChartsContent .chart-wrap { margin-top: 0; }
 
     .trade-detail-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.56);
+      background: rgba(0, 0, 0, 0.72);
       display: none;
       align-items: center;
       justify-content: center;
@@ -1374,24 +1502,49 @@
       padding: 20px;
     }
 
-    .trade-detail-backdrop.open {
-      display: flex;
-    }
+    .trade-detail-backdrop.open { display: flex; }
 
     .trade-detail-modal {
-      width: min(860px, 100%);
+      width: min(1040px, 100%);
       max-height: 90vh;
       overflow: auto;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: var(--bg);
-      padding: 14px;
+      border: 3px solid var(--ink);
+      box-shadow: 10px 14px 0 var(--ink);
+      background: var(--surface);
+      padding: 20px;
     }
 
-    @media (max-width: 1080px) {
-      .trade-entry-grid {
-        grid-template-columns: 1fr;
-      }
+    .trade-detail-modal .table-wrap { box-shadow: none; border: 0; }
+    .trade-detail-modal thead th { padding: 10px; font-size: 11px; letter-spacing: 1px; background: var(--surface2); }
+    .trade-detail-modal tbody td { padding: 10px; font-size: 14px; }
+    .trade-detail-modal .trade-total { margin-top: auto; padding-top: 12px; }
+
+    @media (max-width: 1400px) {
+      .analyse-kpi-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .analyse-widget-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .trade-analysis-layout { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 1180px) {
+      .layout { grid-template-columns: minmax(0, 1fr); }
+      .trade-entry-grid { grid-template-columns: 1fr; }
+      .trade-result { grid-template-columns: repeat(2, minmax(0, 1fr)); flex-basis: 100%; }
+    }
+
+    @media (max-width: 760px) {
+      .layout { padding-top: 16px; }
+      .topbar-title { font-size: 28px; }
+      .summary-row { justify-content: flex-start; }
+      .analyse-kpi-row,
+      .analyse-widget-grid,
+      .trade-analysis-grid { grid-template-columns: 1fr; }
+      .section-title { font-size: 24px; }
+      .tab-actions { width: 100%; }
+      .tab-actions .inline-btn { flex: 1 1 0; gap: 5px; padding: 0 6px; font-size: 11px; letter-spacing: 0.5px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; }
     }
   </style>
 </head>
@@ -1401,36 +1554,38 @@
 
   <!-- topbar -->
   <header class="topbar">
-    <span class="topbar-title">Profit Monitor</span>
-    <div class="topbar-divider"></div>
-    <div class="summary-row">
-      <div class="stat">
-        <span class="stat-label">Verkocht</span>
-        <span class="stat-value positive" id="totalSold">—</span>
+    <div class="topbar-row">
+      <div class="brand">
+        <span class="topbar-title">Profit Monitor</span>
+        <span class="topbar-tab" id="activeTabName"></span>
       </div>
-      <div class="stat">
-        <span class="stat-label">Gekocht</span>
-        <span class="stat-value negative" id="totalBought">—</span>
-      </div>
-      <div class="stat">
-        <span class="stat-label">Winst/Verlies</span>
-        <span class="stat-value neutral" id="profit">—</span>
-      </div>
-      <div class="stat">
-        <span class="stat-label">Transacties</span>
-        <span class="stat-value neutral" id="txnCount">—</span>
+      <div class="summary-row" aria-label="Totalen">
+        <div class="stat">
+          <span class="stat-label">Verkocht</span>
+          <span class="stat-value positive" id="totalSold">—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Gekocht</span>
+          <span class="stat-value negative" id="totalBought">—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Winst/Verlies</span>
+          <span class="stat-value neutral" id="profit">—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Transacties</span>
+          <span class="stat-value neutral" id="txnCount">—</span>
+        </div>
       </div>
     </div>
-  </header>
 
-  <!-- main table -->
-  <main class="main">
     <div class="workspace-bar">
+      <span class="workspace-label">Tabs</span>
       <div class="tab-list" id="tabBar"></div>
-      <div class="tab-actions">
-        <button class="inline-btn" id="createTabBtn">Nieuwe tab</button>
-        <button class="inline-btn" id="renameTabBtn">Hernoemen</button>
-        <button class="inline-btn" id="deleteTabBtn">Verwijderen</button>
+      <div class="tab-actions" role="group" aria-label="Tab beheren">
+        <button class="inline-btn" id="createTabBtn"><svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2.4"/></svg>Nieuwe tab</button>
+        <button class="inline-btn" id="renameTabBtn"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M11.5 1.5l3 3-9 9H2.5v-3l9-9z" stroke="currentColor" stroke-width="2"/></svg>Hernoemen</button>
+        <button class="inline-btn danger" id="deleteTabBtn"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 4h10M6 4V2h4v2M5 4l1 9h4l1-9" stroke="currentColor" stroke-width="2"/></svg>Verwijderen</button>
       </div>
     </div>
     <div class="form-msg panel-message" id="tabMsg"></div>
@@ -1440,14 +1595,17 @@
     </div>
 
     <!-- View toggle -->
-    <div class="view-toggle-bar">
+    <nav class="view-toggle-bar" aria-label="Weergave">
       <button class="view-toggle-btn active" id="viewTransactions">Transacties</button>
       <button class="view-toggle-btn" id="viewProfit">Winst per kaart</button>
       <button class="view-toggle-btn" id="viewAnalyse">Analyse</button>
       <button class="view-toggle-btn" id="viewTrades">Trades</button>
-      <button class="view-toggle-btn" id="viewTradesAnalyse">Trades - Analyse</button>
-    </div>
+      <button class="view-toggle-btn" id="viewTradesAnalyse">Trades – Analyse</button>
+    </nav>
+  </header>
 
+  <!-- main table -->
+  <main class="main">
     <!-- Transactions view -->
     <div id="transactionsView">
       <div class="section-header">
@@ -1594,7 +1752,7 @@
 
     <!-- Analyse view -->
     <div id="analyseView" style="display:none;">
-      <div class="section-header" style="margin-bottom:16px;">
+      <div class="section-header">
         <span class="section-title">Analyse</span>
       </div>
 
@@ -1737,8 +1895,8 @@
         <span class="section-title">Trades</span>
       </div>
 
-      <div class="table-wrap" style="padding:12px;margin-bottom:14px;">
-        <div style="display:grid;grid-template-columns:140px 1fr;gap:10px;margin-bottom:10px;">
+      <div class="trade-form">
+        <div class="trade-meta-row">
           <div>
             <label class="form-label" for="tradeDate">Datum</label>
             <input type="date" id="tradeDate" class="trade-input" />
@@ -1752,26 +1910,33 @@
         <div class="trade-entry-grid">
           <div class="trade-side">
             <div class="trade-side-header">IK GEEF</div>
+            <div class="trade-items-head" aria-hidden="true"><span>Kaart</span><span>Aantal</span><span>Waarde p/st</span></div>
             <div class="trade-items" id="tradeGivenItems"></div>
             <button type="button" class="trade-add-btn" id="addTradeGivenItem">+ Kaart toevoegen</button>
-            <div style="margin-top:10px;">
-              <label class="form-label" for="tradeGivenCashAmount">Los bedrag bij IK GEEF</label>
-              <input type="text" inputmode="decimal" id="tradeGivenCashAmount" class="trade-input" placeholder="Bijv. 10,50 of 10.50" />
+            <div class="trade-side-foot">
+              <div>
+                <label class="form-label" for="tradeGivenCashAmount">Los bedrag</label>
+                <input type="text" inputmode="decimal" id="tradeGivenCashAmount" class="trade-input" placeholder="Bijv. 10,50" />
+              </div>
+              <div class="trade-total">Totaal <span id="tradeGivenTotal">€0,00</span></div>
             </div>
-            <div class="trade-total">Totaal: <span id="tradeGivenTotal">€0,00</span></div>
           </div>
           <div class="trade-side">
             <div class="trade-side-header">IK ONTVANG</div>
+            <div class="trade-items-head" aria-hidden="true"><span>Kaart</span><span>Aantal</span><span>Waarde p/st</span></div>
             <div class="trade-items" id="tradeReceivedItems"></div>
             <button type="button" class="trade-add-btn" id="addTradeReceivedItem">+ Kaart toevoegen</button>
-            <div style="margin-top:10px;">
-              <label class="form-label" for="tradeReceivedCashAmount">Los bedrag bij IK ONTVANG</label>
-              <input type="text" inputmode="decimal" id="tradeReceivedCashAmount" class="trade-input" placeholder="Bijv. 10,50 of 10.50" />
+            <div class="trade-side-foot">
+              <div>
+                <label class="form-label" for="tradeReceivedCashAmount">Los bedrag</label>
+                <input type="text" inputmode="decimal" id="tradeReceivedCashAmount" class="trade-input" placeholder="Bijv. 10,50" />
+              </div>
+              <div class="trade-total">Totaal <span id="tradeReceivedTotal">€0,00</span></div>
             </div>
-            <div class="trade-total">Totaal: <span id="tradeReceivedTotal">€0,00</span></div>
           </div>
         </div>
 
+        <div class="trade-summary">
         <div class="trade-result" aria-live="polite" aria-atomic="true">
           <div class="trade-result-row"><span>Waarde gegeven</span><strong id="tradeResultGiven">€0,00</strong></div>
           <div class="trade-result-row"><span>Waarde ontvangen</span><strong id="tradeResultReceived">€0,00</strong></div>
@@ -1782,6 +1947,7 @@
         <div class="trade-actions-row">
           <button class="submit-btn" id="saveTradeBtn">Trade opslaan</button>
           <button class="cancel-btn" id="cancelTradeEditBtn" style="display:none;">Annuleer bewerken</button>
+        </div>
         </div>
         <div class="form-msg" id="tradeMsg"></div>
       </div>
@@ -1809,19 +1975,23 @@
 
     <div id="tradesAnalyseView" style="display:none;">
       <div class="section-header">
-        <span class="section-title">Trades - Analyse</span>
+        <span class="section-title">Trades – Analyse</span>
       </div>
-      <div class="trade-analysis-grid" id="tradeAnalysisGrid"></div>
-      <div class="chart-wrap" id="tradePerformanceChartWrap" style="display:none;">
-        <div class="chart-title">Trade performance over tijd</div>
-        <canvas id="tradePerformanceChart"></canvas>
+      <div class="trade-analysis-layout">
+        <div class="trade-analysis-grid" id="tradeAnalysisGrid"></div>
+        <div class="chart-wrap" id="tradePerformanceChartWrap" style="display:none;">
+          <div class="chart-title">Trade performance over tijd</div>
+          <div class="chart-canvas"><canvas id="tradePerformanceChart"></canvas></div>
+        </div>
       </div>
     </div>
   </main>
 
   <!-- sidebar -->
   <aside class="sidebar">
+   <section class="side-panel side-panel-primary">
     <div class="form-title" id="formTitle">Nieuwe invoer</div>
+    <div class="side-panel-body">
 
     <div class="form-group">
       <label class="form-label" for="fType">Type</label>
@@ -1884,49 +2054,60 @@
       <div class="form-hint">Kies gradingbedrijf en grade wanneer de kaart slabbed is.</div>
     </div>
 
-    <div class="form-group" id="fGradingCompanyGroup" style="display:none;">
-      <label class="form-label" for="fGradingCompany">Gradingbedrijf</label>
-      <select class="form-select" id="fGradingCompany">
-        <option value="">— selecteer bedrijf —</option>
-        <option value="PSA">PSA</option>
-        <option value="BGS">BGS</option>
-        <option value="CGC">CGC</option>
-        <option value="TAG">TAG</option>
-      </select>
-    </div>
+    <div class="graded-fields" id="gradedFields" hidden>
+      <div class="graded-fields-row">
+        <div class="form-group" id="fGradingCompanyGroup" style="display:none;">
+          <label class="form-label" for="fGradingCompany">Bedrijf</label>
+          <select class="form-select" id="fGradingCompany">
+            <option value="">— kies —</option>
+            <option value="PSA">PSA</option>
+            <option value="BGS">BGS</option>
+            <option value="CGC">CGC</option>
+            <option value="TAG">TAG</option>
+          </select>
+        </div>
 
-    <div class="form-group" id="fGradingValueGroup" style="display:none;">
-      <label class="form-label" for="fGradingValue">Grade</label>
-      <select class="form-select" id="fGradingValue" disabled>
-        <option value="">Kies eerst gradingbedrijf</option>
-      </select>
+        <div class="form-group" id="fGradingValueGroup" style="display:none;">
+          <label class="form-label" for="fGradingValue">Grade</label>
+          <select class="form-select" id="fGradingValue" disabled>
+            <option value="">Kies eerst bedrijf</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grade-preview">
+        <span class="form-label">Voorbeeld</span>
+        <span id="gradePreview" class="grade-preview-tag"></span>
+      </div>
+
       <div class="grading-table-wrap" id="gradingTableWrap" style="display:none;">
         <table>
           <thead>
             <tr>
               <th>Grade</th>
-              <th>PSA</th>
-              <th>BGS</th>
-              <th>CGC</th>
-              <th>TAG</th>
+              <th><img class="grading-th-logo grading-th-logo-psa" src="assets/grading/psa.svg" alt="PSA"></th>
+              <th><img class="grading-th-logo" src="assets/grading/bgs.svg" alt="BGS"></th>
+              <th><img class="grading-th-logo" src="assets/grading/cgc.svg" alt="CGC"></th>
+              <th><img class="grading-th-logo" src="assets/grading/tag.png" alt="TAG"></th>
             </tr>
           </thead>
           <tbody>
-            <tr><td><strong>10</strong></td><td>Gem Mint</td><td>Pristine / Black Label</td><td>Pristine</td><td>10</td></tr>
-            <tr><td><strong>9.5</strong></td><td>—</td><td>Gem Mint</td><td>Gem Mint</td><td>—</td></tr>
-            <tr><td><strong>9</strong></td><td>Mint</td><td>Mint</td><td>Mint</td><td>9</td></tr>
-            <tr><td><strong>8.5</strong></td><td>—</td><td>NM-MT+</td><td>NM-MT+</td><td>—</td></tr>
-            <tr><td><strong>8</strong></td><td>NM-MT</td><td>NM-MT</td><td>NM-MT</td><td>8</td></tr>
-            <tr><td><strong>7</strong></td><td>Near Mint</td><td>Near Mint</td><td>Near Mint</td><td>7</td></tr>
-            <tr><td><strong>6</strong></td><td>EX-MT</td><td>EX-MT</td><td>EX-MT</td><td>6</td></tr>
-            <tr><td><strong>5</strong></td><td>Excellent</td><td>Excellent</td><td>Excellent</td><td>5</td></tr>
-            <tr><td><strong>4</strong></td><td>VG-EX</td><td>VG-EX</td><td>VG-EX</td><td>4</td></tr>
-            <tr><td><strong>3</strong></td><td>Very Good</td><td>Very Good</td><td>Very Good</td><td>3</td></tr>
-            <tr><td><strong>2</strong></td><td>Good</td><td>Good</td><td>Good</td><td>2</td></tr>
-            <tr><td><strong>1</strong></td><td>Poor</td><td>Poor</td><td>Poor</td><td>1</td></tr>
+            <tr><td>10</td><td>Gem Mint</td><td>Pristine</td><td>Gem Mint</td><td>Gem Mint</td></tr>
+            <tr><td>9.5</td><td>—</td><td>Gem Mint</td><td>Mint+</td><td>—</td></tr>
+            <tr><td>9</td><td>Mint</td><td>Mint</td><td>Mint</td><td>Mint</td></tr>
+            <tr><td>8.5</td><td>NM-MT</td><td>NM-MT+</td><td>NM/Mint+</td><td>NM MT+</td></tr>
+            <tr><td>8</td><td>NM-MT</td><td>NM-MT</td><td>NM/Mint</td><td>NM MT</td></tr>
+            <tr><td>7</td><td>Near Mint</td><td>NM</td><td>Near Mint</td><td>NM</td></tr>
+            <tr><td>6</td><td>EX-MT</td><td>EX-MT</td><td>Ex/NM</td><td>EX MT</td></tr>
+            <tr><td>5</td><td>Excellent</td><td>EX</td><td>Excellent</td><td>EX</td></tr>
+            <tr><td>4</td><td>VG-EX</td><td>VG-EX</td><td>VG/Ex</td><td>VG EX</td></tr>
+            <tr><td>3</td><td>Very Good</td><td>VG</td><td>Very Good</td><td>VG</td></tr>
+            <tr><td>2</td><td>Good</td><td>Good</td><td>Good</td><td>Good</td></tr>
+            <tr><td>1</td><td>Poor</td><td>Poor</td><td>Poor</td><td>Poor</td></tr>
           </tbody>
         </table>
       </div>
+      <div class="form-hint">Een 10 kent ook een topvariant: BGS Black Label Pristine, CGC en TAG Pristine. Halve grades staan in de keuzelijst.</div>
     </div>
 
     <div class="form-group">
@@ -1943,29 +2124,33 @@
       <button class="cancel-btn" id="cancelEditBtn" style="display:none;">Annuleren</button>
     </div>
     <div class="form-msg" id="formMsg"></div>
+    </div>
+   </section>
 
-    <hr class="sidebar-divider" />
-
+   <section class="side-panel">
     <div class="form-title">Importeren</div>
+    <div class="side-panel-body">
 
     <div class="form-group">
       <!-- hidden file input -->
       <input type="file" id="xlsmFile" accept=".xlsm,.xlsx,.json" style="display:none" />
-      <button class="import-btn" id="importBtn">
+      <button class="import-btn light" id="importBtn">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M8 1v9M4.5 6.5L8 10l3.5-3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           <path d="M2 12h12v2H2v-2z" fill="currentColor" opacity=".3"/>
           <path d="M2 11.5h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
-        .xlsm / .xlsx importeren
+        .xlsm / .xlsx / .json importeren
       </button>
-      <div class="form-hint" style="margin-top:6px;">Spreadsheet-import voegt toe aan de actieve tab. JSON herstelt een volledige workspace-back-up.</div>
+      <div class="form-hint" style="margin-top:8px;">Spreadsheet-import voegt toe aan de actieve tab. JSON herstelt een volledige workspace-back-up.</div>
     </div>
     <div class="form-msg" id="importMsg"></div>
+    </div>
+   </section>
 
-    <hr class="sidebar-divider" />
-
+   <section class="side-panel">
     <div class="form-title">Importeren uit tab</div>
+    <div class="side-panel-body">
 
     <div class="form-group">
       <label class="form-label" for="importTabSelect">Brontab</label>
@@ -1982,10 +2167,13 @@
       Importeer transacties + trades
     </button>
     <div class="form-msg" id="importTabMsg"></div>
+    </div>
+   </section>
 
-    <hr class="sidebar-divider" />
-
-    <button class="import-btn" id="exportBtn" style="margin-bottom:8px;">
+   <section class="side-panel">
+    <div class="form-title">Back-up</div>
+    <div class="side-panel-body">
+    <button class="import-btn light" id="exportBtn">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M8 11V2M4.5 7.5L8 4l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M2 11.5h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -2001,12 +2189,12 @@
       Alle data wissen
     </button>
 
-    <hr class="sidebar-divider" />
-
-    <div style="font-size:12px;color:var(--muted);line-height:1.6;">
+    <p class="side-note">
       Data wordt lokaal opgeslagen in uw browser.<br/>
       Kaartafbeeldingen via de Pokémon TCG API.
+    </p>
     </div>
+   </section>
   </aside>
 
 </div>
@@ -2071,6 +2259,100 @@ import {
   updateTransaction as updateStoredTransaction,
   validateTabName,
 } from './profit-monitor-core.mjs';
+
+// Charts follow the app's dark theme and typeface.
+if (window.Chart) {
+  Chart.defaults.font.family = "'Chakra Petch', system-ui, sans-serif";
+  Chart.defaults.font.weight = '600';
+  Chart.defaults.color = '#a8a199';
+  Chart.defaults.borderColor = '#2e2b28';
+}
+
+const CHART_POS = 'rgba(95,216,138,1)';
+const CHART_NEG = 'rgba(220,107,98,1)';
+const CHART_TEXT = '#f3f0ea';
+
+// Zero gets a solid light gridline so it is clear where gains turn into losses.
+const zeroLineGrid = {
+  color: context => (context.tick && context.tick.value === 0 ? 'rgba(243,240,234,0.75)' : '#2e2b28'),
+  lineWidth: context => (context.tick && context.tick.value === 0 ? 2 : 1),
+};
+
+const signColor = value => (value < 0 ? CHART_NEG : CHART_POS);
+
+// Line colour that switches exactly at the zero line: `above` over it, red under it.
+function zeroSplitColor(above, below = CHART_NEG) {
+  return context => {
+    const { chart } = context;
+    const { ctx, chartArea, scales } = chart;
+    if (!chartArea || !scales.y) return above;
+    const zero = scales.y.getPixelForValue(0);
+    const ratio = Math.min(1, Math.max(0, (zero - chartArea.top) / (chartArea.bottom - chartArea.top)));
+    const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+    gradient.addColorStop(0, above);
+    gradient.addColorStop(ratio, above);
+    gradient.addColorStop(ratio, below);
+    gradient.addColorStop(1, below);
+    return gradient;
+  };
+}
+
+// A line that is green above zero and red below it, with matching area fill,
+// square markers and a larger marker on the latest point.
+function signedLineDataset(label, data, extra = {}) {
+  return {
+    type: 'line',
+    label,
+    data,
+    borderColor: zeroSplitColor(CHART_POS),
+    borderWidth: 3,
+    tension: 0,
+    fill: { target: 'origin', above: 'rgba(95,216,138,0.12)', below: 'rgba(220,107,98,0.16)' },
+    pointStyle: 'rect',
+    pointRadius: ctx => (ctx.dataIndex === data.length - 1 ? 7 : 4),
+    pointHoverRadius: 8,
+    pointBackgroundColor: ctx => signColor(ctx.raw),
+    pointBorderColor: ctx => (ctx.dataIndex === data.length - 1 ? CHART_TEXT : signColor(ctx.raw)),
+    pointBorderWidth: ctx => (ctx.dataIndex === data.length - 1 ? 2 : 0),
+    valueLabels: 'last',
+    order: 0,
+    ...extra,
+  };
+}
+
+// Draws values on the chart: 'last' labels only the newest point, 'all' every
+// point or bar (skipped when there are too many to read).
+const isLastPoint = (meta, index) => index === meta.data.length - 1;
+
+const valueLabelsPlugin = {
+  id: 'valueLabels',
+  afterDatasetsDraw(chart, _args, options) {
+    const { ctx } = chart;
+    const format = options.format || (value => fmt(value));
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.font = "700 12px 'Chakra Petch', system-ui, sans-serif";
+    chart.data.datasets.forEach((dataset, datasetIndex) => {
+      const mode = dataset.valueLabels;
+      const meta = chart.getDatasetMeta(datasetIndex);
+      if (!mode || meta.hidden) return;
+      if (mode === 'all' && meta.data.length > 12) return;
+      meta.data.forEach((element, index) => {
+        if (mode === 'last' && index !== meta.data.length - 1) return;
+        const value = dataset.data[index];
+        if (value === null || value === undefined) return;
+        const below = value < 0 && !(isLastPoint(meta, index) && meta.type === 'line');
+        ctx.fillStyle = signColor(value);
+        ctx.font = `700 ${isLastPoint(meta, index) && meta.type === 'line' ? 14 : 12}px 'Chakra Petch', system-ui, sans-serif`;
+        const y = below ? element.y + 20 : element.y - (isLastPoint(meta, index) && meta.type === 'line' ? 14 : 8);
+        const width = ctx.measureText(format(value)).width;
+        const x = Math.max(chart.chartArea.left + width / 2, Math.min(element.x, chart.chartArea.right - width / 2));
+        ctx.fillText(format(value), x, Math.min(y, chart.chartArea.bottom - 4));
+      });
+    });
+    ctx.restore();
+  },
+};
 
 let appState = ensureAppState(null);
 let activeFilter = 'all';
@@ -2180,7 +2462,8 @@ function fmtPercent(value) {
 
 function syncTopbarTitle() {
   const activeTab = getActiveTabState(appState);
-  document.querySelector('.topbar-title').textContent = `Profit Monitor — ${activeTab.name}`;
+  document.getElementById('activeTabName').textContent = activeTab.name;
+  document.title = `Profit Monitor — ${activeTab.name}`;
 }
 
 function renderTabs() {
@@ -2351,7 +2634,7 @@ function gradeBadgeHTML(company, value) {
     <span class="grade-badge" title="${escAttr(formatGrade(company, value))}">
       <span class="grade-badge-company">${companyHTML}</span>
       <span class="grade-badge-value">${escHTML(grade)}</span>
-      ${isSpecial ? `<span class="grade-badge-special${value.endsWith('-black') ? ' grade-badge-special-black' : ''}">${escHTML(label)}</span>` : ''}
+      ${label ? `<span class="grade-badge-special${isSpecial && value.endsWith('-black') ? ' grade-badge-special-black' : ''}">${escHTML(label)}</span>` : ''}
     </span>`;
 }
 
@@ -2469,12 +2752,9 @@ function rowHTML(transaction) {
     metaItems.push(`<span class="meta-item">Aantal: ${normalized.quantity}</span>`);
   }
   if (normalized.gradingCompany && normalized.gradingValue) {
-    const gradeLabel = normalized.gradingLabel || getGradeLabel(normalized.gradingCompany, normalized.gradingValue);
     metaItems.push(`
       <span class="meta-item meta-item-graded">
         ${gradeBadgeHTML(normalized.gradingCompany, normalized.gradingValue)}
-        ${gradeLabel && getGradeNumber(normalized.gradingCompany, normalized.gradingValue) === normalized.gradingValue
-          ? `<span class="grade-badge-label">${escHTML(gradeLabel)}</span>` : ''}
       </span>
     `);
   }
@@ -2534,8 +2814,8 @@ function renderProfitChart(rows) {
   const sorted = rows.slice().sort((a, b) => Math.abs(b.realizedProfit) - Math.abs(a.realizedProfit)).slice(0, 20);
   const labels = sorted.map(r => r.displayName);
   const values = sorted.map(r => r.realizedProfit);
-  const colors = values.map(v => v >= 0 ? 'rgba(34,197,94,0.75)' : 'rgba(239,68,68,0.75)');
-  const borderColors = values.map(v => v >= 0 ? 'rgba(34,197,94,1)' : 'rgba(239,68,68,1)');
+  const colors = values.map(v => v >= 0 ? 'rgba(95,216,138,0.75)' : 'rgba(220,107,98,0.75)');
+  const borderColors = values.map(v => v >= 0 ? 'rgba(95,216,138,1)' : 'rgba(220,107,98,1)');
 
   wrap.style.display = '';
 
@@ -2552,7 +2832,7 @@ function renderProfitChart(rows) {
         backgroundColor: colors,
         borderColor: borderColors,
         borderWidth: 1,
-        borderRadius: 4,
+        borderRadius: 0,
       }],
     },
     options: {
@@ -2567,16 +2847,16 @@ function renderProfitChart(rows) {
       },
       scales: {
         x: {
-          ticks: { color: '#a1a1aa', font: { size: 11 }, maxRotation: 45 },
-          grid: { color: '#3f3f46' },
+          ticks: { color: '#a8a199', font: { size: 11 }, maxRotation: 45 },
+          grid: { color: '#2e2b28' },
         },
         y: {
           ticks: {
-            color: '#a1a1aa',
+            color: '#a8a199',
             font: { size: 11 },
             callback: value => fmt(value),
           },
-          grid: { color: '#3f3f46' },
+          grace: '12%', grid: zeroLineGrid,
         },
       },
     },
@@ -2616,40 +2896,19 @@ function renderMonthlyChart(transactions) {
     type: 'line',
     data: {
       labels,
-      datasets: [{
-        label: 'Netto resultaat (€)',
-        data: values,
-        borderColor: 'rgba(250,250,250,0.85)',
-        backgroundColor: 'rgba(250,250,250,0.12)',
-        borderWidth: 2,
-        pointRadius: 3,
-        pointHoverRadius: 4,
-        tension: 0.2,
-      }],
+      datasets: [signedLineDataset('Netto resultaat (€)', values, { valueLabels: values.length <= 8 ? 'all' : 'last' })],
     },
+    plugins: [valueLabelsPlugin],
     options: {
       responsive: true,
+      layout: { padding: { top: 18, right: 8 } },
       plugins: {
         legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: context => fmt(context.parsed.y),
-          },
-        },
+        tooltip: { callbacks: { label: context => fmt(context.parsed.y) } },
       },
       scales: {
-        x: {
-          ticks: { color: '#a1a1aa', font: { size: 11 } },
-          grid: { color: '#3f3f46' },
-        },
-        y: {
-          ticks: {
-            color: '#a1a1aa',
-            font: { size: 11 },
-            callback: value => fmt(value),
-          },
-          grid: { color: '#3f3f46' },
-        },
+        x: { ticks: { color: '#a8a199', font: { size: 11 } }, grid: { color: '#2e2b28' } },
+        y: { ticks: { color: '#a8a199', font: { size: 11 }, callback: value => fmt(value) }, grace: '12%', grid: zeroLineGrid },
       },
     },
   });
@@ -2876,27 +3135,20 @@ function renderCumulativeChart(transactions) {
     type: 'line',
     data: {
       labels,
-      datasets: [{
-        label: 'Cumulatieve winst',
-        data: values,
-        borderColor: 'rgba(34,197,94,0.9)',
-        backgroundColor: 'rgba(34,197,94,0.08)',
-        borderWidth: 2,
-        pointRadius: 3,
-        pointHoverRadius: 5,
-        tension: 0.3,
-        fill: true,
-      }],
+      datasets: [signedLineDataset('Cumulatieve winst', values)],
     },
+    plugins: [valueLabelsPlugin],
     options: {
       responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 18, right: 8 } },
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: ctx => fmt(ctx.parsed.y) } },
+        tooltip: { callbacks: { label: ctx => `${fmt(ctx.parsed.y)} cumulatief` } },
       },
       scales: {
-        x: { ticks: { color: '#a1a1aa', font: { size: 11 }, maxRotation: 45 }, grid: { color: '#3f3f46' } },
-        y: { ticks: { color: '#a1a1aa', font: { size: 11 }, callback: v => fmt(v) }, grid: { color: '#3f3f46' } },
+        x: { ticks: { color: '#a8a199', font: { size: 11 }, maxRotation: 0 }, grid: { color: '#2e2b28' } },
+        y: { beginAtZero: true, ticks: { color: '#a8a199', font: { size: 11 }, callback: v => fmt(v) }, grace: '12%', grid: zeroLineGrid },
       },
     },
   });
@@ -2910,8 +3162,8 @@ function renderMonthlyCompareChart(monthly) {
 
   const labels = monthly.map(m => formatMonthLabel(m.month));
   const values = monthly.map(m => m.profit);
-  const colors = values.map(v => v >= 0 ? 'rgba(34,197,94,0.75)' : 'rgba(239,68,68,0.75)');
-  const borderColors = values.map(v => v >= 0 ? 'rgba(34,197,94,1)' : 'rgba(239,68,68,1)');
+  const colors = values.map(v => v >= 0 ? 'rgba(95,216,138,0.75)' : 'rgba(220,107,98,0.75)');
+  const borderColors = values.map(v => v >= 0 ? 'rgba(95,216,138,1)' : 'rgba(220,107,98,1)');
 
   const ctx = el.getContext('2d');
   monthlyCompareChart = new Chart(ctx, {
@@ -2924,18 +3176,22 @@ function renderMonthlyCompareChart(monthly) {
         backgroundColor: colors,
         borderColor: borderColors,
         borderWidth: 1,
-        borderRadius: 4,
+        borderRadius: 0,
+        valueLabels: 'all',
       }],
     },
+    plugins: [valueLabelsPlugin],
     options: {
+      layout: { padding: { top: 18 } },
       responsive: true,
+      maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
         tooltip: { callbacks: { label: ctx => fmt(ctx.parsed.y) } },
       },
       scales: {
-        x: { ticks: { color: '#a1a1aa', font: { size: 11 }, maxRotation: 45 }, grid: { color: '#3f3f46' } },
-        y: { ticks: { color: '#a1a1aa', font: { size: 11 }, callback: v => fmt(v) }, grid: { color: '#3f3f46' } },
+        x: { ticks: { color: '#a8a199', font: { size: 11 }, maxRotation: 45 }, grid: { color: '#2e2b28' } },
+        y: { ticks: { color: '#a8a199', font: { size: 11 }, callback: v => fmt(v) }, grace: '12%', grid: zeroLineGrid },
       },
     },
   });
@@ -2957,8 +3213,8 @@ function renderGrowthChart(monthly) {
 
   const labels = growthData.map(d => formatMonthLabel(d.month));
   const values = growthData.map(d => d.growth);
-  const colors = values.map(v => v >= 0 ? 'rgba(34,197,94,0.75)' : 'rgba(239,68,68,0.75)');
-  const borderColors = values.map(v => v >= 0 ? 'rgba(34,197,94,1)' : 'rgba(239,68,68,1)');
+  const colors = values.map(v => v >= 0 ? 'rgba(95,216,138,0.75)' : 'rgba(220,107,98,0.75)');
+  const borderColors = values.map(v => v >= 0 ? 'rgba(95,216,138,1)' : 'rgba(220,107,98,1)');
 
   const ctx = el.getContext('2d');
   growthChart = new Chart(ctx, {
@@ -2971,20 +3227,25 @@ function renderGrowthChart(monthly) {
         backgroundColor: colors,
         borderColor: borderColors,
         borderWidth: 1,
-        borderRadius: 4,
+        borderRadius: 0,
+        valueLabels: 'all',
       }],
     },
+    plugins: [valueLabelsPlugin],
     options: {
+      layout: { padding: { top: 18 } },
       responsive: true,
+      maintainAspectRatio: false,
       plugins: {
+        valueLabels: { format: value => `${value > 0 ? '+' : ''}${Math.round(value)}%` },
         legend: { display: false },
         tooltip: { callbacks: { label: ctx => `${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y}%` } },
       },
       scales: {
-        x: { ticks: { color: '#a1a1aa', font: { size: 11 }, maxRotation: 45 }, grid: { color: '#3f3f46' } },
+        x: { ticks: { color: '#a8a199', font: { size: 11 }, maxRotation: 45 }, grid: { color: '#2e2b28' } },
         y: {
-          ticks: { color: '#a1a1aa', font: { size: 11 }, callback: v => `${v >= 0 ? '+' : ''}${v}%` },
-          grid: { color: '#3f3f46' },
+          ticks: { color: '#a8a199', font: { size: 11 }, callback: v => `${v >= 0 ? '+' : ''}${v}%` },
+          grace: '12%', grid: zeroLineGrid,
         },
       },
     },
@@ -3078,6 +3339,7 @@ function renderTradeDraftItems(side) {
         data-trade-index="${index}"
         data-trade-field="cardName"
         placeholder="Kaartnaam"
+        aria-label="Kaartnaam"
         value="${escAttr(item.cardName || '')}"
       />
       <input
@@ -3086,6 +3348,7 @@ function renderTradeDraftItems(side) {
         data-trade-side="${side}"
         data-trade-index="${index}"
         data-trade-field="quantity"
+        aria-label="Aantal"
         min="1"
         step="1"
         value="${escAttr(item.quantity || 1)}"
@@ -3096,6 +3359,7 @@ function renderTradeDraftItems(side) {
         data-trade-side="${side}"
         data-trade-index="${index}"
         data-trade-field="value"
+        aria-label="Waarde per stuk"
         min="0.01"
         step="0.01"
         value="${escAttr(item.value || '')}"
@@ -3106,6 +3370,7 @@ function renderTradeDraftItems(side) {
         data-trade-side="${side}"
         data-trade-index="${index}"
         data-trade-field="gradingCompany"
+        aria-label="Gradingbedrijf"
       >
         <option value="">Niet gegradeerd</option>
         ${GRADING_COMPANY_OPTIONS.map(company => `
@@ -3117,6 +3382,7 @@ function renderTradeDraftItems(side) {
         data-trade-side="${side}"
         data-trade-index="${index}"
         data-trade-field="gradingValue"
+        aria-label="Grade"
         ${item.gradingCompany ? '' : 'disabled'}
       >
         <option value="">— grade —</option>
@@ -3126,7 +3392,7 @@ function renderTradeDraftItems(side) {
           </option>
         `).join('')}
       </select>
-      <button type="button" class="trade-item-remove" data-trade-remove-side="${side}" data-trade-remove-index="${index}" title="Verwijderen">×</button>
+      <button type="button" class="trade-item-remove" data-trade-remove-side="${side}" data-trade-remove-index="${index}" title="Verwijderen" aria-label="Kaart verwijderen">×</button>
     </div>
   `;
   }).join('');
@@ -3285,28 +3551,55 @@ function renderTradePerformanceChart(trades) {
   wrap.style.display = '';
   const ctx = document.getElementById('tradePerformanceChart').getContext('2d');
   tradePerformanceChart = new Chart(ctx, {
-    type: 'line',
+    type: 'bar',
     data: {
-      labels: points.map(point => formatDate(point.date)),
-      datasets: [{
-        label: 'Cumulatief verschil',
-        data: points.map(point => point.cumulativeDifference),
-        borderColor: 'rgba(250,250,250,0.85)',
-        backgroundColor: 'rgba(250,250,250,0.12)',
-        borderWidth: 2,
-        pointRadius: 3,
-        tension: 0.25,
-      }],
+      labels: points.map(point => `#${point.id} · ${formatDate(point.date)}`),
+      datasets: [
+        signedLineDataset('Cumulatief verschil', points.map(point => point.cumulativeDifference), {
+          borderColor: zeroSplitColor(CHART_TEXT),
+          pointBackgroundColor: ctx => (ctx.raw < 0 ? CHART_NEG : CHART_TEXT),
+          fill: false,
+        }),
+        {
+          type: 'bar',
+          label: 'Verschil per trade',
+          data: points.map(point => point.difference),
+          backgroundColor: points.map(point => (point.difference < 0 ? 'rgba(220,107,98,0.85)' : 'rgba(95,216,138,0.85)')),
+          borderWidth: 0,
+          maxBarThickness: 56,
+          valueLabels: 'all',
+          order: 1,
+        },
+      ],
     },
+    plugins: [valueLabelsPlugin],
     options: {
       responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 20, right: 8 } },
+      interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: context => fmt(context.parsed.y) } },
+        legend: {
+          display: true,
+          position: 'top',
+          align: 'end',
+          labels: {
+            color: '#cfc9c0',
+            boxWidth: 14,
+            boxHeight: 14,
+            font: { size: 11, weight: '700' },
+            generateLabels: () => [
+              { text: 'Winst per trade', fillStyle: CHART_POS, strokeStyle: CHART_POS, lineWidth: 0, fontColor: '#cfc9c0' },
+              { text: 'Verlies per trade', fillStyle: CHART_NEG, strokeStyle: CHART_NEG, lineWidth: 0, fontColor: '#cfc9c0' },
+              { text: 'Cumulatief', fillStyle: 'rgba(0,0,0,0)', strokeStyle: CHART_TEXT, lineWidth: 3, fontColor: '#cfc9c0' },
+            ],
+          },
+        },
+        tooltip: { callbacks: { label: context => `${context.dataset.label}: ${fmt(context.parsed.y)}` } },
       },
       scales: {
-        x: { ticks: { color: '#a1a1aa', font: { size: 11 } }, grid: { color: '#3f3f46' } },
-        y: { ticks: { color: '#a1a1aa', font: { size: 11 }, callback: value => fmt(value) }, grid: { color: '#3f3f46' } },
+        x: { ticks: { color: '#a8a199', font: { size: 11 } }, grid: { color: '#2e2b28' } },
+        y: { beginAtZero: true, ticks: { color: '#a8a199', font: { size: 11 }, callback: value => fmt(value) }, grace: '12%', grid: zeroLineGrid },
       },
     },
   });
@@ -3920,6 +4213,7 @@ function startEdit(transaction) {
   if (transaction.gradingValue) {
     document.getElementById('fGradingValue').value = transaction.gradingValue;
   }
+  syncGradePreview();
   document.querySelector('.sidebar').scrollTop = 0;
   showMessage(formMsg);
 }
@@ -4222,39 +4516,54 @@ function syncGradingParsing() {
   const gradeSelect = document.getElementById('fGradingValue');
   const selectedGrade = gradeSelect.value;
 
+  document.getElementById('gradedFields').hidden = !isGraded;
   companyGroup.style.display = isGraded ? '' : 'none';
   gradeGroup.style.display = isGraded ? '' : 'none';
   tableWrap.style.display = isGraded ? '' : 'none';
 
   if (!isGraded) {
     companySelect.value = '';
-    gradeSelect.innerHTML = '<option value="">Kies eerst gradingbedrijf</option>';
+    gradeSelect.innerHTML = '<option value="">Kies eerst bedrijf</option>';
     gradeSelect.value = '';
     gradeSelect.disabled = true;
+    syncGradePreview();
     return;
   }
 
   const company = companySelect.value;
   const grades = getGradingScale(company);
   if (!company || !grades.length) {
-    gradeSelect.innerHTML = '<option value="">Kies eerst gradingbedrijf</option>';
+    gradeSelect.innerHTML = '<option value="">Kies eerst bedrijf</option>';
     gradeSelect.value = '';
     gradeSelect.disabled = true;
+    syncGradePreview();
     return;
   }
 
   gradeSelect.innerHTML = [
-    '<option value="">— selecteer grade —</option>',
-    ...grades.map(grade => `<option value="${escAttr(grade.value)}">${escHTML(`${grade.grade} — ${grade.label}`)}</option>`),
+    '<option value="">— kies —</option>',
+    ...grades.map(grade => `<option value="${escAttr(grade.value)}">${escHTML(`${grade.grade} · ${grade.label}`)}</option>`),
   ].join('');
   gradeSelect.disabled = false;
   gradeSelect.value = grades.some(grade => grade.value === selectedGrade) ? selectedGrade : '';
+  syncGradePreview();
+}
+
+// Shows the grade tag the entry will get, as soon as company and grade are chosen.
+function syncGradePreview() {
+  const preview = document.getElementById('gradePreview');
+  const company = document.getElementById('fGradingCompany').value;
+  const value = document.getElementById('fGradingValue').value;
+  preview.innerHTML = company && value
+    ? gradeBadgeHTML(company, value)
+    : '<span class="grade-preview-empty">Kies bedrijf en grade</span>';
 }
 
 document.getElementById('fDesc').addEventListener('input', syncDescriptionParsing);
 document.getElementById('fHasCardName').addEventListener('change', syncDescriptionParsing);
 document.getElementById('fIsGraded').addEventListener('change', syncGradingParsing);
 document.getElementById('fGradingCompany').addEventListener('change', syncGradingParsing);
+document.getElementById('fGradingValue').addEventListener('change', syncGradePreview);
 
 function escHTML(value) {
   return String(value)
