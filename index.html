@@ -26,8 +26,10 @@
       --text2:     #cfc9c0;
       --muted:     #a8a199;
       --green:     #5fd88a;
-      --red:       #ff6b61;
-      --accent:    #e8231b;
+      --red:       #dc6b62;
+      --accent:    #dc6b62;
+      --on-accent: #1a0e0c;
+      --red-dim:   #6e3a35;
       --graded:    #d4b062;
       --graded-bg: rgba(212, 176, 98, 0.07);
       --graded-bg-hover: rgba(212, 176, 98, 0.12);
@@ -143,7 +145,7 @@
       white-space: nowrap;
     }
 
-    .stat:nth-child(3) .stat-label { background: var(--accent); color: #fff; }
+    .stat:nth-child(3) .stat-label { background: var(--accent); color: var(--on-accent); }
 
     .stat-value {
       display: flex;
@@ -341,7 +343,7 @@
     .tab-btn.active {
       background: var(--accent);
       border-color: var(--accent);
-      color: #fff;
+      color: var(--on-accent);
     }
 
     .tab-actions {
@@ -760,7 +762,7 @@
       background: var(--accent);
       border: 3px solid var(--ink);
       box-shadow: 5px 7px 0 var(--ink);
-      color: #fff;
+      color: var(--on-accent);
       font-size: 18px;
       font-weight: 700;
       letter-spacing: 3px;
@@ -808,9 +810,9 @@
 
     .form-msg.error {
       display: block;
-      background: rgba(255, 107, 97, 0.1);
+      background: rgba(220, 107, 98, 0.1);
       color: var(--red);
-      border: 2px solid rgba(255, 107, 97, 0.35);
+      border: 2px solid rgba(220, 107, 98, 0.35);
     }
 
     .sidebar-divider { display: none; }
@@ -839,7 +841,7 @@
     .import-btn:hover { border-color: var(--text); }
     .import-btn.light { background: var(--text); border-color: var(--text); color: var(--ink); }
     .import-btn.light:hover { filter: brightness(0.92); }
-    .danger-btn { color: var(--red); border-color: #7a2e29; }
+    .danger-btn { color: var(--red); border-color: var(--red-dim); }
     .danger-btn:hover { border-color: var(--red); }
 
     .side-note {
@@ -894,7 +896,7 @@
 
     .toggle-switch input[type="checkbox"]:checked + .toggle-track::after {
       transform: translateX(22px);
-      background: #fff;
+      background: var(--on-accent);
     }
 
     .toggle-switch input[type="checkbox"]:focus-visible + .toggle-track {
@@ -1039,7 +1041,6 @@
     .ranked-bars-fill { height: 100%; transform: var(--slant); transform-origin: bottom left; }
     .ranked-bars-fill.positive { background: var(--green); }
     .ranked-bars-fill.negative { background: var(--red); }
-    .ranked-bars li:first-child .ranked-bars-fill.positive { background: var(--accent); }
 
     /* ── period filter ── */
     .period-row {
@@ -1143,7 +1144,7 @@
     #widgetCumulative .widget-header,
     #widgetAverageCardMargin .widget-header { box-shadow: inset 0 -5px 0 var(--accent); }
     #widgetKpiTotal .widget-header { background: var(--accent); box-shadow: none; }
-    #widgetKpiTotal .widget-title { color: #fff; }
+    #widgetKpiTotal .widget-title { color: var(--on-accent); }
 
     .widget-title {
       font-size: 13px;
@@ -1269,7 +1270,7 @@
       letter-spacing: 4px;
     }
 
-    .trade-side:last-child .trade-side-header { background: var(--accent); color: #fff; }
+    .trade-side:last-child .trade-side-header { background: var(--accent); color: var(--on-accent); }
 
     .trade-form .trade-side > div[style] { padding: 0 14px; }
 
@@ -1304,7 +1305,7 @@
     .trade-item-remove {
       width: 44px;
       height: 44px;
-      border: 2px solid #7a2e29;
+      border: 2px solid var(--red-dim);
       background: var(--surface2);
       color: var(--red);
       font-size: 20px;
@@ -1395,7 +1396,7 @@
 
     #tradesBody td:first-child { white-space: nowrap; }
     #tradesBody .inline-btn { transform: none; min-height: 36px; font-size: 12px; margin-right: 4px; }
-    #tradesBody [data-trade-action="delete"] { color: var(--red); border-color: #7a2e29; }
+    #tradesBody [data-trade-action="delete"] { color: var(--red); border-color: var(--red-dim); }
 
     .trade-analysis-layout {
       display: grid;
@@ -2226,12 +2227,12 @@ import {
 // container's width, also when the window is resized.
 const CHART_COLORS = {
   pos: '#5fd88a',
-  neg: '#ff6b61',
+  neg: '#dc6b62',
   text: '#f3f0ea',
   text2: '#cfc9c0',
   muted: '#a8a199',
   grid: '#3d3935',
-  accent: '#e8231b',
+  accent: '#dc6b62',
 };
 
 const chartRenderers = new Map();
@@ -2421,7 +2422,7 @@ function lineChartSVG(width, opts) {
     const isLast = i === n - 1;
     const size = isLast ? 18 : 12;
     const tip = escHTML(tooltip ? tooltip(i) : `${labels[i]}: ${valueFormat(v)}`);
-    body += `<g><title>${tip}</title><rect x="${xs[i] - size / 2}" y="${ys[i] - size / 2}" width="${size}" height="${size}" fill="${isLast ? CHART_COLORS.accent : lineColor}"${isLast ? ` stroke="${CHART_COLORS.text}" stroke-width="2"` : ''}/></g>`;
+    body += `<g><title>${tip}</title><rect x="${xs[i] - size / 2}" y="${ys[i] - size / 2}" width="${size}" height="${size}" fill="${lineColor}"${isLast ? ` stroke="${CHART_COLORS.text}" stroke-width="2"` : ''}/></g>`;
     if (labelAll || isLast) {
       const plotBottom = f.pad.top + f.plotH;
       const wantsBelow = !isLast && i > 0 && v < values[i - 1];
