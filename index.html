@@ -9,8 +9,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
   <!-- JSZip for client-side .xlsm (ZIP) parsing -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <!-- Chart.js for profit graph -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -906,6 +904,54 @@
 
     .toggle-switch .form-label { margin: 0; }
 
+    .graded-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 14px;
+      border: 2px solid var(--graded);
+      background: rgba(212, 176, 98, 0.06);
+    }
+
+    .graded-fields[hidden] { display: none; }
+
+    .graded-fields-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .graded-fields .form-select:focus { border-color: var(--graded); }
+
+    .grade-preview {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 30px;
+    }
+
+    .grade-preview-empty { font-size: 13px; color: var(--muted); }
+
+    #fIsGraded:checked + .toggle-track { background: var(--graded); border-color: var(--graded); }
+    #fIsGraded:checked + .toggle-track::after { background: var(--ink); }
+
+    .grading-th-logo {
+      display: block;
+      height: 9px;
+      width: auto;
+      filter: brightness(0) invert(1);
+    }
+
+    .grading-th-logo-psa { height: 12px; }
+
+    .graded-fields .grading-table-wrap { margin-top: 0; }
+    .graded-fields .grading-table-wrap table { min-width: 0; table-layout: fixed; }
+    .graded-fields .grading-table-wrap th,
+    .graded-fields .grading-table-wrap td { padding: 5px 4px; font-size: 11px; white-space: normal; line-height: 1.25; }
+    .graded-fields .grading-table-wrap th:first-child,
+    .graded-fields .grading-table-wrap td:first-child { width: 54px; padding-left: 8px; letter-spacing: 0; }
+    .graded-fields .grading-table-wrap tbody tr:first-child { background: rgba(212, 176, 98, 0.14); }
+
     .grading-table-wrap {
       margin-top: 10px;
       border: 2px solid var(--ink);
@@ -977,6 +1023,23 @@
       text-transform: uppercase;
       border-bottom: 5px solid var(--accent);
     }
+
+    .svg-chart { width: 100%; min-width: 0; }
+    .svg-chart-svg { display: block; width: 100%; height: auto; overflow: visible; }
+    .svg-chart-svg text { font-family: var(--font); font-variant-numeric: tabular-nums; }
+    .svg-chart-svg g:hover polygon,
+    .svg-chart-svg g:hover rect { filter: brightness(1.2); }
+
+    .ranked-bars { list-style: none; display: flex; flex-direction: column; gap: 14px; padding: 4px 2px 6px; }
+    .ranked-bars li { display: flex; flex-direction: column; gap: 6px; }
+    .ranked-bars-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .ranked-bars-name { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 14px; font-weight: 600; line-height: 1.25; }
+    .ranked-bars-value { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .ranked-bars-track { height: 12px; background: #2a2725; }
+    .ranked-bars-fill { height: 100%; transform: var(--slant); transform-origin: bottom left; }
+    .ranked-bars-fill.positive { background: var(--green); }
+    .ranked-bars-fill.negative { background: var(--red); }
+    .ranked-bars li:first-child .ranked-bars-fill.positive { background: var(--accent); }
 
     /* ── period filter ── */
     .period-row {
@@ -1386,7 +1449,16 @@
     }
 
     .trade-analysis-layout .chart-wrap { margin-top: 0; display: flex; flex-direction: column; }
-    .trade-analysis-layout .chart-wrap canvas { margin: auto 0; }
+    .trade-analysis-layout .chart-wrap .svg-chart { margin: auto 0; }
+
+    #profitChartsContent {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+      gap: 28px;
+      align-items: start;
+    }
+
+    #profitChartsContent .chart-wrap { margin-top: 0; }
 
     .trade-detail-backdrop {
       position: fixed;
@@ -1636,12 +1708,12 @@
       <div id="profitChartsContent">
         <div class="chart-wrap" id="profitChartWrap" style="display:none;">
           <div class="chart-title">Top kaarten op gerealiseerde winst</div>
-          <canvas id="profitChart"></canvas>
+          <div class="svg-chart" id="profitChart"></div>
         </div>
 
         <div class="chart-wrap" id="monthlyChartWrap" style="display:none;">
           <div class="chart-title">Netto resultaat per maand</div>
-          <canvas id="monthlyProfitChart"></canvas>
+          <div class="svg-chart" id="monthlyProfitChart"></div>
         </div>
       </div>
     </div>
@@ -1725,7 +1797,7 @@
             <button class="widget-expand-btn" data-widget="widgetCumulative" title="Vergroot">⤢</button>
           </div>
           <div class="widget-body widget-body-chart">
-            <canvas id="cumulativeChart"></canvas>
+            <div class="svg-chart" id="cumulativeChart"></div>
           </div>
         </div>
 
@@ -1736,7 +1808,7 @@
             <button class="widget-expand-btn" data-widget="widgetMonthly" title="Vergroot">⤢</button>
           </div>
           <div class="widget-body widget-body-chart">
-            <canvas id="monthlyCompareChart"></canvas>
+            <div class="svg-chart" id="monthlyCompareChart"></div>
           </div>
         </div>
 
@@ -1747,7 +1819,7 @@
             <button class="widget-expand-btn" data-widget="widgetGrowthChart" title="Vergroot">⤢</button>
           </div>
           <div class="widget-body widget-body-chart">
-            <canvas id="growthChart"></canvas>
+            <div class="svg-chart" id="growthChart"></div>
           </div>
         </div>
 
@@ -1869,7 +1941,7 @@
         <div class="trade-analysis-grid" id="tradeAnalysisGrid"></div>
         <div class="chart-wrap" id="tradePerformanceChartWrap" style="display:none;">
           <div class="chart-title">Trade performance over tijd</div>
-          <canvas id="tradePerformanceChart"></canvas>
+          <div class="svg-chart" id="tradePerformanceChart"></div>
         </div>
       </div>
     </div>
@@ -1942,49 +2014,60 @@
       <div class="form-hint">Kies gradingbedrijf en grade wanneer de kaart slabbed is.</div>
     </div>
 
-    <div class="form-group" id="fGradingCompanyGroup" style="display:none;">
-      <label class="form-label" for="fGradingCompany">Gradingbedrijf</label>
-      <select class="form-select" id="fGradingCompany">
-        <option value="">— selecteer bedrijf —</option>
-        <option value="PSA">PSA</option>
-        <option value="BGS">BGS</option>
-        <option value="CGC">CGC</option>
-        <option value="TAG">TAG</option>
-      </select>
-    </div>
+    <div class="graded-fields" id="gradedFields" hidden>
+      <div class="graded-fields-row">
+        <div class="form-group" id="fGradingCompanyGroup" style="display:none;">
+          <label class="form-label" for="fGradingCompany">Bedrijf</label>
+          <select class="form-select" id="fGradingCompany">
+            <option value="">— kies —</option>
+            <option value="PSA">PSA</option>
+            <option value="BGS">BGS</option>
+            <option value="CGC">CGC</option>
+            <option value="TAG">TAG</option>
+          </select>
+        </div>
 
-    <div class="form-group" id="fGradingValueGroup" style="display:none;">
-      <label class="form-label" for="fGradingValue">Grade</label>
-      <select class="form-select" id="fGradingValue" disabled>
-        <option value="">Kies eerst gradingbedrijf</option>
-      </select>
+        <div class="form-group" id="fGradingValueGroup" style="display:none;">
+          <label class="form-label" for="fGradingValue">Grade</label>
+          <select class="form-select" id="fGradingValue" disabled>
+            <option value="">Kies eerst bedrijf</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grade-preview">
+        <span class="form-label">Voorbeeld</span>
+        <span id="gradePreview" class="grade-preview-tag"></span>
+      </div>
+
       <div class="grading-table-wrap" id="gradingTableWrap" style="display:none;">
         <table>
           <thead>
             <tr>
               <th>Grade</th>
-              <th>PSA</th>
-              <th>BGS</th>
-              <th>CGC</th>
-              <th>TAG</th>
+              <th><img class="grading-th-logo grading-th-logo-psa" src="assets/grading/psa.svg" alt="PSA"></th>
+              <th><img class="grading-th-logo" src="assets/grading/bgs.svg" alt="BGS"></th>
+              <th><img class="grading-th-logo" src="assets/grading/cgc.svg" alt="CGC"></th>
+              <th><img class="grading-th-logo" src="assets/grading/tag.png" alt="TAG"></th>
             </tr>
           </thead>
           <tbody>
-            <tr><td><strong>10</strong></td><td>Gem Mint</td><td>Pristine / Black Label</td><td>Pristine</td><td>10</td></tr>
-            <tr><td><strong>9.5</strong></td><td>—</td><td>Gem Mint</td><td>Gem Mint</td><td>—</td></tr>
-            <tr><td><strong>9</strong></td><td>Mint</td><td>Mint</td><td>Mint</td><td>9</td></tr>
-            <tr><td><strong>8.5</strong></td><td>—</td><td>NM-MT+</td><td>NM-MT+</td><td>—</td></tr>
-            <tr><td><strong>8</strong></td><td>NM-MT</td><td>NM-MT</td><td>NM-MT</td><td>8</td></tr>
-            <tr><td><strong>7</strong></td><td>Near Mint</td><td>Near Mint</td><td>Near Mint</td><td>7</td></tr>
-            <tr><td><strong>6</strong></td><td>EX-MT</td><td>EX-MT</td><td>EX-MT</td><td>6</td></tr>
-            <tr><td><strong>5</strong></td><td>Excellent</td><td>Excellent</td><td>Excellent</td><td>5</td></tr>
-            <tr><td><strong>4</strong></td><td>VG-EX</td><td>VG-EX</td><td>VG-EX</td><td>4</td></tr>
-            <tr><td><strong>3</strong></td><td>Very Good</td><td>Very Good</td><td>Very Good</td><td>3</td></tr>
-            <tr><td><strong>2</strong></td><td>Good</td><td>Good</td><td>Good</td><td>2</td></tr>
-            <tr><td><strong>1</strong></td><td>Poor</td><td>Poor</td><td>Poor</td><td>1</td></tr>
+            <tr><td>10</td><td>Gem Mint</td><td>Pristine</td><td>Gem Mint</td><td>Gem Mint</td></tr>
+            <tr><td>9.5</td><td>—</td><td>Gem Mint</td><td>Mint+</td><td>—</td></tr>
+            <tr><td>9</td><td>Mint</td><td>Mint</td><td>Mint</td><td>Mint</td></tr>
+            <tr><td>8.5</td><td>NM-MT</td><td>NM-MT+</td><td>NM/Mint+</td><td>NM MT+</td></tr>
+            <tr><td>8</td><td>NM-MT</td><td>NM-MT</td><td>NM/Mint</td><td>NM MT</td></tr>
+            <tr><td>7</td><td>Near Mint</td><td>NM</td><td>Near Mint</td><td>NM</td></tr>
+            <tr><td>6</td><td>EX-MT</td><td>EX-MT</td><td>Ex/NM</td><td>EX MT</td></tr>
+            <tr><td>5</td><td>Excellent</td><td>EX</td><td>Excellent</td><td>EX</td></tr>
+            <tr><td>4</td><td>VG-EX</td><td>VG-EX</td><td>VG/Ex</td><td>VG EX</td></tr>
+            <tr><td>3</td><td>Very Good</td><td>VG</td><td>Very Good</td><td>VG</td></tr>
+            <tr><td>2</td><td>Good</td><td>Good</td><td>Good</td><td>Good</td></tr>
+            <tr><td>1</td><td>Poor</td><td>Poor</td><td>Poor</td><td>Poor</td></tr>
           </tbody>
         </table>
       </div>
+      <div class="form-hint">Een 10 kent ook een topvariant: BGS Black Label Pristine, CGC en TAG Pristine. Halve grades staan in de keuzelijst.</div>
     </div>
 
     <div class="form-group">
@@ -2137,12 +2220,238 @@ import {
   validateTabName,
 } from './profit-monitor-core.mjs';
 
-// Charts follow the app's dark theme and typeface.
-if (window.Chart) {
-  Chart.defaults.font.family = "'Chakra Petch', system-ui, sans-serif";
-  Chart.defaults.font.weight = '600';
-  Chart.defaults.color = '#a8a199';
-  Chart.defaults.borderColor = '#2e2b28';
+// ── Charts ────────────────────────────────────────────────────────────────
+// Hand-drawn SVG charts in the app's style (slanted bars, square markers,
+// dashed gridlines). No chart library needed; each chart redraws at its
+// container's width, also when the window is resized.
+const CHART_COLORS = {
+  pos: '#5fd88a',
+  neg: '#ff6b61',
+  text: '#f3f0ea',
+  text2: '#cfc9c0',
+  muted: '#a8a199',
+  grid: '#3d3935',
+  accent: '#e8231b',
+};
+
+const chartRenderers = new Map();
+
+function drawChart(id, render) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  chartRenderers.set(id, render);
+  el.innerHTML = render(el.clientWidth || el.parentElement?.clientWidth || 600);
+}
+
+function clearChart(id) {
+  chartRenderers.delete(id);
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = '';
+}
+
+let chartResizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(chartResizeTimer);
+  chartResizeTimer = setTimeout(() => {
+    chartRenderers.forEach((render, id) => {
+      const el = document.getElementById(id);
+      if (el && el.offsetParent !== null) el.innerHTML = render(el.clientWidth || 600);
+    });
+  }, 120);
+});
+
+// Charts inside hidden views measure 0 wide; redraw them once they are shown.
+function redrawVisibleCharts() {
+  chartRenderers.forEach((render, id) => {
+    const el = document.getElementById(id);
+    if (el && el.offsetParent !== null) el.innerHTML = render(el.clientWidth || 600);
+  });
+}
+
+function niceStep(range, targetTicks) {
+  const raw = range / Math.max(1, targetTicks);
+  const mag = 10 ** Math.floor(Math.log10(raw || 1));
+  const norm = raw / mag;
+  const step = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10;
+  return step * mag;
+}
+
+function chartScale(values, targetTicks = 4) {
+  let min = Math.min(0, ...values);
+  let max = Math.max(0, ...values);
+  if (min === max) max = min + 1;
+  const step = niceStep(max - min, targetTicks);
+  min = Math.floor(min / step) * step;
+  max = Math.ceil(max / step) * step;
+  const ticks = [];
+  for (let v = min; v <= max + step / 2; v += step) ticks.push(roundMoney(v));
+  return { min, max, ticks };
+}
+
+function fmtEuroShort(value) {
+  const abs = Math.abs(value);
+  const text = new Intl.NumberFormat('nl-NL', { maximumFractionDigits: abs >= 100 ? 0 : 2 }).format(abs);
+  return `${value < 0 ? '− ' : value > 0 ? '+ ' : ''}€ ${text}`;
+}
+
+function fmtEuroAxis(value) {
+  const text = new Intl.NumberFormat('nl-NL', { maximumFractionDigits: 0 }).format(Math.abs(value));
+  return `${value < 0 ? '− ' : ''}€ ${text}`;
+}
+
+function fmtPctShort(value) {
+  return `${value > 0 ? '+' : value < 0 ? '−' : ''}${Math.round(Math.abs(value))}%`;
+}
+
+function svgText(x, y, text, { anchor = 'middle', size = 12, weight = 700, fill = CHART_COLORS.text2, spacing = 0 } = {}) {
+  return `<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="${size}" font-weight="${weight}" fill="${fill}"${spacing ? ` letter-spacing="${spacing}"` : ''}>${escHTML(text)}</text>`;
+}
+
+// Picks every nth x label so they never overlap.
+function labelStride(count, slot, longest) {
+  const needed = Math.max(36, longest * 7.5 + 10);
+  return Math.max(1, Math.ceil(needed / Math.max(slot, 1)));
+}
+
+// Shared frame: y gridlines with labels, zero line, plot area.
+function chartFrame(width, height, scale, axisFormat, padLeft) {
+  const pad = { top: 30, right: 14, bottom: 34, left: padLeft };
+  const plotW = Math.max(40, width - pad.left - pad.right);
+  const plotH = Math.max(40, height - pad.top - pad.bottom);
+  const y = v => pad.top + (scale.max - v) / (scale.max - scale.min) * plotH;
+  let svg = '';
+  scale.ticks.forEach(t => {
+    const ty = y(t);
+    if (t === 0) return;
+    svg += `<line x1="${pad.left}" y1="${ty}" x2="${pad.left + plotW}" y2="${ty}" stroke="${CHART_COLORS.grid}" stroke-width="1" stroke-dasharray="5 5"/>`;
+    svg += svgText(pad.left - 10, ty + 4, axisFormat(t), { anchor: 'end', weight: 600, fill: CHART_COLORS.muted });
+  });
+  const zy = y(0);
+  const zeroLine = `<line x1="${pad.left}" y1="${zy}" x2="${pad.left + plotW}" y2="${zy}" stroke="${CHART_COLORS.text}" stroke-width="2"/>`
+    + svgText(pad.left - 10, zy + 4, axisFormat(0), { anchor: 'end', fill: CHART_COLORS.text });
+  return { pad, plotW, plotH, y, svg, zeroLine };
+}
+
+function svgWrap(width, height, label, body) {
+  return `<svg class="svg-chart-svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="${escAttr(label)}">${body}</svg>`;
+}
+
+// Slanted bar, drawn as a parallelogram leaning right like the rest of the UI.
+function slantedBar(x, top, w, h, fill) {
+  const s = Math.min(8, h * 0.18);
+  return `<polygon points="${x},${top + h} ${x + w},${top + h} ${x + w + s},${top} ${x + s},${top}" fill="${fill}"/>`;
+}
+
+/**
+ * Vertical bar chart. options: labels, values, valueFormat, axisFormat,
+ * tooltip (i => string), height, label (accessible description).
+ */
+function barChartSVG(width, opts) {
+  const { labels, values, valueFormat, axisFormat, tooltip, height = 250, label } = opts;
+  const scale = chartScale(values);
+  const f = chartFrame(width, height, scale, axisFormat, 70);
+  const n = values.length;
+  const slot = f.plotW / n;
+  const barW = Math.min(64, Math.max(6, slot * 0.5));
+  const showValues = slot >= 46;
+  const longest = Math.max(...labels.map(l => l.length));
+  const stride = labelStride(n, slot, longest);
+  const zy = f.y(0);
+  let body = f.svg;
+  values.forEach((v, i) => {
+    const cx = f.pad.left + slot * i + slot / 2;
+    const top = v >= 0 ? f.y(v) : zy;
+    const h = Math.max(2, Math.abs(f.y(v) - zy));
+    const color = v >= 0 ? CHART_COLORS.pos : CHART_COLORS.neg;
+    body += `<g><title>${escHTML(tooltip ? tooltip(i) : `${labels[i]}: ${valueFormat(v)}`)}</title>${slantedBar(cx - barW / 2, top, barW, h, color)}</g>`;
+    if (showValues) {
+      // Positive values sit above their bar; negative ones below it when there is
+      // room above the month labels, otherwise just above the zero line.
+      const plotBottom = f.pad.top + f.plotH;
+      const ly = v >= 0 ? top - 8 : (top + h + 18 <= plotBottom ? top + h + 16 : zy - 8);
+      body += svgText(cx, ly, valueFormat(v), { fill: color });
+    }
+    if (i % stride === 0) {
+      body += svgText(cx, height - 10, labels[i], { fill: CHART_COLORS.text2, spacing: 1 });
+    }
+  });
+  body += f.zeroLine;
+  return svgWrap(width, height, label, body);
+}
+
+/**
+ * Line chart with area fill to zero and square markers; the last point is
+ * highlighted. options as barChartSVG, plus bars (optional per-point values
+ * drawn as slanted bars behind the line).
+ */
+function lineChartSVG(width, opts) {
+  const { labels, values, valueFormat, axisFormat, tooltip, height = 250, label, bars } = opts;
+  const scale = chartScale(bars ? [...values, ...bars] : values);
+  const f = chartFrame(width, height, scale, axisFormat, 70);
+  const n = values.length;
+  const slot = f.plotW / n;
+  const xs = values.map((_, i) => f.pad.left + slot * i + slot / 2);
+  const ys = values.map(v => f.y(v));
+  const zy = f.y(0);
+  const last = values[n - 1];
+  const lineColor = bars ? CHART_COLORS.text : (last >= 0 ? CHART_COLORS.pos : CHART_COLORS.neg);
+  const longest = Math.max(...labels.map(l => l.length));
+  const stride = labelStride(n, slot, longest);
+  let body = f.svg;
+
+  if (bars) {
+    const barW = Math.min(64, Math.max(6, slot * 0.45));
+    bars.forEach((v, i) => {
+      const top = v >= 0 ? f.y(v) : zy;
+      const h = Math.max(2, Math.abs(f.y(v) - zy));
+      const color = v >= 0 ? CHART_COLORS.pos : CHART_COLORS.neg;
+      body += `<g><title>${escHTML(`${labels[i]}: ${valueFormat(v)} deze trade`)}</title>${slantedBar(xs[i] - barW / 2, top, barW, h, color)}</g>`;
+      if (slot >= 46) body += svgText(xs[i], height - 26, valueFormat(v), { fill: color, size: 11 });
+    });
+  } else {
+    const area = [`${xs[0]},${zy}`, ...xs.map((x, i) => `${x},${ys[i]}`), `${xs[n - 1]},${zy}`].join(' ');
+    body += `<polygon points="${area}" fill="${lineColor}" fill-opacity="0.13"/>`;
+  }
+
+  body += f.zeroLine;
+  body += `<polyline points="${xs.map((x, i) => `${x},${ys[i]}`).join(' ')}" fill="none" stroke="${lineColor}" stroke-width="4" stroke-linejoin="miter"/>`;
+
+  const labelAll = n <= 8 && slot >= 60;
+  values.forEach((v, i) => {
+    const isLast = i === n - 1;
+    const size = isLast ? 18 : 12;
+    const tip = escHTML(tooltip ? tooltip(i) : `${labels[i]}: ${valueFormat(v)}`);
+    body += `<g><title>${tip}</title><rect x="${xs[i] - size / 2}" y="${ys[i] - size / 2}" width="${size}" height="${size}" fill="${isLast ? CHART_COLORS.accent : lineColor}"${isLast ? ` stroke="${CHART_COLORS.text}" stroke-width="2"` : ''}/></g>`;
+    if (labelAll || isLast) {
+      const plotBottom = f.pad.top + f.plotH;
+      const wantsBelow = !isLast && i > 0 && v < values[i - 1];
+      const below = wantsBelow && ys[i] + 24 <= plotBottom - 4;
+      const ly = below ? ys[i] + 24 : ys[i] - (isLast ? 18 : 12);
+      const anchor = isLast && xs[i] > width - 60 ? 'end' : 'middle';
+      const lx = anchor === 'end' ? Math.min(xs[i] + 10, width - 4) : xs[i];
+      body += svgText(lx, Math.max(14, ly), valueFormat(v), { anchor, size: isLast ? 14 : 12, fill: isLast ? lineColor : CHART_COLORS.text2 });
+    }
+    if (i % stride === 0 || isLast && (n - 1) % stride === 0) {
+      body += svgText(xs[i], height - 10, labels[i], { fill: CHART_COLORS.text2, spacing: 1 });
+    }
+  });
+  return svgWrap(width, height, label, body);
+}
+
+/** Horizontal ranked bars as HTML (long card names stay readable). */
+function rankedBarsHTML(rows) {
+  const maxAbs = Math.max(...rows.map(r => Math.abs(r.value)), 1);
+  return `<ol class="ranked-bars">${rows.map(r => `
+    <li title="${escAttr(`${r.name}: ${fmt(r.value)}`)}">
+      <div class="ranked-bars-head"><span class="ranked-bars-name">${r.nameHTML}</span><span class="ranked-bars-value ${r.value >= 0 ? 'positive' : 'negative'}">${escHTML(fmtEuroShort(r.value))}</span></div>
+      <div class="ranked-bars-track"><div class="ranked-bars-fill ${r.value >= 0 ? 'positive' : 'negative'}" style="width:${Math.max(1, Math.round(Math.abs(r.value) / maxAbs * 100))}%"></div></div>
+    </li>`).join('')}</ol>`;
+}
+
+function shortMonthLabel(monthKey) {
+  const [year, month] = monthKey.split('-').map(Number);
+  const name = new Intl.DateTimeFormat('nl-NL', { month: 'short' }).format(new Date(year, month - 1, 1)).replace('.', '');
+  return `${name.toUpperCase()} ${String(year).slice(2)}`;
 }
 
 let appState = ensureAppState(null);
@@ -2155,12 +2464,6 @@ let searchQuery = '';
 let profitSearchQuery = '';
 let editingId = null;
 let activeView = 'transactions'; // 'transactions' | 'profit' | 'analyse' | 'trades' | 'trades-analysis'
-let profitChart = null;
-let monthlyChart = null;
-let cumulativeChart = null;
-let monthlyCompareChart = null;
-let growthChart = null;
-let tradePerformanceChart = null;
 let editingTradeId = null;
 let tradeDraft = {
   date: todayISO(),
@@ -2597,133 +2900,49 @@ function renderProfitChart(rows) {
   const wrap = document.getElementById('profitChartWrap');
   if (!rows.length) {
     wrap.style.display = 'none';
-    if (profitChart) { profitChart.destroy(); profitChart = null; }
+    document.getElementById('profitChart').innerHTML = '';
     return;
   }
 
-  // Show top 20 cards by absolute realized profit
+  // Top 20 cards by absolute realized profit
   const sorted = rows.slice().sort((a, b) => Math.abs(b.realizedProfit) - Math.abs(a.realizedProfit)).slice(0, 20);
-  const labels = sorted.map(r => r.displayName);
-  const values = sorted.map(r => r.realizedProfit);
-  const colors = values.map(v => v >= 0 ? 'rgba(95,216,138,0.75)' : 'rgba(255,107,97,0.75)');
-  const borderColors = values.map(v => v >= 0 ? 'rgba(95,216,138,1)' : 'rgba(255,107,97,1)');
-
   wrap.style.display = '';
-
-  if (profitChart) { profitChart.destroy(); profitChart = null; }
-
-  const ctx = document.getElementById('profitChart').getContext('2d');
-  profitChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Gerealiseerde winst (€)',
-        data: values,
-        backgroundColor: colors,
-        borderColor: borderColors,
-        borderWidth: 1,
-        borderRadius: 4,
-      }],
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: context => fmt(context.parsed.y),
-          },
-        },
-      },
-      scales: {
-        x: {
-          ticks: { color: '#a8a199', font: { size: 11 }, maxRotation: 45 },
-          grid: { color: '#2e2b28' },
-        },
-        y: {
-          ticks: {
-            color: '#a8a199',
-            font: { size: 11 },
-            callback: value => fmt(value),
-          },
-          grid: { color: '#2e2b28' },
-        },
-      },
-    },
-  });
+  document.getElementById('profitChart').innerHTML = rankedBarsHTML(sorted.map(row => ({
+    name: row.displayName,
+    nameHTML: `${escHTML(row.cardName)} ${gradeBadgeHTML(row.gradingCompany, row.gradingValue)}`,
+    value: row.realizedProfit,
+  })));
 }
 
-function renderMonthlyChart(transactions) {
-  const wrap = document.getElementById('monthlyChartWrap');
-  if (!transactions.length) {
-    wrap.style.display = 'none';
-    if (monthlyChart) { monthlyChart.destroy(); monthlyChart = null; }
-    return;
-  }
-
+function monthlyTotals(transactions) {
   const monthMap = new Map();
   transactions.forEach(transaction => {
     const normalized = normalizeTransaction(transaction);
     const monthKey = normalized.date.slice(0, 7);
     monthMap.set(monthKey, roundMoney((monthMap.get(monthKey) || 0) + normalized.amount));
   });
+  return Array.from(monthMap.entries()).sort(([left], [right]) => left.localeCompare(right));
+}
 
-  const entries = Array.from(monthMap.entries()).sort(([left], [right]) => left.localeCompare(right));
-  const labels = entries.map(([month]) => month);
-  const values = entries.map(([, value]) => value);
-
-  if (!values.length) {
+function renderMonthlyChart(transactions) {
+  const wrap = document.getElementById('monthlyChartWrap');
+  const entries = transactions.length ? monthlyTotals(transactions) : [];
+  if (!entries.length) {
     wrap.style.display = 'none';
-    if (monthlyChart) { monthlyChart.destroy(); monthlyChart = null; }
+    clearChart('monthlyProfitChart');
     return;
   }
 
   wrap.style.display = '';
-  if (monthlyChart) { monthlyChart.destroy(); monthlyChart = null; }
-
-  const ctx = document.getElementById('monthlyProfitChart').getContext('2d');
-  monthlyChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Netto resultaat (€)',
-        data: values,
-        borderColor: 'rgba(243,240,234,0.85)',
-        backgroundColor: 'rgba(243,240,234,0.12)',
-        borderWidth: 2,
-        pointRadius: 3,
-        pointHoverRadius: 4,
-        tension: 0.2,
-      }],
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: context => fmt(context.parsed.y),
-          },
-        },
-      },
-      scales: {
-        x: {
-          ticks: { color: '#a8a199', font: { size: 11 } },
-          grid: { color: '#2e2b28' },
-        },
-        y: {
-          ticks: {
-            color: '#a8a199',
-            font: { size: 11 },
-            callback: value => fmt(value),
-          },
-          grid: { color: '#2e2b28' },
-        },
-      },
-    },
-  });
+  drawChart('monthlyProfitChart', width => barChartSVG(width, {
+    labels: entries.map(([month]) => shortMonthLabel(month)),
+    values: entries.map(([, value]) => value),
+    valueFormat: fmtEuroShort,
+    axisFormat: fmtEuroAxis,
+    tooltip: i => `${formatMonthLabel(entries[i][0])}: ${fmt(entries[i][1])}`,
+    height: 260,
+    label: 'Netto resultaat per maand',
+  }));
 }
 
 function renderProfitTable() {
@@ -2921,102 +3140,35 @@ function renderAverageCardMarginWidget(txns) {
 }
 
 function renderCumulativeChart(transactions) {
-  const el = document.getElementById('cumulativeChart');
-  if (!el) return;
-  if (cumulativeChart) { cumulativeChart.destroy(); cumulativeChart = null; }
-  if (!transactions.length) return;
+  const entries = transactions.length ? monthlyTotals(transactions) : [];
+  if (!entries.length) { clearChart('cumulativeChart'); return; }
 
-  const monthMap = new Map();
-  transactions.forEach(t => {
-    const normalized = normalizeTransaction(t);
-    const key = normalized.date.slice(0, 7);
-    monthMap.set(key, roundMoney((monthMap.get(key) || 0) + normalized.amount));
-  });
-  const entries = Array.from(monthMap.entries()).sort(([a], [b]) => a.localeCompare(b));
   let cumulative = 0;
-  const labels = [];
-  const values = [];
-  entries.forEach(([month, profit]) => {
-    cumulative = roundMoney(cumulative + profit);
-    labels.push(formatMonthLabel(month));
-    values.push(cumulative);
-  });
-
-  const ctx = el.getContext('2d');
-  cumulativeChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Cumulatieve winst',
-        data: values,
-        borderColor: 'rgba(95,216,138,0.9)',
-        backgroundColor: 'rgba(95,216,138,0.08)',
-        borderWidth: 2,
-        pointRadius: 3,
-        pointHoverRadius: 5,
-        tension: 0.3,
-        fill: true,
-      }],
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: ctx => fmt(ctx.parsed.y) } },
-      },
-      scales: {
-        x: { ticks: { color: '#a8a199', font: { size: 11 }, maxRotation: 45 }, grid: { color: '#2e2b28' } },
-        y: { ticks: { color: '#a8a199', font: { size: 11 }, callback: v => fmt(v) }, grid: { color: '#2e2b28' } },
-      },
-    },
-  });
+  const values = entries.map(([, profit]) => (cumulative = roundMoney(cumulative + profit)));
+  drawChart('cumulativeChart', width => lineChartSVG(width, {
+    labels: entries.map(([month]) => shortMonthLabel(month)),
+    values,
+    valueFormat: fmtEuroShort,
+    axisFormat: fmtEuroAxis,
+    tooltip: i => `${formatMonthLabel(entries[i][0])}: ${fmt(values[i])} cumulatief`,
+    label: 'Cumulatieve winst per maand',
+  }));
 }
 
 function renderMonthlyCompareChart(monthly) {
-  const el = document.getElementById('monthlyCompareChart');
-  if (!el) return;
-  if (monthlyCompareChart) { monthlyCompareChart.destroy(); monthlyCompareChart = null; }
-  if (!monthly.length) return;
-
-  const labels = monthly.map(m => formatMonthLabel(m.month));
-  const values = monthly.map(m => m.profit);
-  const colors = values.map(v => v >= 0 ? 'rgba(95,216,138,0.75)' : 'rgba(255,107,97,0.75)');
-  const borderColors = values.map(v => v >= 0 ? 'rgba(95,216,138,1)' : 'rgba(255,107,97,1)');
-
-  const ctx = el.getContext('2d');
-  monthlyCompareChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Netto resultaat',
-        data: values,
-        backgroundColor: colors,
-        borderColor: borderColors,
-        borderWidth: 1,
-        borderRadius: 4,
-      }],
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: ctx => fmt(ctx.parsed.y) } },
-      },
-      scales: {
-        x: { ticks: { color: '#a8a199', font: { size: 11 }, maxRotation: 45 }, grid: { color: '#2e2b28' } },
-        y: { ticks: { color: '#a8a199', font: { size: 11 }, callback: v => fmt(v) }, grid: { color: '#2e2b28' } },
-      },
-    },
-  });
+  if (!monthly.length) { clearChart('monthlyCompareChart'); return; }
+  drawChart('monthlyCompareChart', width => barChartSVG(width, {
+    labels: monthly.map(m => shortMonthLabel(m.month)),
+    values: monthly.map(m => m.profit),
+    valueFormat: fmtEuroShort,
+    axisFormat: fmtEuroAxis,
+    tooltip: i => `${formatMonthLabel(monthly[i].month)}: ${fmt(monthly[i].profit)}`,
+    label: 'Netto resultaat per maand',
+  }));
 }
 
 function renderGrowthChart(monthly) {
-  const el = document.getElementById('growthChart');
-  if (!el) return;
-  if (growthChart) { growthChart.destroy(); growthChart = null; }
-  if (monthly.length < 2) return;
+  if (monthly.length < 2) { clearChart('growthChart'); return; }
 
   const growthData = monthly.slice(1).map((m, i) => {
     const prev = monthly[i].profit;
@@ -3024,42 +3176,16 @@ function renderGrowthChart(monthly) {
     return { month: m.month, growth: pct };
   }).filter(d => d.growth !== null);
 
-  if (!growthData.length) return;
+  if (!growthData.length) { clearChart('growthChart'); return; }
 
-  const labels = growthData.map(d => formatMonthLabel(d.month));
-  const values = growthData.map(d => d.growth);
-  const colors = values.map(v => v >= 0 ? 'rgba(95,216,138,0.75)' : 'rgba(255,107,97,0.75)');
-  const borderColors = values.map(v => v >= 0 ? 'rgba(95,216,138,1)' : 'rgba(255,107,97,1)');
-
-  const ctx = el.getContext('2d');
-  growthChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Groei (%)',
-        data: values,
-        backgroundColor: colors,
-        borderColor: borderColors,
-        borderWidth: 1,
-        borderRadius: 4,
-      }],
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: ctx => `${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y}%` } },
-      },
-      scales: {
-        x: { ticks: { color: '#a8a199', font: { size: 11 }, maxRotation: 45 }, grid: { color: '#2e2b28' } },
-        y: {
-          ticks: { color: '#a8a199', font: { size: 11 }, callback: v => `${v >= 0 ? '+' : ''}${v}%` },
-          grid: { color: '#2e2b28' },
-        },
-      },
-    },
-  });
+  drawChart('growthChart', width => barChartSVG(width, {
+    labels: growthData.map(d => shortMonthLabel(d.month)),
+    values: growthData.map(d => d.growth),
+    valueFormat: fmtPctShort,
+    axisFormat: fmtPctShort,
+    tooltip: i => `${formatMonthLabel(growthData[i].month)}: ${growthData[i].growth > 0 ? '+' : ''}${growthData[i].growth}% t.o.v. vorige maand`,
+    label: 'Groei per maand ten opzichte van de vorige maand',
+  }));
 }
 
 function emptyTradeItem() {
@@ -3346,41 +3472,25 @@ function closeTradeDetail() {
 
 function renderTradePerformanceChart(trades) {
   const wrap = document.getElementById('tradePerformanceChartWrap');
-  if (tradePerformanceChart) { tradePerformanceChart.destroy(); tradePerformanceChart = null; }
   const points = computeTradePerformanceSeries(trades);
   if (!points.length) {
     wrap.style.display = 'none';
+    clearChart('tradePerformanceChart');
     return;
   }
 
   wrap.style.display = '';
-  const ctx = document.getElementById('tradePerformanceChart').getContext('2d');
-  tradePerformanceChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: points.map(point => formatDate(point.date)),
-      datasets: [{
-        label: 'Cumulatief verschil',
-        data: points.map(point => point.cumulativeDifference),
-        borderColor: 'rgba(243,240,234,0.85)',
-        backgroundColor: 'rgba(243,240,234,0.12)',
-        borderWidth: 2,
-        pointRadius: 3,
-        tension: 0.25,
-      }],
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: context => fmt(context.parsed.y) } },
-      },
-      scales: {
-        x: { ticks: { color: '#a8a199', font: { size: 11 } }, grid: { color: '#2e2b28' } },
-        y: { ticks: { color: '#a8a199', font: { size: 11 }, callback: value => fmt(value) }, grid: { color: '#2e2b28' } },
-      },
-    },
-  });
+  const label = point => `#${point.id} · ${formatDate(point.date).replace(/-\d{4}$/, '')}`;
+  drawChart('tradePerformanceChart', width => lineChartSVG(width, {
+    labels: points.map(label),
+    values: points.map(point => point.cumulativeDifference),
+    bars: points.map(point => point.difference),
+    valueFormat: fmtEuroShort,
+    axisFormat: fmtEuroAxis,
+    tooltip: i => `Trade #${points[i].id} (${formatDate(points[i].date)}): ${fmt(points[i].cumulativeDifference)} cumulatief`,
+    height: 380,
+    label: 'Verschil per trade en cumulatief verschil over tijd',
+  }));
 }
 
 function renderTradesAnalysis() {
@@ -3544,6 +3654,7 @@ function setSectionCollapsed(section, collapsed) {
   const button = document.getElementById(config.buttonId);
   if (content) content.style.display = collapsed ? 'none' : '';
   if (button) button.textContent = collapsed ? 'Uitklappen' : 'Inklappen';
+  if (!collapsed) requestAnimationFrame(redrawVisibleCharts);
 }
 
 function toggleSort(tableName, sortKey) {
@@ -3737,10 +3848,8 @@ document.getElementById('analyseView').addEventListener('click', e => {
   const isExpanded = widget.classList.toggle('expanded');
   btn.title = isExpanded ? 'Verkleinen' : 'Vergroot';
   btn.textContent = isExpanded ? '⤡' : '⤢';
-  // Resize charts if present inside this widget so Chart.js adapts to new column width
-  requestAnimationFrame(() => {
-    [cumulativeChart, monthlyCompareChart, growthChart].forEach(c => { if (c) c.resize(); });
-  });
+  // Redraw charts at the widget's new width
+  requestAnimationFrame(redrawVisibleCharts);
 });
 
 // Period filter
@@ -3991,6 +4100,7 @@ function startEdit(transaction) {
   if (transaction.gradingValue) {
     document.getElementById('fGradingValue').value = transaction.gradingValue;
   }
+  syncGradePreview();
   document.querySelector('.sidebar').scrollTop = 0;
   showMessage(formMsg);
 }
@@ -4293,39 +4403,54 @@ function syncGradingParsing() {
   const gradeSelect = document.getElementById('fGradingValue');
   const selectedGrade = gradeSelect.value;
 
+  document.getElementById('gradedFields').hidden = !isGraded;
   companyGroup.style.display = isGraded ? '' : 'none';
   gradeGroup.style.display = isGraded ? '' : 'none';
   tableWrap.style.display = isGraded ? '' : 'none';
 
   if (!isGraded) {
     companySelect.value = '';
-    gradeSelect.innerHTML = '<option value="">Kies eerst gradingbedrijf</option>';
+    gradeSelect.innerHTML = '<option value="">Kies eerst bedrijf</option>';
     gradeSelect.value = '';
     gradeSelect.disabled = true;
+    syncGradePreview();
     return;
   }
 
   const company = companySelect.value;
   const grades = getGradingScale(company);
   if (!company || !grades.length) {
-    gradeSelect.innerHTML = '<option value="">Kies eerst gradingbedrijf</option>';
+    gradeSelect.innerHTML = '<option value="">Kies eerst bedrijf</option>';
     gradeSelect.value = '';
     gradeSelect.disabled = true;
+    syncGradePreview();
     return;
   }
 
   gradeSelect.innerHTML = [
-    '<option value="">— selecteer grade —</option>',
-    ...grades.map(grade => `<option value="${escAttr(grade.value)}">${escHTML(`${grade.grade} — ${grade.label}`)}</option>`),
+    '<option value="">— kies —</option>',
+    ...grades.map(grade => `<option value="${escAttr(grade.value)}">${escHTML(`${grade.grade} · ${grade.label}`)}</option>`),
   ].join('');
   gradeSelect.disabled = false;
   gradeSelect.value = grades.some(grade => grade.value === selectedGrade) ? selectedGrade : '';
+  syncGradePreview();
+}
+
+// Shows the grade tag the entry will get, as soon as company and grade are chosen.
+function syncGradePreview() {
+  const preview = document.getElementById('gradePreview');
+  const company = document.getElementById('fGradingCompany').value;
+  const value = document.getElementById('fGradingValue').value;
+  preview.innerHTML = company && value
+    ? gradeBadgeHTML(company, value)
+    : '<span class="grade-preview-empty">Kies bedrijf en grade</span>';
 }
 
 document.getElementById('fDesc').addEventListener('input', syncDescriptionParsing);
 document.getElementById('fHasCardName').addEventListener('change', syncDescriptionParsing);
 document.getElementById('fIsGraded').addEventListener('change', syncGradingParsing);
 document.getElementById('fGradingCompany').addEventListener('change', syncGradingParsing);
+document.getElementById('fGradingValue').addEventListener('change', syncGradePreview);
 
 function escHTML(value) {
   return String(value)
