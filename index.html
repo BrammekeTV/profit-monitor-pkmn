@@ -1217,25 +1217,28 @@
       background: var(--surface);
       border: 3px solid var(--ink);
       box-shadow: var(--block);
-      padding: 20px;
-      margin-bottom: 30px;
+      padding: 16px;
+      margin-bottom: 26px;
     }
+
+    .trade-form .trade-input,
+    .trade-form .form-select { min-height: 38px; font-size: 14px; padding: 0 10px; }
 
     .trade-meta-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 14px;
-      margin-bottom: 20px;
+      gap: 12px;
+      margin-bottom: 14px;
     }
 
-    .trade-meta-row > :first-child { flex: 0 1 220px; }
+    .trade-meta-row > :first-child { flex: 0 1 200px; }
     .trade-meta-row > :last-child { flex: 1 1 260px; }
-    .trade-meta-row .form-label { margin-bottom: 6px; }
+    .trade-meta-row .form-label { margin-bottom: 5px; }
 
     .trade-entry-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 22px;
+      gap: 16px;
     }
 
     .trade-side {
@@ -1243,44 +1246,57 @@
       background: #161514;
       display: flex;
       flex-direction: column;
-      padding-bottom: 14px;
+      padding-bottom: 10px;
       min-width: 0;
     }
 
     .trade-side-header {
       display: flex;
       align-items: center;
-      min-height: 44px;
-      padding: 0 16px;
+      min-height: 36px;
+      padding: 0 12px;
       background: var(--ink);
       color: var(--text);
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 700;
       letter-spacing: 4px;
     }
 
     .trade-side:last-child .trade-side-header { background: var(--accent); color: var(--on-accent); }
 
-    .trade-form .trade-side > div[style] { padding: 0 14px; }
+    /* Card rows: name, quantity, value and remove on one line; grading below */
+    .trade-items-head,
+    .trade-item-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 60px 120px 38px;
+      gap: 6px;
+    }
+
+    .trade-items-head {
+      padding: 8px 18px 0;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .trade-items-head:has(+ .trade-items:empty) { display: none; }
 
     .trade-items {
       display: grid;
-      gap: 10px;
-      padding: 14px;
+      gap: 6px;
+      padding: 6px 10px 8px;
     }
 
     .trade-items:empty { display: none; }
 
     .trade-item-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
       grid-template-areas:
-        "name name remove"
-        "qty value value"
-        "company grade grade";
-      gap: 8px;
-      padding: 10px;
-      border: 2px solid var(--line);
+        "name qty value remove"
+        "company grade grade grade";
+      padding: 6px;
+      border: 1px solid var(--line);
       background: #1f1d1b;
     }
 
@@ -1292,58 +1308,78 @@
     .trade-item-row > :nth-child(6) { grid-area: remove; }
 
     .trade-item-remove {
-      width: 44px;
-      height: 44px;
+      width: 38px;
+      height: 38px;
       border: 2px solid var(--red-dim);
       background: var(--surface2);
       color: var(--red);
-      font-size: 20px;
+      font-size: 18px;
       cursor: pointer;
     }
 
     .trade-item-remove:hover { border-color: var(--red); }
 
     .trade-add-btn {
-      margin: 0 14px 12px;
-      min-height: 44px;
+      margin: 0 10px;
+      min-height: 34px;
       border: 2px dashed var(--border);
       background: transparent;
       color: var(--text);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
       letter-spacing: 2px;
       text-transform: uppercase;
       cursor: pointer;
     }
 
-    .trade-items:empty + .trade-add-btn { margin-top: 14px; }
+    .trade-items:empty + .trade-add-btn { margin-top: 10px; }
     .trade-add-btn:hover { border-color: var(--text); }
+
+    .trade-side-foot {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 14px;
+      margin: 10px 10px 0;
+      padding-top: 10px;
+      border-top: 2px solid var(--border);
+    }
+
+    .trade-side-foot .form-label { margin-bottom: 5px; }
 
     .trade-total {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin: 14px 14px 0;
-      padding-top: 12px;
-      border-top: 2px solid var(--border);
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
       color: var(--text2);
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       letter-spacing: 2px;
       text-transform: uppercase;
+      white-space: nowrap;
     }
 
     .trade-total span {
       color: var(--text);
       font-size: 22px;
       letter-spacing: 0;
+      line-height: 38px;
       font-variant-numeric: tabular-nums;
     }
 
+    .trade-summary {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 14px 22px;
+      margin-top: 14px;
+    }
+
     .trade-result {
-      margin-top: 22px;
+      flex: 1 1 520px;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       border: 2px solid var(--border);
       background: #161514;
     }
@@ -1351,24 +1387,26 @@
     .trade-result-row {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      padding: 12px 16px;
+      gap: 4px;
+      padding: 8px 14px;
       border-right: 1px solid var(--line);
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       letter-spacing: 2px;
       text-transform: uppercase;
       color: var(--text2);
+      min-width: 0;
     }
 
     .trade-result-row:last-child { border-right: 0; }
 
     .trade-result-row strong {
-      font-size: 24px;
+      font-size: 20px;
       letter-spacing: 0;
       line-height: 1.1;
       font-variant-numeric: tabular-nums;
       color: var(--text);
+      white-space: nowrap;
     }
 
     .trade-result-row strong.positive { color: var(--green); }
@@ -1377,11 +1415,13 @@
     .trade-actions-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 18px;
-      margin-top: 24px;
+      gap: 14px;
     }
 
-    .trade-actions-row .submit-btn { flex: 0 1 auto; padding: 0 28px; }
+    .trade-actions-row .submit-btn { flex: 0 1 auto; min-height: 48px; padding: 0 26px; font-size: 16px; }
+    .trade-actions-row .cancel-btn { min-height: 48px; }
+
+    .trade-form .form-msg { margin-top: 10px; }
 
     #tradesBody td:first-child { white-space: nowrap; }
     #tradesBody .inline-btn { transform: none; min-height: 36px; font-size: 12px; margin-right: 4px; }
@@ -1439,7 +1479,8 @@
     }
 
     .trade-analysis-layout .chart-wrap { margin-top: 0; display: flex; flex-direction: column; }
-    .trade-analysis-layout .chart-wrap canvas { margin: auto 0; }
+    .chart-canvas { position: relative; height: 420px; }
+    .trade-analysis-layout .chart-wrap .chart-canvas { margin: auto 0; }
 
     #profitChartsContent {
       display: grid;
@@ -1487,6 +1528,7 @@
     @media (max-width: 1180px) {
       .layout { grid-template-columns: minmax(0, 1fr); }
       .trade-entry-grid { grid-template-columns: 1fr; }
+      .trade-result { grid-template-columns: repeat(2, minmax(0, 1fr)); flex-basis: 100%; }
     }
 
     @media (max-width: 760px) {
@@ -1868,26 +1910,33 @@
         <div class="trade-entry-grid">
           <div class="trade-side">
             <div class="trade-side-header">IK GEEF</div>
+            <div class="trade-items-head" aria-hidden="true"><span>Kaart</span><span>Aantal</span><span>Waarde p/st</span></div>
             <div class="trade-items" id="tradeGivenItems"></div>
             <button type="button" class="trade-add-btn" id="addTradeGivenItem">+ Kaart toevoegen</button>
-            <div style="margin-top:10px;">
-              <label class="form-label" for="tradeGivenCashAmount">Los bedrag bij IK GEEF</label>
-              <input type="text" inputmode="decimal" id="tradeGivenCashAmount" class="trade-input" placeholder="Bijv. 10,50 of 10.50" />
+            <div class="trade-side-foot">
+              <div>
+                <label class="form-label" for="tradeGivenCashAmount">Los bedrag</label>
+                <input type="text" inputmode="decimal" id="tradeGivenCashAmount" class="trade-input" placeholder="Bijv. 10,50" />
+              </div>
+              <div class="trade-total">Totaal <span id="tradeGivenTotal">€0,00</span></div>
             </div>
-            <div class="trade-total">Totaal: <span id="tradeGivenTotal">€0,00</span></div>
           </div>
           <div class="trade-side">
             <div class="trade-side-header">IK ONTVANG</div>
+            <div class="trade-items-head" aria-hidden="true"><span>Kaart</span><span>Aantal</span><span>Waarde p/st</span></div>
             <div class="trade-items" id="tradeReceivedItems"></div>
             <button type="button" class="trade-add-btn" id="addTradeReceivedItem">+ Kaart toevoegen</button>
-            <div style="margin-top:10px;">
-              <label class="form-label" for="tradeReceivedCashAmount">Los bedrag bij IK ONTVANG</label>
-              <input type="text" inputmode="decimal" id="tradeReceivedCashAmount" class="trade-input" placeholder="Bijv. 10,50 of 10.50" />
+            <div class="trade-side-foot">
+              <div>
+                <label class="form-label" for="tradeReceivedCashAmount">Los bedrag</label>
+                <input type="text" inputmode="decimal" id="tradeReceivedCashAmount" class="trade-input" placeholder="Bijv. 10,50" />
+              </div>
+              <div class="trade-total">Totaal <span id="tradeReceivedTotal">€0,00</span></div>
             </div>
-            <div class="trade-total">Totaal: <span id="tradeReceivedTotal">€0,00</span></div>
           </div>
         </div>
 
+        <div class="trade-summary">
         <div class="trade-result" aria-live="polite" aria-atomic="true">
           <div class="trade-result-row"><span>Waarde gegeven</span><strong id="tradeResultGiven">€0,00</strong></div>
           <div class="trade-result-row"><span>Waarde ontvangen</span><strong id="tradeResultReceived">€0,00</strong></div>
@@ -1898,6 +1947,7 @@
         <div class="trade-actions-row">
           <button class="submit-btn" id="saveTradeBtn">Trade opslaan</button>
           <button class="cancel-btn" id="cancelTradeEditBtn" style="display:none;">Annuleer bewerken</button>
+        </div>
         </div>
         <div class="form-msg" id="tradeMsg"></div>
       </div>
@@ -1931,7 +1981,7 @@
         <div class="trade-analysis-grid" id="tradeAnalysisGrid"></div>
         <div class="chart-wrap" id="tradePerformanceChartWrap" style="display:none;">
           <div class="chart-title">Trade performance over tijd</div>
-          <canvas id="tradePerformanceChart"></canvas>
+          <div class="chart-canvas"><canvas id="tradePerformanceChart"></canvas></div>
         </div>
       </div>
     </div>
@@ -2217,6 +2267,92 @@ if (window.Chart) {
   Chart.defaults.color = '#a8a199';
   Chart.defaults.borderColor = '#2e2b28';
 }
+
+const CHART_POS = 'rgba(95,216,138,1)';
+const CHART_NEG = 'rgba(220,107,98,1)';
+const CHART_TEXT = '#f3f0ea';
+
+// Zero gets a solid light gridline so it is clear where gains turn into losses.
+const zeroLineGrid = {
+  color: context => (context.tick && context.tick.value === 0 ? 'rgba(243,240,234,0.75)' : '#2e2b28'),
+  lineWidth: context => (context.tick && context.tick.value === 0 ? 2 : 1),
+};
+
+const signColor = value => (value < 0 ? CHART_NEG : CHART_POS);
+
+// Line colour that switches exactly at the zero line: `above` over it, red under it.
+function zeroSplitColor(above, below = CHART_NEG) {
+  return context => {
+    const { chart } = context;
+    const { ctx, chartArea, scales } = chart;
+    if (!chartArea || !scales.y) return above;
+    const zero = scales.y.getPixelForValue(0);
+    const ratio = Math.min(1, Math.max(0, (zero - chartArea.top) / (chartArea.bottom - chartArea.top)));
+    const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+    gradient.addColorStop(0, above);
+    gradient.addColorStop(ratio, above);
+    gradient.addColorStop(ratio, below);
+    gradient.addColorStop(1, below);
+    return gradient;
+  };
+}
+
+// A line that is green above zero and red below it, with matching area fill,
+// square markers and a larger marker on the latest point.
+function signedLineDataset(label, data, extra = {}) {
+  return {
+    type: 'line',
+    label,
+    data,
+    borderColor: zeroSplitColor(CHART_POS),
+    borderWidth: 3,
+    tension: 0,
+    fill: { target: 'origin', above: 'rgba(95,216,138,0.12)', below: 'rgba(220,107,98,0.16)' },
+    pointStyle: 'rect',
+    pointRadius: ctx => (ctx.dataIndex === data.length - 1 ? 7 : 4),
+    pointHoverRadius: 8,
+    pointBackgroundColor: ctx => signColor(ctx.raw),
+    pointBorderColor: ctx => (ctx.dataIndex === data.length - 1 ? CHART_TEXT : signColor(ctx.raw)),
+    pointBorderWidth: ctx => (ctx.dataIndex === data.length - 1 ? 2 : 0),
+    valueLabels: 'last',
+    order: 0,
+    ...extra,
+  };
+}
+
+// Draws values on the chart: 'last' labels only the newest point, 'all' every
+// point or bar (skipped when there are too many to read).
+const isLastPoint = (meta, index) => index === meta.data.length - 1;
+
+const valueLabelsPlugin = {
+  id: 'valueLabels',
+  afterDatasetsDraw(chart, _args, options) {
+    const { ctx } = chart;
+    const format = options.format || (value => fmt(value));
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.font = "700 12px 'Chakra Petch', system-ui, sans-serif";
+    chart.data.datasets.forEach((dataset, datasetIndex) => {
+      const mode = dataset.valueLabels;
+      const meta = chart.getDatasetMeta(datasetIndex);
+      if (!mode || meta.hidden) return;
+      if (mode === 'all' && meta.data.length > 12) return;
+      meta.data.forEach((element, index) => {
+        if (mode === 'last' && index !== meta.data.length - 1) return;
+        const value = dataset.data[index];
+        if (value === null || value === undefined) return;
+        const below = value < 0 && !(isLastPoint(meta, index) && meta.type === 'line');
+        ctx.fillStyle = signColor(value);
+        ctx.font = `700 ${isLastPoint(meta, index) && meta.type === 'line' ? 14 : 12}px 'Chakra Petch', system-ui, sans-serif`;
+        const y = below ? element.y + 20 : element.y - (isLastPoint(meta, index) && meta.type === 'line' ? 14 : 8);
+        const width = ctx.measureText(format(value)).width;
+        const x = Math.max(chart.chartArea.left + width / 2, Math.min(element.x, chart.chartArea.right - width / 2));
+        ctx.fillText(format(value), x, Math.min(y, chart.chartArea.bottom - 4));
+      });
+    });
+    ctx.restore();
+  },
+};
 
 let appState = ensureAppState(null);
 let activeFilter = 'all';
@@ -2696,7 +2832,7 @@ function renderProfitChart(rows) {
         backgroundColor: colors,
         borderColor: borderColors,
         borderWidth: 1,
-        borderRadius: 4,
+        borderRadius: 0,
       }],
     },
     options: {
@@ -2720,7 +2856,7 @@ function renderProfitChart(rows) {
             font: { size: 11 },
             callback: value => fmt(value),
           },
-          grid: { color: '#2e2b28' },
+          grace: '12%', grid: zeroLineGrid,
         },
       },
     },
@@ -2760,40 +2896,19 @@ function renderMonthlyChart(transactions) {
     type: 'line',
     data: {
       labels,
-      datasets: [{
-        label: 'Netto resultaat (€)',
-        data: values,
-        borderColor: 'rgba(243,240,234,0.85)',
-        backgroundColor: 'rgba(243,240,234,0.12)',
-        borderWidth: 2,
-        pointRadius: 3,
-        pointHoverRadius: 4,
-        tension: 0.2,
-      }],
+      datasets: [signedLineDataset('Netto resultaat (€)', values, { valueLabels: values.length <= 8 ? 'all' : 'last' })],
     },
+    plugins: [valueLabelsPlugin],
     options: {
       responsive: true,
+      layout: { padding: { top: 18, right: 8 } },
       plugins: {
         legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: context => fmt(context.parsed.y),
-          },
-        },
+        tooltip: { callbacks: { label: context => fmt(context.parsed.y) } },
       },
       scales: {
-        x: {
-          ticks: { color: '#a8a199', font: { size: 11 } },
-          grid: { color: '#2e2b28' },
-        },
-        y: {
-          ticks: {
-            color: '#a8a199',
-            font: { size: 11 },
-            callback: value => fmt(value),
-          },
-          grid: { color: '#2e2b28' },
-        },
+        x: { ticks: { color: '#a8a199', font: { size: 11 } }, grid: { color: '#2e2b28' } },
+        y: { ticks: { color: '#a8a199', font: { size: 11 }, callback: value => fmt(value) }, grace: '12%', grid: zeroLineGrid },
       },
     },
   });
@@ -3020,28 +3135,20 @@ function renderCumulativeChart(transactions) {
     type: 'line',
     data: {
       labels,
-      datasets: [{
-        label: 'Cumulatieve winst',
-        data: values,
-        borderColor: 'rgba(95,216,138,0.9)',
-        backgroundColor: 'rgba(95,216,138,0.08)',
-        borderWidth: 2,
-        pointRadius: 3,
-        pointHoverRadius: 5,
-        tension: 0.3,
-        fill: true,
-      }],
+      datasets: [signedLineDataset('Cumulatieve winst', values)],
     },
+    plugins: [valueLabelsPlugin],
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      layout: { padding: { top: 18, right: 8 } },
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: ctx => fmt(ctx.parsed.y) } },
+        tooltip: { callbacks: { label: ctx => `${fmt(ctx.parsed.y)} cumulatief` } },
       },
       scales: {
-        x: { ticks: { color: '#a8a199', font: { size: 11 }, maxRotation: 45 }, grid: { color: '#2e2b28' } },
-        y: { ticks: { color: '#a8a199', font: { size: 11 }, callback: v => fmt(v) }, grid: { color: '#2e2b28' } },
+        x: { ticks: { color: '#a8a199', font: { size: 11 }, maxRotation: 0 }, grid: { color: '#2e2b28' } },
+        y: { beginAtZero: true, ticks: { color: '#a8a199', font: { size: 11 }, callback: v => fmt(v) }, grace: '12%', grid: zeroLineGrid },
       },
     },
   });
@@ -3069,10 +3176,13 @@ function renderMonthlyCompareChart(monthly) {
         backgroundColor: colors,
         borderColor: borderColors,
         borderWidth: 1,
-        borderRadius: 4,
+        borderRadius: 0,
+        valueLabels: 'all',
       }],
     },
+    plugins: [valueLabelsPlugin],
     options: {
+      layout: { padding: { top: 18 } },
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
@@ -3081,7 +3191,7 @@ function renderMonthlyCompareChart(monthly) {
       },
       scales: {
         x: { ticks: { color: '#a8a199', font: { size: 11 }, maxRotation: 45 }, grid: { color: '#2e2b28' } },
-        y: { ticks: { color: '#a8a199', font: { size: 11 }, callback: v => fmt(v) }, grid: { color: '#2e2b28' } },
+        y: { ticks: { color: '#a8a199', font: { size: 11 }, callback: v => fmt(v) }, grace: '12%', grid: zeroLineGrid },
       },
     },
   });
@@ -3117,13 +3227,17 @@ function renderGrowthChart(monthly) {
         backgroundColor: colors,
         borderColor: borderColors,
         borderWidth: 1,
-        borderRadius: 4,
+        borderRadius: 0,
+        valueLabels: 'all',
       }],
     },
+    plugins: [valueLabelsPlugin],
     options: {
+      layout: { padding: { top: 18 } },
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
+        valueLabels: { format: value => `${value > 0 ? '+' : ''}${Math.round(value)}%` },
         legend: { display: false },
         tooltip: { callbacks: { label: ctx => `${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y}%` } },
       },
@@ -3131,7 +3245,7 @@ function renderGrowthChart(monthly) {
         x: { ticks: { color: '#a8a199', font: { size: 11 }, maxRotation: 45 }, grid: { color: '#2e2b28' } },
         y: {
           ticks: { color: '#a8a199', font: { size: 11 }, callback: v => `${v >= 0 ? '+' : ''}${v}%` },
-          grid: { color: '#2e2b28' },
+          grace: '12%', grid: zeroLineGrid,
         },
       },
     },
@@ -3225,6 +3339,7 @@ function renderTradeDraftItems(side) {
         data-trade-index="${index}"
         data-trade-field="cardName"
         placeholder="Kaartnaam"
+        aria-label="Kaartnaam"
         value="${escAttr(item.cardName || '')}"
       />
       <input
@@ -3233,6 +3348,7 @@ function renderTradeDraftItems(side) {
         data-trade-side="${side}"
         data-trade-index="${index}"
         data-trade-field="quantity"
+        aria-label="Aantal"
         min="1"
         step="1"
         value="${escAttr(item.quantity || 1)}"
@@ -3243,6 +3359,7 @@ function renderTradeDraftItems(side) {
         data-trade-side="${side}"
         data-trade-index="${index}"
         data-trade-field="value"
+        aria-label="Waarde per stuk"
         min="0.01"
         step="0.01"
         value="${escAttr(item.value || '')}"
@@ -3253,6 +3370,7 @@ function renderTradeDraftItems(side) {
         data-trade-side="${side}"
         data-trade-index="${index}"
         data-trade-field="gradingCompany"
+        aria-label="Gradingbedrijf"
       >
         <option value="">Niet gegradeerd</option>
         ${GRADING_COMPANY_OPTIONS.map(company => `
@@ -3264,6 +3382,7 @@ function renderTradeDraftItems(side) {
         data-trade-side="${side}"
         data-trade-index="${index}"
         data-trade-field="gradingValue"
+        aria-label="Grade"
         ${item.gradingCompany ? '' : 'disabled'}
       >
         <option value="">— grade —</option>
@@ -3273,7 +3392,7 @@ function renderTradeDraftItems(side) {
           </option>
         `).join('')}
       </select>
-      <button type="button" class="trade-item-remove" data-trade-remove-side="${side}" data-trade-remove-index="${index}" title="Verwijderen">×</button>
+      <button type="button" class="trade-item-remove" data-trade-remove-side="${side}" data-trade-remove-index="${index}" title="Verwijderen" aria-label="Kaart verwijderen">×</button>
     </div>
   `;
   }).join('');
@@ -3432,28 +3551,55 @@ function renderTradePerformanceChart(trades) {
   wrap.style.display = '';
   const ctx = document.getElementById('tradePerformanceChart').getContext('2d');
   tradePerformanceChart = new Chart(ctx, {
-    type: 'line',
+    type: 'bar',
     data: {
-      labels: points.map(point => formatDate(point.date)),
-      datasets: [{
-        label: 'Cumulatief verschil',
-        data: points.map(point => point.cumulativeDifference),
-        borderColor: 'rgba(243,240,234,0.85)',
-        backgroundColor: 'rgba(243,240,234,0.12)',
-        borderWidth: 2,
-        pointRadius: 3,
-        tension: 0.25,
-      }],
+      labels: points.map(point => `#${point.id} · ${formatDate(point.date)}`),
+      datasets: [
+        signedLineDataset('Cumulatief verschil', points.map(point => point.cumulativeDifference), {
+          borderColor: zeroSplitColor(CHART_TEXT),
+          pointBackgroundColor: ctx => (ctx.raw < 0 ? CHART_NEG : CHART_TEXT),
+          fill: false,
+        }),
+        {
+          type: 'bar',
+          label: 'Verschil per trade',
+          data: points.map(point => point.difference),
+          backgroundColor: points.map(point => (point.difference < 0 ? 'rgba(220,107,98,0.85)' : 'rgba(95,216,138,0.85)')),
+          borderWidth: 0,
+          maxBarThickness: 56,
+          valueLabels: 'all',
+          order: 1,
+        },
+      ],
     },
+    plugins: [valueLabelsPlugin],
     options: {
       responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 20, right: 8 } },
+      interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: context => fmt(context.parsed.y) } },
+        legend: {
+          display: true,
+          position: 'top',
+          align: 'end',
+          labels: {
+            color: '#cfc9c0',
+            boxWidth: 14,
+            boxHeight: 14,
+            font: { size: 11, weight: '700' },
+            generateLabels: () => [
+              { text: 'Winst per trade', fillStyle: CHART_POS, strokeStyle: CHART_POS, lineWidth: 0, fontColor: '#cfc9c0' },
+              { text: 'Verlies per trade', fillStyle: CHART_NEG, strokeStyle: CHART_NEG, lineWidth: 0, fontColor: '#cfc9c0' },
+              { text: 'Cumulatief', fillStyle: 'rgba(0,0,0,0)', strokeStyle: CHART_TEXT, lineWidth: 3, fontColor: '#cfc9c0' },
+            ],
+          },
+        },
+        tooltip: { callbacks: { label: context => `${context.dataset.label}: ${fmt(context.parsed.y)}` } },
       },
       scales: {
         x: { ticks: { color: '#a8a199', font: { size: 11 } }, grid: { color: '#2e2b28' } },
-        y: { ticks: { color: '#a8a199', font: { size: 11 }, callback: value => fmt(value) }, grid: { color: '#2e2b28' } },
+        y: { beginAtZero: true, ticks: { color: '#a8a199', font: { size: 11 }, callback: value => fmt(value) }, grace: '12%', grid: zeroLineGrid },
       },
     },
   });
