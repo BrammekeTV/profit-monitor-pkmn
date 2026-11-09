@@ -499,6 +499,7 @@ export function ensureAppState(rawState, options = {}) {
 
   const legacyTrades = Array.isArray(parsed?.trades) ? parsed.trades : [];
   const { tabs } = normalizeTabs(parsed?.tabs, { ...options, legacyTrades });
+  const setNameFields = normalizeSetNameFields(parsed);
 
   if (!tabs.length) {
     const defaultTab = createTab(DEFAULT_TAB_NAME, {
@@ -507,7 +508,7 @@ export function ensureAppState(rawState, options = {}) {
       trades: legacyTrades,
     });
     defaultTab.trades = assignUniqueIds(defaultTab.trades);
-    return { tabs: [defaultTab], activeTabId: defaultTab.id };
+    return { tabs: [defaultTab], activeTabId: defaultTab.id, ...setNameFields };
   }
 
   const firstAvailableTab = tabs.find(tab => !tab.archived) || tabs[0];
@@ -515,7 +516,7 @@ export function ensureAppState(rawState, options = {}) {
     ? parsed.activeTabId
     : firstAvailableTab.id;
 
-  return { tabs, activeTabId };
+  return { tabs, activeTabId, ...setNameFields };
 }
 
 export function getActiveTab(state) {
@@ -1100,6 +1101,337 @@ export function computeAverageCardProfitMargin(transactions) {
   return margins.length
     ? roundMoney(margins.reduce((sum, margin) => sum + margin, 0) / margins.length)
     : null;
+}
+
+// ── Sets ────────────────────────────────────────────────────────────────
+// Cardmarket set abbreviations → full set names. Only codes that were checked
+// against a source are listed; anything else shows as its bare code.
+export const SET_NAMES = Object.freeze({
+  // Mega Evolution
+  MEG: 'Mega Evolution',
+  PFL: 'Phantasmal Flames',
+  ASC: 'Ascended Heroes',
+  POR: 'Perfect Order',
+  CRI: 'Chaos Rising',
+  PBL: 'Pitch Black',
+  '30C': '30th Celebration',
+  DLR: 'Delta Reign',
+  MEP: 'Mega Evolution Black Star Promos',
+  // Scarlet & Violet
+  SVI: 'Scarlet & Violet',
+  PAL: 'Paldea Evolved',
+  OBF: 'Obsidian Flames',
+  MEW: '151',
+  PAR: 'Paradox Rift',
+  PAF: 'Paldean Fates',
+  TEF: 'Temporal Forces',
+  TWM: 'Twilight Masquerade',
+  SFA: 'Shrouded Fable',
+  SCR: 'Stellar Crown',
+  SSP: 'Surging Sparks',
+  PRE: 'Prismatic Evolutions',
+  JTG: 'Journey Together',
+  DRI: 'Destined Rivals',
+  BLK: 'Black Bolt',
+  WHT: 'White Flare',
+  SVP: 'Scarlet & Violet Black Star Promos',
+  // Sword & Shield
+  SSH: 'Sword & Shield',
+  RCL: 'Rebel Clash',
+  DAA: 'Darkness Ablaze',
+  CPA: "Champion's Path",
+  VIV: 'Vivid Voltage',
+  SHF: 'Shining Fates',
+  BST: 'Battle Styles',
+  CRE: 'Chilling Reign',
+  EVS: 'Evolving Skies',
+  CEL: 'Celebrations',
+  FST: 'Fusion Strike',
+  BRS: 'Brilliant Stars',
+  ASR: 'Astral Radiance',
+  PGO: 'Pokémon GO',
+  LOR: 'Lost Origin',
+  SIT: 'Silver Tempest',
+  CRZ: 'Crown Zenith',
+  SWSH: 'Sword & Shield Black Star Promos',
+  // Sun & Moon
+  SUM: 'Sun & Moon',
+  GRI: 'Guardians Rising',
+  BUS: 'Burning Shadows',
+  SLG: 'Shining Legends',
+  CIN: 'Crimson Invasion',
+  UPR: 'Ultra Prism',
+  FLI: 'Forbidden Light',
+  CES: 'Celestial Storm',
+  DRM: 'Dragon Majesty',
+  LOT: 'Lost Thunder',
+  TEU: 'Team Up',
+  DET: 'Detective Pikachu',
+  UNB: 'Unbroken Bonds',
+  UNM: 'Unified Minds',
+  HIF: 'Hidden Fates',
+  CEC: 'Cosmic Eclipse',
+  SM: 'Sun & Moon Black Star Promos',
+  // XY
+  KSS: 'Kalos Starter Set',
+  XY: 'XY',
+  FLF: 'Flashfire',
+  FFI: 'Furious Fists',
+  PHF: 'Phantom Forces',
+  PRC: 'Primal Clash',
+  DCR: 'Double Crisis',
+  ROS: 'Roaring Skies',
+  AOR: 'Ancient Origins',
+  BKT: 'BREAKthrough',
+  BKP: 'BREAKpoint',
+  GEN: 'Generations',
+  FCO: 'Fates Collide',
+  STS: 'Steam Siege',
+  EVO: 'Evolutions',
+  // Black & White
+  BLW: 'Black & White',
+  EPO: 'Emerging Powers',
+  NVI: 'Noble Victories',
+  NXD: 'Next Destinies',
+  DEX: 'Dark Explorers',
+  DRX: 'Dragons Exalted',
+  DRV: 'Dragon Vault',
+  BCR: 'Boundaries Crossed',
+  PLS: 'Plasma Storm',
+  PLF: 'Plasma Freeze',
+  PLB: 'Plasma Blast',
+  LTR: 'Legendary Treasures',
+  // HeartGold & SoulSilver / Call of Legends
+  HS: 'HeartGold & SoulSilver',
+  UL: 'Unleashed',
+  UD: 'Undaunted',
+  TM: 'Triumphant',
+  CL: 'Call of Legends',
+  // Diamond & Pearl / Platinum
+  DP: 'Diamond & Pearl',
+  MT: 'Mysterious Treasures',
+  SW: 'Secret Wonders',
+  GE: 'Great Encounters',
+  MD: 'Majestic Dawn',
+  LA: 'Legends Awakened',
+  SF: 'Stormfront',
+  PL: 'Platinum',
+  RR: 'Rising Rivals',
+  SV: 'Supreme Victors',
+  AR: 'Arceus',
+  // EX
+  RS: 'Ruby & Sapphire',
+  SS: 'Sandstorm',
+  DR: 'Dragon',
+  MA: 'Team Magma vs Team Aqua',
+  HL: 'Hidden Legends',
+  RG: 'FireRed & LeafGreen',
+  TRR: 'Team Rocket Returns',
+  DX: 'Deoxys',
+  EM: 'Emerald',
+  UF: 'Unseen Forces',
+  DS: 'Delta Species',
+  LM: 'Legend Maker',
+  HP: 'Holon Phantoms',
+  CG: 'Crystal Guardians',
+  DF: 'Dragon Frontiers',
+  PK: 'Power Keepers',
+  // Wizards of the Coast era
+  BS: 'Base Set',
+  JU: 'Jungle',
+  FO: 'Fossil',
+  B2: 'Base Set 2',
+  TR: 'Team Rocket',
+  G1: 'Gym Heroes',
+  G2: 'Gym Challenge',
+  N1: 'Neo Genesis',
+  N2: 'Neo Discovery',
+  N3: 'Neo Revelation',
+  N4: 'Neo Destiny',
+  SI: 'Southern Islands',
+  LC: 'Legendary Collection',
+  EX: 'Expedition Base Set',
+  AQ: 'Aquapolis',
+  SK: 'Skyridge',
+  // Promos and special products
+  PR: 'Promos',
+  DPPR: 'DP Black Star Promos',
+  CLV: 'Pokémon Trading Card Game Classic: Venusaur & Lugia ex Deck',
+  CBB3C: 'Gem Pack Vol. 3',
+  // Japanese/Korean sets, by their Japanese set name in English
+  EC1: 'Base Expansion Pack',
+  MFO: 'Mystery of the Fossils',
+  XY5t: 'Tidal Storm',
+  sm9b: 'Full Metal Wall',
+  s9a: 'Battle Region',
+  s10b: 'Pokémon GO',
+  s12: 'Paradigm Trigger',
+  s12a: 'VSTAR Universe',
+  sv2a: 'Pokémon Card 151',
+  sv4a: 'Shiny Treasure ex',
+  sv4K: 'Ancient Roar',
+  sv4M: 'Future Flash',
+  sv5K: 'Wild Force',
+  sv6: 'Mask of Change',
+  sv7a: 'Paradise Dragona',
+  sv8: 'Super Electric Breaker',
+  sv10: 'The Glory of Team Rocket',
+  sv11B: 'Black Bolt',
+  sv11W: 'White Flare',
+  m1L: 'Mega Brave',
+  m1S: 'Mega Symphonia',
+  m3: 'Nihil Zero',
+  m5: 'Abyss Eye',
+  m6: 'Storm Emeralda',
+});
+
+const NUMBER_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+  'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen', 'Twenty'];
+
+// The set code is the first run of letters/digits after an opening bracket:
+// "Gengar ex (30C 154)" → 30C, "Moltres (PPS9 PFL 014)" → PPS9.
+// Brackets that are clearly not a set — "(Reverse Holo)", "(Korean)" — are
+// skipped: a code needs a card number after it, or must be all caps/digits.
+export function extractSetCode(cardName = '') {
+  for (const match of String(cardName ?? '').matchAll(/\(([A-Za-z0-9]+)((?:\s+[^\s()]+)*)\s*\)/g)) {
+    const [, code, rest] = match;
+    if (/\d/.test(rest) || /^[A-Z0-9]+$/.test(code)) return code;
+  }
+  return '';
+}
+
+export function getBuiltInSetName(code = '') {
+  return getSetName(code, {});
+}
+
+// Names typed in by the user win over the built-in list.
+export function getSetName(code = '', customNames = {}) {
+  const value = String(code ?? '').trim();
+  if (!value) return '';
+  if (customNames && Object.hasOwn(customNames, value)) return customNames[value];
+  if (Object.hasOwn(SET_NAMES, value)) return SET_NAMES[value];
+  const prizePack = /^PPS(\d+)$/.exec(value);
+  if (prizePack) {
+    const number = Number(prizePack[1]);
+    return `Play! Pokémon Prize Pack Series ${NUMBER_WORDS[number] ?? number}`;
+  }
+  const mcdonalds = /^MCD(\d{2})$/.exec(value);
+  if (mcdonalds) return `McDonald's Collection 20${mcdonalds[1]}`;
+  // Any set can be prefixed with a lowercase x for its "Additionals".
+  if (value.length > 1 && value[0] === 'x') {
+    const base = getSetName(value.slice(1), customNames);
+    if (base) return `${base}: Additionals`;
+  }
+  return '';
+}
+
+// ── User-entered set names ──────────────────────────────────────────────
+export const SET_CODE_PATTERN = /^[A-Za-z0-9]{1,12}$/;
+export const SET_NAMES_REMINDER_DAYS = 30;
+const SET_NAME_MAX_LENGTH = 120;
+
+function addDaysISO(iso, days) {
+  const date = new Date(`${iso}T12:00:00`);
+  date.setDate(date.getDate() + days);
+  return localDateISO(date);
+}
+
+// Keeps only valid entries, and drops names that the built-in list now
+// already gives the same way (they have been "hard implemented").
+export function normalizeSetNames(raw) {
+  const names = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return names;
+  for (const [code, value] of Object.entries(raw)) {
+    const name = typeof value === 'string' ? value.trim().slice(0, SET_NAME_MAX_LENGTH) : '';
+    if (!SET_CODE_PATTERN.test(code) || !name) continue;
+    if (name === getBuiltInSetName(code)) continue;
+    names[code] = name;
+  }
+  return names;
+}
+
+function normalizeSetNameFields(parsed) {
+  const setNames = normalizeSetNames(parsed?.setNames);
+  const fields = { setNames };
+  const reminder = parsed?.setNamesReminderAt;
+  if (typeof reminder === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(reminder) && Object.keys(setNames).length) {
+    fields.setNamesReminderAt = reminder;
+  }
+  return fields;
+}
+
+// Sets (or, with an empty name, removes) the user's own name for a set code.
+// The first own name starts the monthly "send these to Claude" reminder.
+export function setCustomSetName(state, code, name, options = {}) {
+  const value = String(code ?? '').trim();
+  if (!SET_CODE_PATTERN.test(value)) return state;
+  const setNames = { ...(state.setNames || {}) };
+  const trimmed = String(name ?? '').trim().slice(0, SET_NAME_MAX_LENGTH);
+  if (!trimmed || trimmed === getBuiltInSetName(value)) {
+    delete setNames[value];
+  } else {
+    setNames[value] = trimmed;
+  }
+  const next = { ...state, setNames };
+  if (!Object.keys(setNames).length) {
+    delete next.setNamesReminderAt;
+  } else if (!next.setNamesReminderAt) {
+    next.setNamesReminderAt = addDaysISO(todayISO(options.now), SET_NAMES_REMINDER_DAYS);
+  }
+  return next;
+}
+
+export function isSetNamesReminderDue(state, now = new Date()) {
+  if (!Object.keys(state?.setNames || {}).length || !state.setNamesReminderAt) return false;
+  return state.setNamesReminderAt <= todayISO(now);
+}
+
+export function snoozeSetNamesReminder(state, days = SET_NAMES_REMINDER_DAYS, now = new Date()) {
+  if (!Object.keys(state?.setNames || {}).length) return state;
+  return { ...state, setNamesReminderAt: addDaysISO(todayISO(now), days) };
+}
+
+// "CODE = Name" lines, ready to paste to Claude.
+export function formatSetNamesForExport(setNames = {}) {
+  return Object.entries(setNames)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([code, name]) => `${code} = ${name}`)
+    .join('\n');
+}
+
+// Sales per set, built on the per-card FIFO rows so profit matches the
+// "Winst per kaart" view. Only sets with at least one sale are returned,
+// best-selling (highest revenue) first.
+export function computeSetSales(transactions = [], customNames = {}) {
+  const sets = new Map();
+  const cardRows = computeProfitByCard(transactions.filter(transaction => !isBulkTransaction(transaction)));
+
+  for (const row of cardRows) {
+    if (!row.soldQty) continue;
+    const code = extractSetCode(row.cardName);
+    if (!code) continue;
+    if (!sets.has(code)) {
+      sets.set(code, { code, name: getSetName(code, customNames), isCustom: Boolean(customNames && Object.hasOwn(customNames, code)), soldQty: 0, soldValue: 0, allocatedBuyCost: 0, realizedProfit: 0, cards: new Set() });
+    }
+    const set = sets.get(code);
+    set.soldQty += row.soldQty;
+    set.soldValue = roundMoney(set.soldValue + row.soldValue);
+    set.allocatedBuyCost = roundMoney(set.allocatedBuyCost + row.allocatedBuyCost);
+    set.realizedProfit = roundMoney(set.realizedProfit + row.realizedProfit);
+    set.cards.add(normalizeCardKey(row.cardName));
+  }
+
+  return Array.from(sets.values())
+    .map(({ cards, ...set }) => ({
+      ...set,
+      cardCount: cards.size,
+      profitMargin: set.allocatedBuyCost > 0
+        ? roundMoney((set.realizedProfit / set.allocatedBuyCost) * 100)
+        : null,
+    }))
+    .sort((left, right) => right.soldValue - left.soldValue
+      || right.soldQty - left.soldQty
+      || left.code.localeCompare(right.code));
 }
 
 export function extractCardmarketOrderIds(description = '') {

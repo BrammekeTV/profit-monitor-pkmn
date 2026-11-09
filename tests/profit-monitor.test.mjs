@@ -42,6 +42,13 @@ import {
   assignUniqueIds,
   getGradeNumber,
   formatGrade,
+  extractSetCode,
+  getSetName,
+  computeSetSales,
+  setCustomSetName,
+  isSetNamesReminderDue,
+  snoozeSetNamesReminder,
+  formatSetNamesForExport,
 } from '../profit-monitor-core.mjs';
 
 test('legacy data migrates into a default tab and repairs invalid active tabs', () => {
@@ -733,4 +740,90 @@ test('tabs can be moved to a new position', () => {
   assert.equal(moveTab(state, 'b', 1), state);
   assert.equal(moveTab(state, 'x', 0), state);
   assert.equal(moveTab(state, 'c', 0).activeTabId, 'b');
+});
+
+test('extractSetCode takes the first code after an opening bracket', () => {
+  assert.equal(extractSetCode('Gengar ex (30C 154)'), '30C');
+  assert.equal(extractSetCode('Sleep! (TR 79)'), 'TR');
+  assert.equal(extractSetCode('Mega Sableye & Tyranitar GX (UNM 126)'), 'UNM');
+  assert.equal(extractSetCode('Gengar (xPOR 050)'), 'xPOR');
+  assert.equal(extractSetCode('Moltres (PPS9 PFL 014)'), 'PPS9');
+  assert.equal(extractSetCode("Lt. Surge's Bargain (m1L 090) (Korean)"), 'm1L');
+  assert.equal(extractSetCode('Ancient Mew (PR)'), 'PR');
+  assert.equal(extractSetCode('Pikachu (Holo Version)'), '');
+  assert.equal(extractSetCode('Booster bundle'), '');
+});
+
+test('getSetName handles Prize Pack Series, Additionals and unknown codes', () => {
+  assert.equal(getSetName('POR'), 'Perfect Order');
+  assert.equal(getSetName('xPOR'), 'Perfect Order: Additionals');
+  assert.equal(getSetName('PPS9'), 'Play! Pokémon Prize Pack Series Nine');
+  assert.equal(getSetName('PPS10'), 'Play! Pokémon Prize Pack Series Ten');
+  assert.equal(getSetName('MCD18'), "McDonald's Collection 2018");
+  assert.equal(getSetName('XY'), 'XY');
+  assert.equal(getSetName('sv7a'), 'Paradise Dragona');
+  assert.equal(getSetName('xm1L'), 'Mega Brave: Additionals');
+  assert.equal(getSetName('ZZZ'), '');
+  assert.equal(getSetName('xZZZ'), '');
+});
+
+test('computeSetSales groups sold cards per set, best revenue first', () => {
+  const sets = computeSetSales([
+    { type: 'Gekocht', amount: -10, cardName: 'Gengar (xPOR 050)', quantity: 2, date: '2026-01-01' },
+    { type: 'Verkocht', amount: 15, cardName: 'Gengar (xPOR 050)', quantity: 1, date: '2026-01-02' },
+    { type: 'Verkocht', amount: 40, cardName: 'Gengar ex (30C 154)', quantity: 1, date: '2026-01-02' },
+    { type: 'Verkocht', amount: 5, cardName: 'Lycanroc (30C 138)', quantity: 2, date: '2026-01-03' },
+    { type: 'Gekocht', amount: -50, cardName: 'Moltres (PPS9 PFL 014)', quantity: 1, date: '2026-01-03' },
+    { type: 'Verkocht', amount: 20, description: 'Bulk (MEG 001)', cardName: 'Bulk (MEG 001)', quantity: 1, date: '2026-01-04' },
+  ]);
+  assert.deepEqual(sets.map(set => set.code), ['30C', 'xPOR']);
+  assert.equal(sets[0].soldQty, 3);
+  assert.equal(sets[0].cardCount, 2);
+  assert.equal(sets[0].soldValue, 45);
+  assert.equal(sets[0].profitMargin, null);
+  assert.equal(sets[1].name, 'Perfect Order: Additionals');
+  assert.equal(sets[1].realizedProfit, 10);
+  assert.equal(sets[1].profitMargin, 200);
+});
+
+test('own set names override the built-in list and survive a reload', () => {
+  const now = new Date('2026-11-09T12:00:00');
+  let state = ensureAppState(null);
+  state = setCustomSetName(state, 'DLX', 'Deluxe Thing', { now });
+  state = setCustomSetName(state, 'POR', 'Perfect Order (eigen)', { now });
+  state = setCustomSetName(state, 'bad code!', 'x', { now });
+  assert.deepEqual(state.setNames, { DLX: 'Deluxe Thing', POR: 'Perfect Order (eigen)' });
+  assert.equal(getSetName('DLX', state.setNames), 'Deluxe Thing');
+  assert.equal(getSetName('xDLX', state.setNames), 'Deluxe Thing: Additionals');
+  assert.equal(getSetName('POR', state.setNames), 'Perfect Order (eigen)');
+  assert.equal(state.setNamesReminderAt, '2026-12-09');
+
+  const reloaded = ensureAppState(JSON.stringify(state));
+  assert.deepEqual(reloaded.setNames, state.setNames);
+  assert.equal(reloaded.setNamesReminderAt, '2026-12-09');
+
+  const sets = computeSetSales([{ type: 'Verkocht', amount: 5, cardName: 'Pikachu (DLX 001)', quantity: 1, date: '2026-01-01' }], state.setNames);
+  assert.equal(sets[0].name, 'Deluxe Thing');
+  assert.equal(sets[0].isCustom, true);
+
+  // Empty name or the built-in name removes the own name again.
+  state = setCustomSetName(state, 'POR', 'Perfect Order', { now });
+  state = setCustomSetName(state, 'DLX', '  ', { now });
+  assert.deepEqual(state.setNames, {});
+  assert.equal(state.setNamesReminderAt, undefined);
+});
+
+test('names that are now built in are dropped on load', () => {
+  const state = ensureAppState({ tabs: [], setNames: { PBL: 'Pitch Black', NEW: 'Brand New' }, setNamesReminderAt: '2026-12-01' });
+  assert.deepEqual(state.setNames, { NEW: 'Brand New' });
+});
+
+test('set names reminder is due monthly and can be snoozed', () => {
+  let state = setCustomSetName(ensureAppState(null), 'NEW', 'Brand New', { now: new Date('2026-11-09T12:00:00') });
+  assert.equal(isSetNamesReminderDue(state, new Date('2026-12-08T12:00:00')), false);
+  assert.equal(isSetNamesReminderDue(state, new Date('2026-12-09T12:00:00')), true);
+  state = snoozeSetNamesReminder(state, 30, new Date('2026-12-09T12:00:00'));
+  assert.equal(state.setNamesReminderAt, '2027-01-08');
+  assert.equal(isSetNamesReminderDue(state, new Date('2026-12-20T12:00:00')), false);
+  assert.equal(formatSetNamesForExport({ ZZ: 'Zed', AA: 'Ay' }), 'AA = Ay\nZZ = Zed');
 });
