@@ -499,6 +499,7 @@ export function ensureAppState(rawState, options = {}) {
 
   const legacyTrades = Array.isArray(parsed?.trades) ? parsed.trades : [];
   const { tabs } = normalizeTabs(parsed?.tabs, { ...options, legacyTrades });
+  const setNameFields = normalizeSetNameFields(parsed);
 
   if (!tabs.length) {
     const defaultTab = createTab(DEFAULT_TAB_NAME, {
@@ -507,7 +508,7 @@ export function ensureAppState(rawState, options = {}) {
       trades: legacyTrades,
     });
     defaultTab.trades = assignUniqueIds(defaultTab.trades);
-    return { tabs: [defaultTab], activeTabId: defaultTab.id };
+    return { tabs: [defaultTab], activeTabId: defaultTab.id, ...setNameFields };
   }
 
   const firstAvailableTab = tabs.find(tab => !tab.archived) || tabs[0];
@@ -515,7 +516,7 @@ export function ensureAppState(rawState, options = {}) {
     ? parsed.activeTabId
     : firstAvailableTab.id;
 
-  return { tabs, activeTabId };
+  return { tabs, activeTabId, ...setNameFields };
 }
 
 export function getActiveTab(state) {
@@ -1299,9 +1300,15 @@ export function extractSetCode(cardName = '') {
   return '';
 }
 
-export function getSetName(code = '') {
+export function getBuiltInSetName(code = '') {
+  return getSetName(code, {});
+}
+
+// Names typed in by the user win over the built-in list.
+export function getSetName(code = '', customNames = {}) {
   const value = String(code ?? '').trim();
   if (!value) return '';
+  if (customNames && Object.hasOwn(customNames, value)) return customNames[value];
   if (Object.hasOwn(SET_NAMES, value)) return SET_NAMES[value];
   const prizePack = /^PPS(\d+)$/.exec(value);
   if (prizePack) {
@@ -1312,16 +1319,90 @@ export function getSetName(code = '') {
   if (mcdonalds) return `McDonald's Collection 20${mcdonalds[1]}`;
   // Any set can be prefixed with a lowercase x for its "Additionals".
   if (value.length > 1 && value[0] === 'x') {
-    const base = getSetName(value.slice(1));
+    const base = getSetName(value.slice(1), customNames);
     if (base) return `${base}: Additionals`;
   }
   return '';
 }
 
+// ── User-entered set names ──────────────────────────────────────────────
+export const SET_CODE_PATTERN = /^[A-Za-z0-9]{1,12}$/;
+export const SET_NAMES_REMINDER_DAYS = 30;
+const SET_NAME_MAX_LENGTH = 120;
+
+function addDaysISO(iso, days) {
+  const date = new Date(`${iso}T12:00:00`);
+  date.setDate(date.getDate() + days);
+  return localDateISO(date);
+}
+
+// Keeps only valid entries, and drops names that the built-in list now
+// already gives the same way (they have been "hard implemented").
+export function normalizeSetNames(raw) {
+  const names = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return names;
+  for (const [code, value] of Object.entries(raw)) {
+    const name = typeof value === 'string' ? value.trim().slice(0, SET_NAME_MAX_LENGTH) : '';
+    if (!SET_CODE_PATTERN.test(code) || !name) continue;
+    if (name === getBuiltInSetName(code)) continue;
+    names[code] = name;
+  }
+  return names;
+}
+
+function normalizeSetNameFields(parsed) {
+  const setNames = normalizeSetNames(parsed?.setNames);
+  const fields = { setNames };
+  const reminder = parsed?.setNamesReminderAt;
+  if (typeof reminder === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(reminder) && Object.keys(setNames).length) {
+    fields.setNamesReminderAt = reminder;
+  }
+  return fields;
+}
+
+// Sets (or, with an empty name, removes) the user's own name for a set code.
+// The first own name starts the monthly "send these to Claude" reminder.
+export function setCustomSetName(state, code, name, options = {}) {
+  const value = String(code ?? '').trim();
+  if (!SET_CODE_PATTERN.test(value)) return state;
+  const setNames = { ...(state.setNames || {}) };
+  const trimmed = String(name ?? '').trim().slice(0, SET_NAME_MAX_LENGTH);
+  if (!trimmed || trimmed === getBuiltInSetName(value)) {
+    delete setNames[value];
+  } else {
+    setNames[value] = trimmed;
+  }
+  const next = { ...state, setNames };
+  if (!Object.keys(setNames).length) {
+    delete next.setNamesReminderAt;
+  } else if (!next.setNamesReminderAt) {
+    next.setNamesReminderAt = addDaysISO(todayISO(options.now), SET_NAMES_REMINDER_DAYS);
+  }
+  return next;
+}
+
+export function isSetNamesReminderDue(state, now = new Date()) {
+  if (!Object.keys(state?.setNames || {}).length || !state.setNamesReminderAt) return false;
+  return state.setNamesReminderAt <= todayISO(now);
+}
+
+export function snoozeSetNamesReminder(state, days = SET_NAMES_REMINDER_DAYS, now = new Date()) {
+  if (!Object.keys(state?.setNames || {}).length) return state;
+  return { ...state, setNamesReminderAt: addDaysISO(todayISO(now), days) };
+}
+
+// "CODE = Name" lines, ready to paste to Claude.
+export function formatSetNamesForExport(setNames = {}) {
+  return Object.entries(setNames)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([code, name]) => `${code} = ${name}`)
+    .join('\n');
+}
+
 // Sales per set, built on the per-card FIFO rows so profit matches the
 // "Winst per kaart" view. Only sets with at least one sale are returned,
 // best-selling (highest revenue) first.
-export function computeSetSales(transactions = []) {
+export function computeSetSales(transactions = [], customNames = {}) {
   const sets = new Map();
   const cardRows = computeProfitByCard(transactions.filter(transaction => !isBulkTransaction(transaction)));
 
@@ -1330,7 +1411,7 @@ export function computeSetSales(transactions = []) {
     const code = extractSetCode(row.cardName);
     if (!code) continue;
     if (!sets.has(code)) {
-      sets.set(code, { code, name: getSetName(code), soldQty: 0, soldValue: 0, allocatedBuyCost: 0, realizedProfit: 0, cards: new Set() });
+      sets.set(code, { code, name: getSetName(code, customNames), isCustom: Boolean(customNames && Object.hasOwn(customNames, code)), soldQty: 0, soldValue: 0, allocatedBuyCost: 0, realizedProfit: 0, cards: new Set() });
     }
     const set = sets.get(code);
     set.soldQty += row.soldQty;

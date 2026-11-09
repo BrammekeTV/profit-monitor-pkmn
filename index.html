@@ -1362,6 +1362,127 @@
       #widgetSetSales .widget-header { flex-wrap: wrap; padding: 6px 8px 8px 12px; }
     }
 
+    /* eigen setnamen */
+    .set-name-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      padding: 2px 4px;
+      margin: -2px -4px;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .set-name-btn:hover .set-name, .set-name-btn:focus-visible .set-name { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; }
+    .set-name-btn:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+    .set-edit-icon { color: var(--muted); font-size: 13px; opacity: 0; transition: opacity .12s; }
+    .set-name-btn:hover .set-edit-icon, .set-name-btn:focus-visible .set-edit-icon, .set-name-btn.unknown .set-edit-icon { opacity: 1; }
+    .set-own-tag {
+      padding: 1px 6px;
+      border: 1px solid var(--graded);
+      color: var(--graded);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .set-name-form { display: flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; }
+    .set-name-input {
+      flex: 1 1 auto;
+      min-width: 0;
+      height: 32px;
+      padding: 0 10px;
+      background: var(--bg);
+      border: 2px solid var(--accent);
+      color: var(--text);
+      font: inherit;
+      font-size: 14px;
+    }
+    .set-name-input:focus { outline: none; box-shadow: 0 0 0 2px var(--red-dim); }
+    .set-name-save, .set-name-cancel {
+      height: 32px;
+      padding: 0 12px;
+      border: 2px solid var(--accent);
+      background: var(--accent);
+      color: var(--on-accent);
+      font: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .set-name-cancel { background: transparent; color: var(--text2); border-color: var(--border); padding: 0 10px; }
+    .set-footnote-link {
+      padding: 0;
+      border: 0;
+      background: none;
+      color: var(--graded);
+      font: inherit;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      cursor: pointer;
+    }
+
+    .setnames-reminder {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(220px, 340px) auto;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 22px;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 3px solid var(--ink);
+      border-left: 6px solid var(--graded);
+      box-shadow: var(--block);
+    }
+    .setnames-reminder[hidden] { display: none; }
+    .setnames-reminder-head { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .setnames-reminder-title { font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--graded); }
+    .setnames-reminder-text { color: var(--text2); font-size: 13px; }
+    .setnames-reminder-list {
+      width: 100%;
+      resize: vertical;
+      padding: 6px 8px;
+      background: var(--bg);
+      border: 2px solid var(--border);
+      color: var(--text);
+      font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    .setnames-reminder-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .setnames-btn {
+      height: 32px;
+      padding: 0 14px;
+      border: 2px solid var(--border);
+      background: transparent;
+      color: var(--text2);
+      font: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transform: var(--slant);
+      white-space: nowrap;
+    }
+    .setnames-btn.primary { background: var(--graded); border-color: var(--graded); color: #1a1408; }
+    .setnames-btn:hover { border-color: var(--muted); color: var(--text); }
+    .setnames-btn.primary:hover { color: #000; }
+    .setnames-reminder-msg { color: var(--red); font-size: 12px; flex-basis: 100%; }
+    .setnames-reminder-msg:empty { display: none; }
+
+    @media (max-width: 1180px) {
+      .setnames-reminder { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 760px) {
+      .set-name-form { flex-wrap: wrap; }
+      .set-name-input { flex-basis: 100%; }
+    }
+
     /* ── trades ── */
     .trade-form {
       background: var(--surface);
@@ -1761,6 +1882,7 @@
 
   <!-- main table -->
   <main class="main">
+    <div class="setnames-reminder" id="setNamesReminder" hidden></div>
     <!-- Transactions view -->
     <div id="transactionsView">
       <div class="section-header">
@@ -2394,6 +2516,10 @@ import {
   computeCardmarketSurplus,
   computeProfitByCard,
   computeSetSales,
+  formatSetNamesForExport,
+  isSetNamesReminderDue,
+  setCustomSetName,
+  snoozeSetNamesReminder,
   computeSummary,
   computeTradeAnalytics,
   computeTradePerformanceSeries,
@@ -3390,14 +3516,20 @@ function renderAverageCardMarginWidget(txns) {
 
 // ── Best verkopende sets ──────────────────────────────────────────────
 const SET_SALES_LIMIT = 10;
+const SET_NAMES_SNOOZE_DAYS = 3;
 let setSalesSort = 'soldValue';
 let setSalesShowAll = false;
 let lastSetSalesTxns = [];
+let editingSetCode = null;
+
+function customSetNames() {
+  return appState.setNames || {};
+}
 
 function renderSetSalesWidget(txns) {
   lastSetSalesTxns = txns;
   const body = document.getElementById('wbSetSales');
-  const sets = computeSetSales(txns);
+  const sets = computeSetSales(txns, customSetNames());
   if (!sets.length) {
     body.innerHTML = '<div class="widget-empty">Nog geen verkochte kaarten met een setcode, zoals "Gengar ex (30C 154)".</div>';
     return;
@@ -3406,19 +3538,33 @@ function renderSetSalesWidget(txns) {
   const sorted = setSalesSort === 'soldValue'
     ? sets
     : sets.slice().sort((a, b) => b[setSalesSort] - a[setSalesSort] || b.soldValue - a.soldValue);
-  const visible = setSalesShowAll ? sorted : sorted.slice(0, SET_SALES_LIMIT);
+  let visible = setSalesShowAll ? sorted : sorted.slice(0, SET_SALES_LIMIT);
+  // Keep the row being edited on screen, even when it falls outside the top 10.
+  if (editingSetCode && !visible.some(set => set.code === editingSetCode)) {
+    const editing = sorted.find(set => set.code === editingSetCode);
+    if (editing) visible = [...visible, editing];
+  }
   const totalRevenue = sets.reduce((sum, set) => sum + set.soldValue, 0);
 
-  const rows = visible.map((set, index) => {
+  const rows = visible.map(set => {
+    const rank = sorted.indexOf(set) + 1;
     const share = totalRevenue > 0 ? (set.soldValue / totalRevenue) * 100 : 0;
-    const name = set.name
-      ? `<span class="set-name" title="${escAttr(set.name)}">${escHTML(set.name)}</span>`
-      : '<span class="set-name unknown">Naam nog niet bekend</span>';
+    const name = set.code === editingSetCode
+      ? `<form class="set-name-form" data-set-code="${escAttr(set.code)}">
+          <input type="text" class="set-name-input" size="1" maxlength="120" value="${escAttr(set.isCustom ? set.name : (set.name || ''))}"
+            placeholder="Volledige setnaam" aria-label="Naam voor set ${escAttr(set.code)}">
+          <button type="submit" class="set-name-save">Opslaan</button>
+          <button type="button" class="set-name-cancel" data-set-cancel title="Annuleren (Esc)">✕</button>
+        </form>`
+      : `<button type="button" class="set-name-btn${set.name ? '' : ' unknown'}" data-set-edit="${escAttr(set.code)}"
+          title="${set.name ? 'Naam aanpassen' : 'Naam toevoegen'}">${set.name
+            ? `<span class="set-name">${escHTML(set.name)}</span>`
+            : '<span class="set-name unknown">Naam nog niet bekend, klik om toe te voegen</span>'}${set.isCustom ? '<span class="set-own-tag">eigen</span>' : ''}<span class="set-edit-icon" aria-hidden="true">✎</span></button>`;
     const margin = set.profitMargin === null
       ? '<span class="neutral">—</span>'
       : `<span class="${set.profitMargin >= 0 ? 'positive' : 'negative'}">${escHTML(fmtPercent(set.profitMargin))}</span>`;
-    return `<tr class="${index === 0 ? 'top-1' : ''}">
-      <td class="set-col-rank">${index + 1}</td>
+    return `<tr class="${rank === 1 ? 'top-1' : ''}">
+      <td class="set-col-rank">${rank}</td>
       <td class="set-col-name">
         <div class="set-name-wrap"><span class="set-code">${escHTML(set.code)}</span>${name}</div>
         <span class="set-share" title="${escAttr(share.toFixed(1).replace('.', ','))}% van de omzet"><span style="width:${share.toFixed(2)}%"></span></span>
@@ -3433,6 +3579,10 @@ function renderSetSalesWidget(txns) {
 
   const more = sets.length > SET_SALES_LIMIT
     ? `<div class="set-more"><button type="button" id="setSalesToggle">${setSalesShowAll ? 'Toon top ' + SET_SALES_LIMIT : 'Toon alle ' + sets.length + ' sets'}</button></div>`
+    : '';
+  const ownCount = Object.keys(customSetNames()).length;
+  const ownLink = ownCount
+    ? ` · <button type="button" class="set-footnote-link" data-set-names-copy>${ownCount} eigen ${ownCount === 1 ? 'naam' : 'namen'} kopiëren voor Claude</button>`
     : '';
 
   body.innerHTML = `
@@ -3449,7 +3599,20 @@ function renderSetSalesWidget(txns) {
       <tbody>${rows}</tbody>
     </table>
     ${more}
-    <div class="set-footnote">Winst volgens FIFO, zoals bij Winst per kaart. Bulk telt niet mee.</div>`;
+    <div class="set-footnote">Klik op een setnaam om hem toe te voegen of aan te passen. Winst volgens FIFO, zoals bij Winst per kaart. Bulk telt niet mee.${ownLink}</div>`;
+
+  if (editingSetCode) {
+    const input = body.querySelector('.set-name-input');
+    if (input) { input.focus(); input.select(); }
+  }
+}
+
+function saveCustomSetName(code, name) {
+  appState = setCustomSetName(appState, code, name);
+  saveToStorage();
+  editingSetCode = null;
+  renderSetSalesWidget(lastSetSalesTxns);
+  renderSetNamesReminder();
 }
 
 document.getElementById('widgetSetSales').addEventListener('click', event => {
@@ -3467,6 +3630,100 @@ document.getElementById('widgetSetSales').addEventListener('click', event => {
   if (event.target.closest('#setSalesToggle')) {
     setSalesShowAll = !setSalesShowAll;
     renderSetSalesWidget(lastSetSalesTxns);
+    return;
+  }
+  const editBtn = event.target.closest('[data-set-edit]');
+  if (editBtn) {
+    editingSetCode = editBtn.dataset.setEdit;
+    renderSetSalesWidget(lastSetSalesTxns);
+    return;
+  }
+  if (event.target.closest('[data-set-cancel]')) {
+    editingSetCode = null;
+    renderSetSalesWidget(lastSetSalesTxns);
+    return;
+  }
+  if (event.target.closest('[data-set-names-copy]')) {
+    showSetNamesExport(false);
+  }
+});
+
+document.getElementById('widgetSetSales').addEventListener('submit', event => {
+  const form = event.target.closest('.set-name-form');
+  if (!form) return;
+  event.preventDefault();
+  saveCustomSetName(form.dataset.setCode, form.querySelector('.set-name-input').value);
+});
+
+document.getElementById('widgetSetSales').addEventListener('keydown', event => {
+  if (event.key === 'Escape' && event.target.closest('.set-name-form')) {
+    editingSetCode = null;
+    renderSetSalesWidget(lastSetSalesTxns);
+  }
+});
+
+// ── Monthly reminder: send own set names to Claude ─────────────────────
+let setNamesExportOpen = false;
+
+function showSetNamesExport(fromReminder) {
+  setNamesExportOpen = true;
+  renderSetNamesReminder(true);
+  if (!fromReminder) document.getElementById('setNamesReminder').scrollIntoView({ block: 'nearest' });
+}
+
+function renderSetNamesReminder(force = false) {
+  const banner = document.getElementById('setNamesReminder');
+  const names = customSetNames();
+  const count = Object.keys(names).length;
+  const show = count > 0 && (setNamesExportOpen || force || isSetNamesReminderDue(appState));
+  banner.hidden = !show;
+  if (!show) { banner.innerHTML = ''; return; }
+  const list = formatSetNamesForExport(names);
+  banner.innerHTML = `
+    <div class="setnames-reminder-head">
+      <span class="setnames-reminder-title">Eigen setnamen doorsturen</span>
+      <span class="setnames-reminder-text">Je hebt ${count} ${count === 1 ? 'setnaam' : 'setnamen'} zelf toegevoegd. Kopieer de lijst en stuur hem naar Claude, dan worden ze vast in de app opgenomen.</span>
+    </div>
+    <textarea class="setnames-reminder-list" readonly rows="${Math.min(count, 6)}" aria-label="Eigen setnamen">${escHTML(list)}</textarea>
+    <div class="setnames-reminder-actions">
+      <button type="button" class="setnames-btn primary" data-setnames="copy">Kopieer lijst</button>
+      <button type="button" class="setnames-btn" data-setnames="later">Herinner me later</button>
+      <span class="setnames-reminder-msg" id="setNamesReminderMsg" role="status"></span>
+    </div>`;
+}
+
+document.getElementById('setNamesReminder').addEventListener('click', async event => {
+  const action = event.target.closest('[data-setnames]')?.dataset.setnames;
+  if (!action) return;
+  const banner = document.getElementById('setNamesReminder');
+  if (action === 'copy') {
+    const textarea = banner.querySelector('.setnames-reminder-list');
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(textarea.value);
+      copied = true;
+    } catch {
+      textarea.focus();
+      textarea.select();
+      try { copied = document.execCommand('copy'); } catch { copied = false; }
+    }
+    if (!copied) {
+      document.getElementById('setNamesReminderMsg').textContent = 'Kopiëren lukte niet. De lijst is geselecteerd, kopieer hem met Ctrl+C.';
+      return;
+    }
+    // Copied: the next reminder comes in a month.
+    appState = snoozeSetNamesReminder(appState);
+    saveToStorage();
+    setNamesExportOpen = false;
+    banner.innerHTML = '<div class="setnames-reminder-head"><span class="setnames-reminder-title">Gekopieerd</span><span class="setnames-reminder-text">Plak de lijst in je chat met Claude. Over een maand volgt de volgende herinnering.</span></div>';
+    setTimeout(() => renderSetNamesReminder(), 4000);
+    return;
+  }
+  if (action === 'later') {
+    appState = snoozeSetNamesReminder(appState, SET_NAMES_SNOOZE_DAYS);
+    saveToStorage();
+    setNamesExportOpen = false;
+    renderSetNamesReminder();
   }
 });
 
@@ -4401,6 +4658,7 @@ document.getElementById('importFromTabBtn').addEventListener('click', () => {
 
 function refreshView() {
   syncTopbarTitle();
+  renderSetNamesReminder();
   updateSortButtons();
   setSectionCollapsed('transactions', collapsedSections.transactions);
   setSectionCollapsed('profitTable', collapsedSections.profitTable);
