@@ -757,7 +757,9 @@ test('getSetName handles Prize Pack Series, Additionals and unknown codes', () =
   assert.equal(getSetName('PPS10'), 'Play! Pokémon Prize Pack Series Ten');
   assert.equal(getSetName('MCD18'), "McDonald's Collection 2018");
   assert.equal(getSetName('XY'), 'XY');
-  assert.equal(getSetName('sv7a'), '');
+  assert.equal(getSetName('sv7a'), 'Paradise Dragona');
+  assert.equal(getSetName('xm1L'), 'Mega Brave: Additionals');
+  assert.equal(getSetName('ZZZ'), '');
   assert.equal(getSetName('xZZZ'), '');
 });
 
