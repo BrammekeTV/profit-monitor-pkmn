@@ -1268,6 +1268,100 @@
     .widget-table th { padding: 6px 8px; text-align: left; color: var(--muted); font-weight: 700; font-size: 11px; white-space: nowrap; background: transparent; }
     .widget-table td { padding: 6px 8px; border-top: 1px solid var(--line); vertical-align: middle; }
 
+    /* ── best verkopende sets ── */
+    .widget-sets { margin-top: 22px; }
+    #widgetSetSales .widget-header { box-shadow: inset 0 -5px 0 var(--accent); }
+    .set-sort { display: flex; gap: 4px; padding: 4px 0; }
+    .set-sort-btn {
+      height: 26px;
+      padding: 0 12px;
+      border: 2px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transform: var(--slant);
+    }
+    .set-sort-btn:hover { color: var(--text); border-color: var(--muted); }
+    .set-sort-btn.active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+    .set-sort-btn:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+
+    .set-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+    .set-table th {
+      padding: 8px 10px;
+      text-align: right;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      white-space: nowrap;
+      border-bottom: 2px solid var(--border);
+    }
+    .set-table th.set-col-name, .set-table td.set-col-name { text-align: left; }
+    .set-table td { padding: 8px 10px; text-align: right; border-top: 1px solid var(--line); white-space: nowrap; }
+    .set-table tbody tr:first-child td { border-top: 0; }
+    .set-table tbody tr:hover td { background: var(--surface2); }
+    .set-col-rank { width: 44px; color: var(--muted); font-weight: 700; }
+    .set-table td.set-col-rank { text-align: center; }
+    .set-table th.set-col-rank { text-align: center; }
+    .set-col-name { width: 100%; white-space: normal !important; }
+    .set-name-wrap { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .set-code {
+      flex: 0 0 auto;
+      min-width: 58px;
+      padding: 3px 8px;
+      background: var(--ink);
+      border: 2px solid var(--border);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-align: center;
+      transform: var(--slant);
+    }
+    .set-name { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+    .set-name.unknown { color: var(--muted); font-weight: 400; font-style: italic; }
+    .set-share { display: block; height: 4px; margin-top: 6px; background: var(--line); }
+    .set-share > span { display: block; height: 100%; background: var(--accent); }
+    .set-table tr.top-1 .set-col-rank { color: var(--graded); }
+    .set-more {
+      display: flex;
+      justify-content: center;
+      padding: 12px 0 2px;
+    }
+    .set-more button {
+      height: 30px;
+      padding: 0 16px;
+      border: 2px solid var(--border);
+      background: transparent;
+      color: var(--text2);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transform: var(--slant);
+    }
+    .set-more button:hover { color: var(--text); border-color: var(--muted); }
+    .set-footnote { margin-top: 10px; color: var(--muted); font-size: 12px; }
+
+    @media (max-width: 760px) {
+      .set-table .set-col-cards, .set-table .set-col-margin { display: none; }
+      .set-table { font-size: 12.5px; }
+      .set-table td, .set-table th { padding: 8px 4px; }
+      .set-table th { letter-spacing: 0.5px; font-size: 10px; }
+      .set-col-rank { width: 24px; }
+      .set-code { min-width: 0; }
+      .set-name-wrap { flex-direction: column; align-items: flex-start; gap: 4px; }
+      #widgetSetSales .widget-header { flex-wrap: wrap; padding: 6px 8px 8px 12px; }
+    }
+
     /* ── trades ── */
     .trade-form {
       background: var(--surface);
@@ -1949,6 +2043,20 @@
         </div>
 
       </div><!-- /.analyse-widget-grid -->
+
+      <div class="widget widget-sets" id="widgetSetSales">
+        <div class="widget-header">
+          <span class="widget-title">Best verkopende sets</span>
+          <div class="set-sort" role="group" aria-label="Sorteer sets op">
+            <button type="button" class="set-sort-btn active" aria-pressed="true" data-set-sort="soldValue">Omzet</button>
+            <button type="button" class="set-sort-btn" aria-pressed="false" data-set-sort="soldQty">Aantal</button>
+            <button type="button" class="set-sort-btn" aria-pressed="false" data-set-sort="realizedProfit">Winst</button>
+          </div>
+        </div>
+        <div class="widget-body" id="wbSetSales">
+          <div class="widget-empty">Laden…</div>
+        </div>
+      </div>
     </div>
 
     <div id="tradesView" style="display:none;">
@@ -2285,6 +2393,7 @@ import {
   computeAverageCardProfitMargin,
   computeCardmarketSurplus,
   computeProfitByCard,
+  computeSetSales,
   computeSummary,
   computeTradeAnalytics,
   computeTradePerformanceSeries,
@@ -3212,6 +3321,7 @@ function renderAnalytics() {
   renderOverviewWidget(txns);
   renderCardmarketSurplusWidget(txns);
   renderAverageCardMarginWidget(txns);
+  renderSetSalesWidget(txns);
 }
 
 // ── Analyse widgets ────────────────────────────────────────────────────
@@ -3277,6 +3387,88 @@ function renderAverageCardMarginWidget(txns) {
         <span class="widget-stat-value ${averageMargin >= 0 ? 'positive' : 'negative'}">${escHTML(fmtPercent(averageMargin))}</span>
       </div>`;
 }
+
+// ── Best verkopende sets ──────────────────────────────────────────────
+const SET_SALES_LIMIT = 10;
+let setSalesSort = 'soldValue';
+let setSalesShowAll = false;
+let lastSetSalesTxns = [];
+
+function renderSetSalesWidget(txns) {
+  lastSetSalesTxns = txns;
+  const body = document.getElementById('wbSetSales');
+  const sets = computeSetSales(txns);
+  if (!sets.length) {
+    body.innerHTML = '<div class="widget-empty">Nog geen verkochte kaarten met een setcode, zoals "Gengar ex (30C 154)".</div>';
+    return;
+  }
+
+  const sorted = setSalesSort === 'soldValue'
+    ? sets
+    : sets.slice().sort((a, b) => b[setSalesSort] - a[setSalesSort] || b.soldValue - a.soldValue);
+  const visible = setSalesShowAll ? sorted : sorted.slice(0, SET_SALES_LIMIT);
+  const totalRevenue = sets.reduce((sum, set) => sum + set.soldValue, 0);
+
+  const rows = visible.map((set, index) => {
+    const share = totalRevenue > 0 ? (set.soldValue / totalRevenue) * 100 : 0;
+    const name = set.name
+      ? `<span class="set-name" title="${escAttr(set.name)}">${escHTML(set.name)}</span>`
+      : '<span class="set-name unknown">Naam nog niet bekend</span>';
+    const margin = set.profitMargin === null
+      ? '<span class="neutral">—</span>'
+      : `<span class="${set.profitMargin >= 0 ? 'positive' : 'negative'}">${escHTML(fmtPercent(set.profitMargin))}</span>`;
+    return `<tr class="${index === 0 ? 'top-1' : ''}">
+      <td class="set-col-rank">${index + 1}</td>
+      <td class="set-col-name">
+        <div class="set-name-wrap"><span class="set-code">${escHTML(set.code)}</span>${name}</div>
+        <span class="set-share" title="${escAttr(share.toFixed(1).replace('.', ','))}% van de omzet"><span style="width:${share.toFixed(2)}%"></span></span>
+      </td>
+      <td class="set-col-qty">${set.soldQty}</td>
+      <td class="set-col-cards">${set.cardCount}</td>
+      <td class="set-col-revenue">${escHTML(fmt(set.soldValue))}</td>
+      <td class="set-col-profit ${set.realizedProfit >= 0 ? 'positive' : 'negative'}">${escHTML(fmt(set.realizedProfit))}</td>
+      <td class="set-col-margin">${margin}</td>
+    </tr>`;
+  }).join('');
+
+  const more = sets.length > SET_SALES_LIMIT
+    ? `<div class="set-more"><button type="button" id="setSalesToggle">${setSalesShowAll ? 'Toon top ' + SET_SALES_LIMIT : 'Toon alle ' + sets.length + ' sets'}</button></div>`
+    : '';
+
+  body.innerHTML = `
+    <table class="set-table">
+      <thead><tr>
+        <th class="set-col-rank">#</th>
+        <th class="set-col-name">Set</th>
+        <th class="set-col-qty">Aantal</th>
+        <th class="set-col-cards">Kaarten</th>
+        <th class="set-col-revenue">Omzet</th>
+        <th class="set-col-profit">Winst</th>
+        <th class="set-col-margin">Marge</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${more}
+    <div class="set-footnote">Winst volgens FIFO, zoals bij Winst per kaart. Bulk telt niet mee.</div>`;
+}
+
+document.getElementById('widgetSetSales').addEventListener('click', event => {
+  const sortBtn = event.target.closest('[data-set-sort]');
+  if (sortBtn) {
+    setSalesSort = sortBtn.dataset.setSort;
+    document.querySelectorAll('#widgetSetSales [data-set-sort]').forEach(btn => {
+      const active = btn === sortBtn;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', String(active));
+    });
+    renderSetSalesWidget(lastSetSalesTxns);
+    return;
+  }
+  if (event.target.closest('#setSalesToggle')) {
+    setSalesShowAll = !setSalesShowAll;
+    renderSetSalesWidget(lastSetSalesTxns);
+  }
+});
 
 function renderCumulativeChart(transactions) {
   const el = document.getElementById('cumulativeChart');
