@@ -441,9 +441,25 @@ function normalizeTabs(rawTabs, options = {}) {
     });
 
     tab.name = uniquifyTabName(tab.name || fallbackName, usedNames);
-    tab.trades = assignUniqueIds(tab.trades);
     tabs.push(tab);
   }
+
+  // Trades that used to be shared by all tabs (stored at the top level) move into
+  // the first open tab, so no trade is lost when upgrading.
+  const legacyTrades = Array.isArray(options.legacyTrades) ? options.legacyTrades : [];
+  if (legacyTrades.length && tabs.length) {
+    const target = tabs.find(tab => !tab.archived) || tabs[0];
+    target.trades = [
+      ...target.trades,
+      ...legacyTrades.map(trade => normalizeTrade(trade, { now: options.now })),
+    ];
+  }
+
+  // Trade ids are unique across all tabs too, so trades can move between tabs safely.
+  const flatTrades = tabs.flatMap((tab, tabIndex) => tab.trades.map(trade => ({ trade, tabIndex })));
+  const tradesWithIds = assignUniqueIds(flatTrades.map(entry => entry.trade));
+  tabs.forEach(tab => { tab.trades = []; });
+  tradesWithIds.forEach((trade, index) => { tabs[flatTrades[index].tabIndex].trades.push(trade); });
 
   // Transaction ids are unique across all tabs, because edit/delete look them up by id.
   const flat = tabs.flatMap((tab, tabIndex) => tab.transactions.map(txn => ({ txn, tabIndex })));
@@ -474,7 +490,6 @@ export function ensureAppState(rawState, options = {}) {
     return {
       tabs: [{ ...defaultTab, transactions: defaultTab.transactions.map((txn, index) => ({ ...txn, id: index + 1 })) }],
       activeTabId: defaultTab.id,
-      trades: [],
     };
   }
 
@@ -482,14 +497,17 @@ export function ensureAppState(rawState, options = {}) {
     return ensureAppState(parsed.transactions, options);
   }
 
-  const { tabs } = normalizeTabs(parsed?.tabs, options);
+  const legacyTrades = Array.isArray(parsed?.trades) ? parsed.trades : [];
+  const { tabs } = normalizeTabs(parsed?.tabs, { ...options, legacyTrades });
 
   if (!tabs.length) {
     const defaultTab = createTab(DEFAULT_TAB_NAME, {
       id: options.defaultTabId,
       now: options.now,
+      trades: legacyTrades,
     });
-    return { tabs: [defaultTab], activeTabId: defaultTab.id, trades: [] };
+    defaultTab.trades = assignUniqueIds(defaultTab.trades);
+    return { tabs: [defaultTab], activeTabId: defaultTab.id };
   }
 
   const firstAvailableTab = tabs.find(tab => !tab.archived) || tabs[0];
@@ -497,10 +515,7 @@ export function ensureAppState(rawState, options = {}) {
     ? parsed.activeTabId
     : firstAvailableTab.id;
 
-  const trades = assignUniqueIds((Array.isArray(parsed?.trades) ? parsed.trades : [])
-    .map(trade => normalizeTrade(trade, options)));
-
-  return { tabs, activeTabId, trades };
+  return { tabs, activeTabId };
 }
 
 export function getActiveTab(state) {
@@ -577,6 +592,26 @@ export function renameTab(state, tabId, nextName) {
     tabs: state.tabs.map(tab => (
       tab.id === tabId ? { ...tab, name: validation.name } : tab
     )),
+  };
+}
+
+// Moves a tab to a new position among the open (non-archived) tabs.
+// Archived tabs keep their relative order after the open ones.
+export function moveTab(state, tabId, toIndex) {
+  const openTabs = state.tabs.filter(tab => !tab.archived);
+  const from = openTabs.findIndex(tab => tab.id === tabId);
+  if (from === -1) return state;
+
+  const target = Math.max(0, Math.min(openTabs.length - 1, Math.trunc(Number(toIndex)) || 0));
+  if (target === from) return state;
+
+  const reordered = openTabs.slice();
+  const [moved] = reordered.splice(from, 1);
+  reordered.splice(target, 0, moved);
+
+  return {
+    ...state,
+    tabs: [...reordered, ...state.tabs.filter(tab => tab.archived)],
   };
 }
 
@@ -724,23 +759,38 @@ export function clearAllData(options = {}) {
   return ensureAppState(null, options);
 }
 
+// Trades belong to a tab, like transactions; these work on the active tab.
 export function getTrades(state) {
-  return Array.isArray(state?.trades) ? state.trades : [];
+  const tab = getActiveTab(state);
+  return Array.isArray(tab?.trades) ? tab.trades : [];
 }
 
+// Trade ids are unique across all tabs.
 export function nextTradeId(state) {
-  return getTrades(state).reduce((maxId, trade) => (
-    Number.isInteger(trade.id) ? Math.max(maxId, trade.id) : maxId
+  return state.tabs.reduce((maxId, tab) => (
+    (Array.isArray(tab.trades) ? tab.trades : []).reduce((currentMax, trade) => (
+      Number.isInteger(trade.id) ? Math.max(currentMax, trade.id) : currentMax
+    ), maxId)
   ), 0) + 1;
+}
+
+function mapActiveTabTrades(state, update) {
+  const activeTab = getActiveTab(state);
+  if (!activeTab) return state;
+  return {
+    ...state,
+    tabs: state.tabs.map(tab => (
+      tab.id === activeTab.id
+        ? { ...tab, trades: update(Array.isArray(tab.trades) ? tab.trades : []) }
+        : tab
+    )),
+  };
 }
 
 export function appendTrade(state, trade, options = {}) {
   const normalized = normalizeTrade(trade, { now: options.now });
   const id = nextTradeId(state);
-  return {
-    ...state,
-    trades: [...getTrades(state), { ...normalized, id }],
-  };
+  return mapActiveTabTrades(state, trades => [...trades, { ...normalized, id }]);
 }
 
 export function appendTrades(state, trades, options = {}) {
@@ -753,27 +803,18 @@ export function appendTrades(state, trades, options = {}) {
   });
 
   if (!additions.length) return state;
-  return {
-    ...state,
-    trades: [...getTrades(state), ...additions],
-  };
+  return mapActiveTabTrades(state, current => [...current, ...additions]);
 }
 
 export function updateTrade(state, tradeId, trade, options = {}) {
   const normalized = normalizeTrade(trade, { now: options.now });
-  return {
-    ...state,
-    trades: getTrades(state).map(entry => (
-      entry.id === tradeId ? { ...normalized, id: tradeId } : entry
-    )),
-  };
+  return mapActiveTabTrades(state, trades => trades.map(entry => (
+    entry.id === tradeId ? { ...normalized, id: tradeId } : entry
+  )));
 }
 
 export function deleteTrade(state, tradeId) {
-  return {
-    ...state,
-    trades: getTrades(state).filter(trade => trade.id !== tradeId),
-  };
+  return mapActiveTabTrades(state, trades => trades.filter(trade => trade.id !== tradeId));
 }
 
 export function computeTradeAnalytics(trades = []) {

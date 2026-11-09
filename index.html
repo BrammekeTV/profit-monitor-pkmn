@@ -370,6 +370,19 @@
     .tab-actions .inline-btn:hover:not(:disabled) { background: #2f2c29; }
     .tab-actions .inline-btn.danger { color: var(--red); }
     .tab-actions svg { flex-shrink: 0; }
+    .tab-actions .inline-btn.icon-only { padding: 0 11px; }
+    .tab-actions .inline-btn:disabled { opacity: 0.35; }
+
+    .tab-list.is-dragging { cursor: grabbing; }
+    .tab-btn.dragging {
+      position: relative;
+      z-index: 2;
+      cursor: grabbing;
+      box-shadow: 4px 5px 0 var(--ink);
+      transition: none;
+    }
+    .tab-btn.drop-before { box-shadow: -5px 0 0 var(--text); }
+    .tab-btn.drop-after { box-shadow: 5px 0 0 var(--text); }
 
     .archive-panel {
       padding: 12px 14px;
@@ -665,7 +678,48 @@
       gap: 30px;
       min-width: 0;
       align-self: start;
+      /* Stays in view while the main content scrolls, so the form is always at hand. */
+      position: sticky;
+      top: 12px;
+      max-height: calc(100vh - 24px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 0 12px 14px 0;
+      margin-right: -12px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
     }
+
+    /* Compact entry form: paired fields, no stacked hints. */
+    .entry-form { gap: 12px; padding: 14px 16px 16px; }
+    .entry-form .form-input,
+    .entry-form .form-select { min-height: 40px; }
+    .entry-form .form-textarea { min-height: 62px; padding: 8px 12px; }
+    .form-row { display: flex; gap: 12px; }
+    .form-row > .form-group { flex: 1 1 0; min-width: 0; }
+    .form-label-note { margin-left: 6px; font-size: 10px; letter-spacing: 1px; color: var(--muted); }
+    .toggle-row { align-items: center; }
+    .toggle-row .toggle-switch { flex: 1 1 0; min-width: 0; min-height: 36px; gap: 10px; }
+    .toggle-row .form-label { font-size: 11px; letter-spacing: 1.2px; line-height: 1.25; }
+    .entry-form .form-btn-row { margin-top: 2px; }
+    .entry-form .submit-btn,
+    .entry-form .cancel-btn { min-height: 48px; }
+
+    .grading-scale summary {
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--graded);
+      list-style: none;
+      white-space: nowrap;
+    }
+    .grading-scale summary::-webkit-details-marker { display: none; }
+    .grading-scale summary::after { content: ' ▾'; }
+    .grading-scale[open] summary::after { content: ' ▴'; }
+    .grading-scale[open] { flex-basis: 100%; display: flex; flex-direction: column; gap: 8px; }
+    .grading-scale[open] summary { align-self: flex-end; margin-top: -30px; }
 
     .side-panel {
       background: var(--surface);
@@ -912,8 +966,8 @@
     .graded-fields {
       display: flex;
       flex-direction: column;
-      gap: 14px;
-      padding: 14px;
+      gap: 10px;
+      padding: 10px 12px;
       border: 2px solid var(--graded);
       background: rgba(212, 176, 98, 0.06);
     }
@@ -930,9 +984,11 @@
 
     .grade-preview {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      gap: 12px;
-      min-height: 30px;
+      justify-content: space-between;
+      gap: 10px 12px;
+      min-height: 28px;
     }
 
     .grade-preview-empty { font-size: 13px; color: var(--muted); }
@@ -1527,6 +1583,7 @@
 
     @media (max-width: 1180px) {
       .layout { grid-template-columns: minmax(0, 1fr); }
+      .sidebar { position: static; max-height: none; overflow: visible; padding: 0; margin: 0; }
       .trade-entry-grid { grid-template-columns: 1fr; }
       .trade-result { grid-template-columns: repeat(2, minmax(0, 1fr)); flex-basis: 100%; }
     }
@@ -1540,7 +1597,9 @@
       .trade-analysis-grid { grid-template-columns: 1fr; }
       .section-title { font-size: 24px; }
       .tab-actions { width: 100%; }
-      .tab-actions .inline-btn { flex: 1 1 0; gap: 5px; padding: 0 6px; font-size: 11px; letter-spacing: 0.5px; }
+      .tab-actions .inline-btn { flex: 1 1 auto; min-width: 0; padding: 0 5px; font-size: 10.5px; letter-spacing: 0.3px; }
+      .tab-actions .inline-btn:not(.icon-only) svg { display: none; }
+      .tab-actions .inline-btn.icon-only { flex: 0 0 36px; padding: 0; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -1583,6 +1642,8 @@
       <span class="workspace-label">Tabs</span>
       <div class="tab-list" id="tabBar"></div>
       <div class="tab-actions" role="group" aria-label="Tab beheren">
+        <button class="inline-btn icon-only" id="moveTabLeftBtn" aria-label="Tab naar links" title="Tab naar links (Alt + ←)"><svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="2.4"/></svg></button>
+        <button class="inline-btn icon-only" id="moveTabRightBtn" aria-label="Tab naar rechts" title="Tab naar rechts (Alt + →)"><svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M5 2l5 5-5 5" stroke="currentColor" stroke-width="2.4"/></svg></button>
         <button class="inline-btn" id="createTabBtn"><svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2.4"/></svg>Nieuwe tab</button>
         <button class="inline-btn" id="renameTabBtn"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M11.5 1.5l3 3-9 9H2.5v-3l9-9z" stroke="currentColor" stroke-width="2"/></svg>Hernoemen</button>
         <button class="inline-btn danger" id="deleteTabBtn"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 4h10M6 4V2h4v2M5 4l1 9h4l1-9" stroke="currentColor" stroke-width="2"/></svg>Verwijderen</button>
@@ -1991,67 +2052,51 @@
   <aside class="sidebar">
    <section class="side-panel side-panel-primary">
     <div class="form-title" id="formTitle">Nieuwe invoer</div>
-    <div class="side-panel-body">
+    <div class="side-panel-body entry-form">
 
-    <div class="form-group">
-      <label class="form-label" for="fType">Type</label>
-      <select class="form-select" id="fType">
-        <option value="Verkocht">Verkocht</option>
-        <option value="Gekocht">Gekocht</option>
-      </select>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="fType">Type</label>
+        <select class="form-select" id="fType">
+          <option value="Verkocht">Verkocht</option>
+          <option value="Gekocht">Gekocht</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="fAmount">Bedrag (€)</label>
+        <input
+          type="number"
+          class="form-input"
+          id="fAmount"
+          placeholder="0,00"
+          min="0.01"
+          step="0.01"
+          title="Altijd positief; het teken volgt uit het type."
+        />
+      </div>
     </div>
 
     <div class="form-group">
-      <label class="form-label" for="fAmount">Bedrag (€)</label>
-      <input
-        type="number"
-        class="form-input"
-        id="fAmount"
-        placeholder="0.00"
-        min="0.01"
-        step="0.01"
-      />
-      <div class="form-hint">Altijd positief — teken wordt automatisch bepaald.</div>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label" for="fDesc">Beschrijving</label>
+      <label class="form-label" for="fDesc">Beschrijving <span class="form-label-note">één kaart per regel</span></label>
       <textarea
         class="form-textarea"
         id="fDesc"
+        rows="2"
         placeholder="bijv. Vinted&#10;of Pikachu (MEP 001)"
       ></textarea>
-      <div class="form-hint">Één kaart per regel voor automatische afbeelding.</div>
     </div>
 
-    <div class="form-group">
-      <label class="toggle-switch">
+    <div class="form-row toggle-row">
+      <label class="toggle-switch" title="Kaartnaam en aantal worden uit de beschrijving gehaald.">
         <input type="checkbox" id="fHasCardName" />
         <span class="toggle-track"></span>
-        <span class="form-label" style="margin:0;">Beschrijving bevat kaartnaam</span>
+        <span class="form-label">Kaartnaam in beschrijving</span>
       </label>
-      <div class="form-hint">Kaartnaam en hoeveelheid worden automatisch uit de beschrijving afgeleid.</div>
-    </div>
-
-    <div class="form-group" id="fQuantityGroup">
-      <label class="form-label" for="fQuantity">Aantal</label>
-      <input
-        type="number"
-        class="form-input"
-        id="fQuantity"
-        value="1"
-        min="1"
-        step="1"
-      />
-    </div>
-
-    <div class="form-group">
-      <label class="toggle-switch">
+      <label class="toggle-switch" title="Kies gradingbedrijf en grade als de kaart in een slab zit.">
         <input type="checkbox" id="fIsGraded" />
         <span class="toggle-track"></span>
-        <span class="form-label" style="margin:0;">Gegradeerde kaart</span>
+        <span class="form-label">Gegradeerde kaart</span>
       </label>
-      <div class="form-hint">Kies gradingbedrijf en grade wanneer de kaart slabbed is.</div>
     </div>
 
     <div class="graded-fields" id="gradedFields" hidden>
@@ -2076,12 +2121,11 @@
       </div>
 
       <div class="grade-preview">
-        <span class="form-label">Voorbeeld</span>
         <span id="gradePreview" class="grade-preview-tag"></span>
-      </div>
-
-      <div class="grading-table-wrap" id="gradingTableWrap" style="display:none;">
-        <table>
+        <details class="grading-scale">
+          <summary>Gradingschaal</summary>
+          <div class="grading-table-wrap" id="gradingTableWrap" style="display:none;">
+            <table>
           <thead>
             <tr>
               <th>Grade</th>
@@ -2105,18 +2149,33 @@
             <tr><td>2</td><td>Good</td><td>Good</td><td>Good</td><td>Good</td></tr>
             <tr><td>1</td><td>Poor</td><td>Poor</td><td>Poor</td><td>Poor</td></tr>
           </tbody>
-        </table>
+            </table>
+          </div>
+          <div class="form-hint">Een 10 kent ook een topvariant: BGS Black Label Pristine, CGC en TAG Pristine. Halve grades staan in de keuzelijst.</div>
+        </details>
       </div>
-      <div class="form-hint">Een 10 kent ook een topvariant: BGS Black Label Pristine, CGC en TAG Pristine. Halve grades staan in de keuzelijst.</div>
     </div>
 
-    <div class="form-group">
-      <label class="form-label" for="fDate">Datum</label>
-      <input
-        type="date"
-        class="form-input"
-        id="fDate"
-      />
+    <div class="form-row">
+      <div class="form-group" id="fQuantityGroup">
+        <label class="form-label" for="fQuantity">Aantal</label>
+        <input
+          type="number"
+          class="form-input"
+          id="fQuantity"
+          value="1"
+          min="1"
+          step="1"
+        />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="fDate">Datum</label>
+        <input
+          type="date"
+          class="form-input"
+          id="fDate"
+        />
+      </div>
     </div>
 
     <div class="form-btn-row">
@@ -2236,6 +2295,8 @@ import {
   ensureAppState,
   getActiveTab as getActiveTabState,
   getActiveTransactions,
+  getTrades as getTabTrades,
+  moveTab,
   getCardmarketOrderLinks,
   isBulkTransaction,
   getGradeLabel,
@@ -2466,25 +2527,134 @@ function syncTopbarTitle() {
   document.title = `Profit Monitor — ${activeTab.name}`;
 }
 
+function switchToTab(tabId) {
+  if (tabId === appState.activeTabId) return;
+  // Edits belong to the tab they were opened in; drop them when switching.
+  if (editingId !== null) cancelEdit();
+  if (editingTradeId !== null) resetTradeDraft();
+  appState = setActiveTab(appState, tabId);
+  saveToStorage();
+  refreshView();
+  showMessage(tabMsg);
+}
+
+function moveTabTo(tabId, toIndex, { focus = false } = {}) {
+  const next = moveTab(appState, tabId, toIndex);
+  if (next === appState) return;
+  appState = next;
+  saveToStorage();
+  renderTabs();
+  if (focus) document.querySelector(`#tabBar .tab-btn[data-tab-id="${CSS.escape(tabId)}"]`)?.focus();
+}
+
+function syncTabMoveButtons() {
+  const openTabs = appState.tabs.filter(tab => !tab.archived);
+  const index = openTabs.findIndex(tab => tab.id === getActiveTabState(appState).id);
+  document.getElementById('moveTabLeftBtn').disabled = index <= 0;
+  document.getElementById('moveTabRightBtn').disabled = index === -1 || index >= openTabs.length - 1;
+}
+
 function renderTabs() {
   const activeTab = getActiveTabState(appState);
   const tabBar = document.getElementById('tabBar');
   const activeTabs = appState.tabs.filter(tab => !tab.archived);
   tabBar.innerHTML = activeTabs.map(tab => `
-    <button class="tab-btn ${tab.id === activeTab.id ? 'active' : ''}" data-tab-id="${escAttr(tab.id)}">
+    <button class="tab-btn ${tab.id === activeTab.id ? 'active' : ''}" data-tab-id="${escAttr(tab.id)}" title="Sleep om te verplaatsen · Alt + ←/→">
       ${escHTML(tab.name)}
     </button>
   `).join('');
-
-  tabBar.querySelectorAll('.tab-btn').forEach(button => {
-    button.addEventListener('click', () => {
-      appState = setActiveTab(appState, button.dataset.tabId);
-      saveToStorage();
-      refreshView();
-      showMessage(tabMsg);
-    });
-  });
+  syncTabMoveButtons();
 }
+
+// Tab bar: click to open a tab, drag (mouse or pen) to reorder, Alt + arrow keys to move.
+(function setupTabBar() {
+  const tabBar = document.getElementById('tabBar');
+  let drag = null;
+  let suppressClick = false;
+
+  const openTabButtons = () => Array.from(tabBar.querySelectorAll('.tab-btn'));
+
+  function dropIndexFor(clientX) {
+    const others = openTabButtons().filter(button => button !== drag.button);
+    let index = others.length;
+    for (let i = 0; i < others.length; i += 1) {
+      const rect = others[i].getBoundingClientRect();
+      if (clientX < rect.left + rect.width / 2) { index = i; break; }
+    }
+    return index;
+  }
+
+  function showDropMarker(index) {
+    const others = openTabButtons().filter(button => button !== drag.button);
+    others.forEach(button => button.classList.remove('drop-before', 'drop-after'));
+    if (index < others.length) others[index].classList.add('drop-before');
+    else if (others.length) others[others.length - 1].classList.add('drop-after');
+  }
+
+  tabBar.addEventListener('pointerdown', event => {
+    const button = event.target.closest('.tab-btn');
+    if (!button || event.button !== 0 || event.pointerType === 'touch') return;
+    drag = { button, id: button.dataset.tabId, startX: event.clientX, pointerId: event.pointerId, active: false, index: null };
+  });
+
+  tabBar.addEventListener('pointermove', event => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const dx = event.clientX - drag.startX;
+    if (!drag.active) {
+      if (Math.abs(dx) < 6) return;
+      drag.active = true;
+      drag.button.setPointerCapture(event.pointerId);
+      drag.button.classList.add('dragging');
+      tabBar.classList.add('is-dragging');
+    }
+    drag.button.style.transform = `translateX(${dx}px) skewX(-10deg)`;
+    drag.index = dropIndexFor(event.clientX);
+    showDropMarker(drag.index);
+  });
+
+  function endDrag(commit) {
+    if (!drag) return;
+    const { active, id, index } = drag;
+    drag = null;
+    tabBar.classList.remove('is-dragging');
+    if (!active) return;
+    // Swallow the click that may follow this drag, but only that one.
+    suppressClick = true;
+    setTimeout(() => { suppressClick = false; }, 0);
+    if (commit && index !== null) moveTabTo(id, index);
+    renderTabs();
+  }
+
+  tabBar.addEventListener('pointerup', () => endDrag(true));
+  tabBar.addEventListener('pointercancel', () => endDrag(false));
+
+  tabBar.addEventListener('click', event => {
+    const button = event.target.closest('.tab-btn');
+    if (!button) return;
+    if (suppressClick) { suppressClick = false; return; }
+    switchToTab(button.dataset.tabId);
+  });
+
+  tabBar.addEventListener('keydown', event => {
+    const button = event.target.closest('.tab-btn');
+    if (!button || !event.altKey || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
+    event.preventDefault();
+    const index = openTabButtons().indexOf(button);
+    moveTabTo(button.dataset.tabId, index + (event.key === 'ArrowLeft' ? -1 : 1), { focus: true });
+  });
+
+  document.getElementById('moveTabLeftBtn').addEventListener('click', () => {
+    const openTabs = appState.tabs.filter(tab => !tab.archived);
+    const activeId = getActiveTabState(appState).id;
+    moveTabTo(activeId, openTabs.findIndex(tab => tab.id === activeId) - 1);
+  });
+
+  document.getElementById('moveTabRightBtn').addEventListener('click', () => {
+    const openTabs = appState.tabs.filter(tab => !tab.archived);
+    const activeId = getActiveTabState(appState).id;
+    moveTabTo(activeId, openTabs.findIndex(tab => tab.id === activeId) + 1);
+  });
+})();
 
 function renderArchivedTabs() {
   const archivePanel = document.getElementById('tabArchivePanel');
@@ -3429,8 +3599,9 @@ function renderTradeForm() {
   syncTradeResult();
 }
 
+// Trades of the active tab.
 function getTrades() {
-  return Array.isArray(appState.trades) ? appState.trades : [];
+  return getTabTrades(appState);
 }
 
 function renderTradesTable() {
@@ -4100,7 +4271,8 @@ document.getElementById('renameTabBtn').addEventListener('click', () => {
 
 document.getElementById('deleteTabBtn').addEventListener('click', () => {
   const activeTab = getActiveTabState(appState);
-  if (!confirm(`Tab "${activeTab.name}" verwijderen?`)) return;
+  const tradeCount = Array.isArray(activeTab.trades) ? activeTab.trades.length : 0;
+  if (!confirm(`Tab "${activeTab.name}" verwijderen? De ${activeTab.transactions.length} transacties en ${tradeCount} trades in deze tab worden ook verwijderd.`)) return;
 
   appState = deleteTab(appState, activeTab.id);
   saveToStorage();
@@ -4240,7 +4412,7 @@ function cancelEdit() {
 document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit);
 
 document.getElementById('clearBtn').addEventListener('click', () => {
-  if (!confirm('Alle tabs en transacties wissen? Dit kan niet ongedaan worden gemaakt.')) return;
+  if (!confirm('Alle tabs, transacties en trades wissen? Dit kan niet ongedaan worden gemaakt.')) return;
   appState = clearAllData();
   resetTradeDraft();
   closeTradeDetail();
