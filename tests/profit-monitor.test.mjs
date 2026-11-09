@@ -21,6 +21,8 @@ import {
   getGradeLabel,
   getGradingScale,
   getActiveTab,
+  getTrades,
+  moveTab,
   getCardmarketOrderLinks,
   isBulkTransaction,
   normalizeGradingValue,
@@ -55,7 +57,8 @@ test('legacy data migrates into a default tab and repairs invalid active tabs', 
   assert.equal(state.activeTabId, 'default-tab');
   assert.equal(state.tabs[0].transactions[0].amount, -12.5);
   assert.equal(state.tabs[0].transactions[0].quantity, 1);
-  assert.deepEqual(state.trades, []);
+  assert.deepEqual(getTrades(state), []);
+  assert.equal('trades' in state, false);
 
   const repaired = ensureAppState({
     tabs: state.tabs,
@@ -63,7 +66,7 @@ test('legacy data migrates into a default tab and repairs invalid active tabs', 
   });
 
   assert.equal(repaired.activeTabId, state.tabs[0].id);
-  assert.deepEqual(repaired.trades, []);
+  assert.deepEqual(getTrades(repaired), []);
 });
 
 test('tabs can be created, switched, deleted, and recreated when the last tab is removed', () => {
@@ -269,7 +272,7 @@ test('grading normalization keeps only valid company-specific grades', () => {
   assert.equal(normalized.gradingLabel, 'Gem Mint');
 });
 
-test('trades are stored separately and support CRUD plus analytics', () => {
+test('trades are stored on the active tab and support CRUD plus analytics', () => {
   let state = ensureAppState(null, {
     defaultTabId: 'default-tab',
     now: '2026-09-21T00:00:00Z',
@@ -287,27 +290,27 @@ test('trades are stored separately and support CRUD plus analytics', () => {
     ],
   });
 
-  assert.equal(state.trades.length, 1);
-  assert.equal(state.trades[0].totalGiven, 120);
-  assert.equal(state.trades[0].totalReceived, 125);
-  assert.equal(state.trades[0].difference, 5);
-  assert.equal(state.trades[0].roi, 4.17);
-  assert.equal(state.trades[0].givenItems[0].gradingCompany, 'PSA');
-  assert.equal(state.trades[0].givenItems[0].gradingValue, '10');
-  assert.equal(state.trades[0].givenItems[0].gradingLabel, 'Gem Mint');
-  assert.equal(state.trades[0].receivedItems[0].gradingCompany, 'TAG');
-  assert.equal(state.trades[0].receivedItems[0].gradingValue, '9');
-  assert.equal(state.trades[0].receivedItems[0].gradingLabel, 'Mint');
+  assert.equal(getTrades(state).length, 1);
+  assert.equal(getTrades(state)[0].totalGiven, 120);
+  assert.equal(getTrades(state)[0].totalReceived, 125);
+  assert.equal(getTrades(state)[0].difference, 5);
+  assert.equal(getTrades(state)[0].roi, 4.17);
+  assert.equal(getTrades(state)[0].givenItems[0].gradingCompany, 'PSA');
+  assert.equal(getTrades(state)[0].givenItems[0].gradingValue, '10');
+  assert.equal(getTrades(state)[0].givenItems[0].gradingLabel, 'Gem Mint');
+  assert.equal(getTrades(state)[0].receivedItems[0].gradingCompany, 'TAG');
+  assert.equal(getTrades(state)[0].receivedItems[0].gradingValue, '9');
+  assert.equal(getTrades(state)[0].receivedItems[0].gradingLabel, 'Mint');
 
-  state = updateTrade(state, state.trades[0].id, {
-    ...state.trades[0],
+  state = updateTrade(state, getTrades(state)[0].id, {
+    ...getTrades(state)[0],
     receivedItems: [{ cardName: 'Umbreon VMAX', quantity: 1, value: 130 }],
   });
 
-  assert.equal(state.trades[0].difference, 10);
-  assert.equal(state.trades[0].roi, 8.33);
+  assert.equal(getTrades(state)[0].difference, 10);
+  assert.equal(getTrades(state)[0].roi, 8.33);
 
-  const analytics = computeTradeAnalytics(state.trades);
+  const analytics = computeTradeAnalytics(getTrades(state));
   assert.deepEqual(analytics, {
     totalTrades: 1,
     totalGiven: 120,
@@ -319,16 +322,16 @@ test('trades are stored separately and support CRUD plus analytics', () => {
     negativeTrades: 0,
   });
 
-  const series = computeTradePerformanceSeries(state.trades);
+  const series = computeTradePerformanceSeries(getTrades(state));
   assert.deepEqual(series, [{
-    id: state.trades[0].id,
+    id: getTrades(state)[0].id,
     date: '2026-09-21',
     difference: 10,
     cumulativeDifference: 10,
   }]);
 
-  state = deleteTrade(state, state.trades[0].id);
-  assert.equal(state.trades.length, 0);
+  state = deleteTrade(state, getTrades(state)[0].id);
+  assert.equal(getTrades(state).length, 0);
   assert.equal(state.tabs.length, 1);
 });
 
@@ -357,10 +360,10 @@ test('appendTrades appends and normalizes multiple trades with new ids', () => {
     },
   ]);
 
-  assert.equal(next.trades.length, 3);
-  assert.deepEqual(next.trades.map(trade => trade.id), [1, 2, 3]);
-  assert.equal(next.trades[1].givenItems[0].gradingCompany, 'PSA');
-  assert.equal(next.trades[1].givenItems[0].gradingLabel, 'Gem Mint');
+  assert.equal(getTrades(next).length, 3);
+  assert.deepEqual(getTrades(next).map(trade => trade.id), [1, 2, 3]);
+  assert.equal(getTrades(next)[1].givenItems[0].gradingCompany, 'PSA');
+  assert.equal(getTrades(next)[1].givenItems[0].gradingLabel, 'Gem Mint');
 });
 
 test('trades support loose cash amounts alongside or without card rows', () => {
@@ -377,22 +380,22 @@ test('trades support loose cash amounts alongside or without card rows', () => {
     receivedItems: [{ cardName: 'Mew ex', quantity: 1, value: 40 }],
   });
 
-  assert.equal(state.trades[0].givenCashAmount, 15);
-  assert.equal(state.trades[0].receivedCashAmount, 5);
-  assert.equal(state.trades[0].totalGiven, 15);
-  assert.equal(state.trades[0].totalReceived, 45);
-  assert.equal(state.trades[0].difference, 30);
-  assert.equal(state.trades[0].roi, 200);
+  assert.equal(getTrades(state)[0].givenCashAmount, 15);
+  assert.equal(getTrades(state)[0].receivedCashAmount, 5);
+  assert.equal(getTrades(state)[0].totalGiven, 15);
+  assert.equal(getTrades(state)[0].totalReceived, 45);
+  assert.equal(getTrades(state)[0].difference, 30);
+  assert.equal(getTrades(state)[0].roi, 200);
 
-  state = updateTrade(state, state.trades[0].id, {
-    ...state.trades[0],
+  state = updateTrade(state, getTrades(state)[0].id, {
+    ...getTrades(state)[0],
     receivedCashAmount: 12.5,
     receivedItems: [{ cardName: 'Mew ex', quantity: 1, value: 40 }],
   });
 
-  assert.equal(state.trades[0].totalReceived, 52.5);
-  assert.equal(state.trades[0].difference, 37.5);
-  assert.equal(state.trades[0].roi, 250);
+  assert.equal(getTrades(state)[0].totalReceived, 52.5);
+  assert.equal(getTrades(state)[0].difference, 37.5);
+  assert.equal(getTrades(state)[0].roi, 250);
 });
 
 test('persisted trades normalize graded item values on load', () => {
@@ -416,15 +419,15 @@ test('persisted trades normalize graded item values on load', () => {
     now: '2026-09-21T00:00:00Z',
   });
 
-  assert.equal(state.trades[0].givenItems[0].gradingCompany, 'PSA');
-  assert.equal(state.trades[0].givenItems[0].gradingLabel, 'Gem Mint');
-  assert.equal(state.trades[0].receivedItems[0].gradingCompany, 'TAG');
-  assert.equal(state.trades[0].receivedItems[0].gradingValue, '10');
-  assert.equal(state.trades[0].receivedItems[0].gradingLabel, 'Gem Mint');
-  assert.equal(state.trades[0].givenCashAmount, 7.5);
-  assert.equal(state.trades[0].receivedCashAmount, 2.5);
-  assert.equal(state.trades[0].totalGiven, 106.5);
-  assert.equal(state.trades[0].totalReceived, 112.5);
+  assert.equal(getTrades(state)[0].givenItems[0].gradingCompany, 'PSA');
+  assert.equal(getTrades(state)[0].givenItems[0].gradingLabel, 'Gem Mint');
+  assert.equal(getTrades(state)[0].receivedItems[0].gradingCompany, 'TAG');
+  assert.equal(getTrades(state)[0].receivedItems[0].gradingValue, '10');
+  assert.equal(getTrades(state)[0].receivedItems[0].gradingLabel, 'Gem Mint');
+  assert.equal(getTrades(state)[0].givenCashAmount, 7.5);
+  assert.equal(getTrades(state)[0].receivedCashAmount, 2.5);
+  assert.equal(getTrades(state)[0].totalGiven, 106.5);
+  assert.equal(getTrades(state)[0].totalReceived, 112.5);
 });
 
 test('tabs keep persisted trade arrays for tab-import migration support', () => {
@@ -471,12 +474,12 @@ test('persisted trades normalize invalid or negative cash amounts', () => {
     now: '2026-09-21T00:00:00Z',
   });
 
-  assert.equal(state.trades[0].givenCashAmount, 0);
-  assert.equal(state.trades[0].receivedCashAmount, 0);
-  assert.equal(state.trades[0].totalGiven, 0);
-  assert.equal(state.trades[0].totalReceived, 110);
-  assert.equal(state.trades[0].difference, 110);
-  assert.equal(state.trades[0].roi, 0);
+  assert.equal(getTrades(state)[0].givenCashAmount, 0);
+  assert.equal(getTrades(state)[0].receivedCashAmount, 0);
+  assert.equal(getTrades(state)[0].totalGiven, 0);
+  assert.equal(getTrades(state)[0].totalReceived, 110);
+  assert.equal(getTrades(state)[0].difference, 110);
+  assert.equal(getTrades(state)[0].roi, 0);
 });
 
 test('trade cash normalization keeps UI and persisted trade behavior aligned', () => {
@@ -508,22 +511,27 @@ test('normalizeTrade removes empty default rows when no cash amount is present',
 
 // ── Data-integrity fixes ──────────────────────────────────────────────
 
-test('deleting a tab keeps the trades', () => {
+test('deleting a tab removes its own trades and keeps those of other tabs', () => {
   let state = ensureAppState(null, { defaultTabId: 'tab-1' });
+  state = appendTrade(state, {
+    givenItems: [{ cardName: 'Charmander (PPS9 PFL 011)', value: 1 }],
+    receivedItems: [{ cardName: 'Psyduck (PPS9 ASC 039)', value: 1 }],
+  });
   state = addTab(state, 'Second', { id: 'tab-2' }).state;
   state = appendTrade(state, {
     givenItems: [{ cardName: 'Moltres (PPS9 PFL 014)', value: 10 }],
     receivedItems: [{ cardName: 'Zapdos (PPS9 PFL 015)', value: 12 }],
   });
-  assert.equal(state.trades.length, 1);
+  assert.equal(getTrades(state).length, 1);
 
   const afterDelete = deleteTab(state, 'tab-2');
-  assert.equal(afterDelete.trades.length, 1);
   assert.equal(afterDelete.tabs.length, 1);
+  assert.equal(getTrades(afterDelete).length, 1);
+  assert.equal(getTrades(afterDelete)[0].givenItems[0].cardName, 'Charmander (PPS9 PFL 011)');
 
   const afterDeletingLastTab = deleteTab(afterDelete, 'tab-1', { defaultTabId: 'fresh' });
-  assert.equal(afterDeletingLastTab.trades.length, 1);
   assert.equal(afterDeletingLastTab.activeTabId, 'fresh');
+  assert.equal(getTrades(afterDeletingLastTab).length, 0);
 });
 
 test('re-importing the same rows is detected as duplicates', () => {
@@ -610,7 +618,7 @@ test('missing or duplicate ids are replaced with unique ones on load', () => {
     activeTabId: 'a',
     trades: [{}, { id: 1 }],
   });
-  assert.deepEqual(state.trades.map(t => t.id).sort(), [1, 2]);
+  assert.deepEqual(getTrades(state).map(t => t.id).sort(), [1, 2]);
   const txnIds = state.tabs.flatMap(tab => tab.transactions.map(t => t.id));
   assert.equal(new Set(txnIds).size, txnIds.length);
   assert.deepEqual(state.tabs.map(tab => tab.transactions.length), [2, 1]);
@@ -655,4 +663,74 @@ test('Pristine and Gem Mint 10s are separate rows in profit per card', () => {
     { type: TYPE_BUY, cardName: 'Mew ex (MEW 151)', amount: 250, gradingCompany: 'CGC', gradingValue: '10-pristine', date: '2026-01-02' },
   ]);
   assert.deepEqual(rows.map(row => row.displayName).sort(), ['Mew ex (MEW 151) [CGC 10 Pristine]', 'Mew ex (MEW 151) [CGC 10]']);
+});
+
+test('shared trades from older versions move into the first open tab', () => {
+  const state = ensureAppState({
+    tabs: [
+      { id: 'tab-archived', name: 'Oud', archived: true, transactions: [] },
+      { id: 'tab-main', name: 'Main', transactions: [] },
+      { id: 'tab-event', name: 'Beurs', transactions: [] },
+    ],
+    activeTabId: 'tab-event',
+    trades: [
+      { id: 1, date: '2026-09-27', givenItems: [{ cardName: 'A', quantity: 1, value: 10 }], receivedItems: [{ cardName: 'B', quantity: 1, value: 12 }] },
+      { id: 2, date: '2026-09-27', givenItems: [{ cardName: 'C', quantity: 1, value: 6 }], receivedItems: [{ cardName: 'D', quantity: 1, value: 5 }] },
+    ],
+  });
+
+  assert.equal('trades' in state, false);
+  assert.deepEqual(state.tabs.find(tab => tab.id === 'tab-main').trades.map(trade => trade.id), [1, 2]);
+  assert.equal(state.tabs.find(tab => tab.id === 'tab-event').trades.length, 0);
+  assert.equal(state.tabs.find(tab => tab.id === 'tab-archived').trades.length, 0);
+
+  // Loading the migrated state again changes nothing.
+  const reloaded = ensureAppState(JSON.parse(JSON.stringify(state)));
+  assert.deepEqual(reloaded.tabs.map(tab => tab.trades.length), [0, 2, 0]);
+});
+
+test('trades are kept per tab and ids stay unique across tabs', () => {
+  let state = ensureAppState({
+    tabs: [
+      { id: 'tab-a', name: 'A', transactions: [], trades: [{ id: 3, givenItems: [{ cardName: 'X', quantity: 1, value: 1 }], receivedItems: [] }] },
+      { id: 'tab-b', name: 'B', transactions: [], trades: [{ id: 3, givenItems: [{ cardName: 'Y', quantity: 1, value: 1 }], receivedItems: [] }] },
+    ],
+    activeTabId: 'tab-b',
+  });
+
+  const ids = state.tabs.flatMap(tab => tab.trades.map(trade => trade.id));
+  assert.equal(new Set(ids).size, ids.length);
+
+  state = appendTrade(state, { date: '2026-10-01', givenItems: [{ cardName: 'Z', quantity: 1, value: 2 }], receivedItems: [] });
+  assert.equal(getTrades(state).length, 2);
+  assert.equal(state.tabs.find(tab => tab.id === 'tab-a').trades.length, 1);
+  assert.equal(getTrades(state).at(-1).id, Math.max(...ids) + 1);
+
+  const tradeInA = state.tabs.find(tab => tab.id === 'tab-a').trades[0];
+  const afterForeignDelete = deleteTrade(state, tradeInA.id);
+  assert.equal(afterForeignDelete.tabs.find(tab => tab.id === 'tab-a').trades.length, 1);
+
+  state = setActiveTab(state, 'tab-a');
+  assert.deepEqual(getTrades(state).map(trade => trade.givenItems[0].cardName), ['X']);
+});
+
+test('tabs can be moved to a new position', () => {
+  const state = ensureAppState({
+    tabs: [
+      { id: 'a', name: 'A', transactions: [] },
+      { id: 'b', name: 'B', transactions: [] },
+      { id: 'x', name: 'X', archived: true, transactions: [] },
+      { id: 'c', name: 'C', transactions: [] },
+    ],
+    activeTabId: 'b',
+  });
+
+  const order = next => next.tabs.map(tab => tab.id).join('');
+  assert.equal(order(moveTab(state, 'c', 0)), 'cabx');
+  assert.equal(order(moveTab(state, 'a', 2)), 'bcax');
+  assert.equal(order(moveTab(state, 'a', 99)), 'bcax');
+  assert.equal(order(moveTab(state, 'b', -5)), 'bacx');
+  assert.equal(moveTab(state, 'b', 1), state);
+  assert.equal(moveTab(state, 'x', 0), state);
+  assert.equal(moveTab(state, 'c', 0).activeTabId, 'b');
 });
