@@ -64,29 +64,34 @@ export function sameCardNumber(left, right) {
   return a.replace(/^([a-z]*)0+(\d)/, '$1$2') === b.replace(/^([a-z]*)0+(\d)/, '$1$2');
 }
 
-// Which sets a code means. Several sets can share a code (30C is both
-// "30th Celebration" and its "Classic Collection"): the word "classic" in
-// the card text picks between them.
-export function findSets(table, setCode, { setName = '', cardText = '' } = {}) {
-  const code = simplify(setCode);
+// Does a found card's name fit the name in the description? Loose on
+// purpose: "Mudkip Lv.7" fits "Mudkip", "Sharpedo EX" fits "Sharpedo-EX".
+export function namesMatch(wanted, found) {
+  const a = simplify(wanted);
+  const b = simplify(found);
+  if (!a || !b) return true;
+  return a === b || a.startsWith(b) || b.startsWith(a);
+}
+
+// Which sets a code means: by official code, TCGdex id, a known alias
+// (EC1 → E1) or the set name. A code can mean several sets (30C is both
+// 30th Celebration and its Classic Collection); the card name decides later.
+export function findSets(table, setCode, { setName = '' } = {}) {
+  const alias = table?.aliases?.[setCode] || '';
+  const codes = [simplify(setCode), simplify(alias)].filter(Boolean);
   const name = simplify(setName);
-  const pick = list => {
-    if (list.length < 2) return list;
-    const classic = list.filter(set => /classic/i.test(set.name));
-    if (!classic.length || classic.length === list.length) return list;
-    return /classic/i.test(cardText) ? classic : list.filter(set => !/classic/i.test(set.name));
-  };
   const match = sets => {
-    if (!code && !name) return [];
-    const byCode = sets.filter(set => code && (simplify(set.code) === code || simplify(set.id) === code));
-    if (byCode.length) return pick(byCode);
-    return name ? pick(sets.filter(set => simplify(set.name) === name)) : [];
+    if (!codes.length && !name) return [];
+    const byCode = sets.filter(set => codes.includes(simplify(set.code)) || codes.includes(simplify(set.id)));
+    if (byCode.length) return byCode;
+    return name ? sets.filter(set => simplify(set.name) === name) : [];
   };
-  const tcgdex = table?.tcgdex || [];
+  const tcgdex = (table?.tcgdex || []).filter(set => set.cards !== 0);
   return {
     en: match(tcgdex.filter(set => set.lang === 'en')),
-    ja: match(tcgdex.filter(set => set.lang === 'ja')),
+    asia: match(tcgdex.filter(set => set.lang !== 'en')),
     pokemontcg: match(table?.pokemontcg || []),
+    alias,
   };
 }
 
@@ -170,27 +175,54 @@ export function createCardImageResolver({
     return response.json();
   }
 
-  function toCandidate(card, lang, setIdHint = '') {
-    if (!card?.id || !card.image) return null;
+  function toCandidate(card, lang, setIdHint = '', { allowNoImage = false } = {}) {
+    if (!card?.id || (!card.image && !allowNoImage)) return null;
     const setId = card.set?.id || setIdHint || String(card.id).replace(/-[^-]+$/, '');
     return {
+      ...(card.category ? { category: card.category } : {}),
       id: String(card.id),
       name: String(card.name ?? ''),
       localId: String(card.localId ?? ''),
       setId,
       setName: card.set?.name || setNames.get(`${lang}:${setId}`) || '',
-      image: String(card.image),
+      image: String(card.image || ''),
       lang,
       source: 'tcgdex',
     };
   }
 
+  // The card as TCGdex knows it, image or not (image: '' when it has none).
   async function fetchTcgdexCard(lang, setId, number) {
     for (const variant of numberVariants(number)) {
       const card = await getJson(`/${lang}/cards/${encodeURIComponent(`${setId}-${variant}`)}`);
-      if (card) return toCandidate(card, lang, setId);
+      if (card) return toCandidate(card, lang, setId, { allowNoImage: true });
     }
     return null;
+  }
+
+  // TCGdex sometimes lists an image that isn't there (many Japanese sets):
+  // only use it when it actually loads.
+  async function tcgdexImageLoads(card) {
+    return Boolean(card?.image) && probeImage(cardImageUrl(card.image));
+  }
+
+  // Pokémon or Trainer, for cards from sources that don't say (by name, via TCGdex).
+  const categories = new Map();
+  async function categoryFor(name) {
+    const key = simplify(name);
+    if (!key) return '';
+    if (categories.has(key)) return categories.get(key);
+    const cached = cacheGet(`category:${key}`, LOOKUP_TTL_MS * 10);
+    if (cached !== undefined) { categories.set(key, cached); return cached; }
+    const promise = (async () => {
+      const briefs = await getJson(`/en/cards?name=${encodeURIComponent(`eq:${name}`)}&pagination:itemsPerPage=5`);
+      const first = Array.isArray(briefs) ? briefs[0] : null;
+      if (!first?.id) return '';
+      const card = await getJson(`/en/cards/${encodeURIComponent(first.id)}`);
+      return card?.category || '';
+    })().then(category => { cacheSet(`category:${key}`, category); return category; }, () => '');
+    categories.set(key, promise);
+    return promise;
   }
 
   async function searchByName(lang, name, { exact = true } = {}) {
@@ -208,36 +240,82 @@ export function createCardImageResolver({
     return cards.map(card => toCandidate({ ...card, set: { id: setId, name: set.name } }, lang, setId)).filter(Boolean);
   }
 
-  function limitlessCode(code) {
-    return String(code).toUpperCase();
-  }
-
-  function limitlessNumber(number) {
-    return /^\d+$/.test(number) ? String(Number(number)).padStart(3, '0') : String(number).toUpperCase();
+  function pokemontcgNameFits(table, set, number, name) {
+    const names = table?.numberedNames?.[set.id];
+    if (!names) return null; // unknown: can't tell
+    const found = names[String(Number(number))] ?? names[number];
+    return found ? namesMatch(name, found) : false;
   }
 
   // Images that exist as files only: build the address, check that it loads.
-  async function fallbackImage({ name, setCode, number }, sets) {
-    for (const set of sets.pokemontcg) {
-      const plain = /^\d+$/.test(number) ? String(Number(number)) : number;
+  async function fallbackImage({ name, setCode, number }, sets, table, { skipSetNames = [] } = {}) {
+    const plain = /^\d+$/.test(number) ? String(Number(number)) : number;
+    // pokemontcg.io: sets whose names we know first, then the others.
+    const ordered = [...sets.pokemontcg].sort((a, b) => (table?.numberedNames?.[b.id] ? 1 : 0) - (table?.numberedNames?.[a.id] ? 1 : 0));
+    for (const set of ordered) {
+      const fits = pokemontcgNameFits(table, set, plain, name);
+      if (fits === false) continue;
+      if (fits === null && skipSetNames.includes(simplify(set.name))) continue;
       const base = `${POKEMONTCG_IMAGES}/${set.id}/${encodeURIComponent(plain)}`;
       if (await probeImage(cardImageUrl(base))) {
         return { id: `${set.id}-${plain}`, name, localId: plain, setId: set.id, setName: set.name, image: base, lang: 'en', source: 'pokemontcg' };
       }
     }
-    const japanese = sets.ja.length > 0 && !sets.en.length && !sets.pokemontcg.length;
-    const codes = japanese ? sets.ja.map(set => set.id) : [setCode];
-    for (const code of [...new Set(codes.map(limitlessCode))]) {
-      const nr = limitlessNumber(number);
-      const base = japanese
-        ? `${LIMITLESS_IMAGES}/tpc/${code}/${code}_${nr}_R_JP`
-        : `${LIMITLESS_IMAGES}/tpci/${code}/${code}_${nr}_R_EN`;
+
+    // Limitless: English sets live under tpci/ with 3-digit numbers, Japanese
+    // ones under tpc/ with plain numbers. Japanese codes have lowercase
+    // letters (sm9b, m1L) or are only known as Asian sets.
+    const isJapanese = /[a-z]/.test(setCode) || (sets.asia.length > 0 && !sets.en.length && !sets.pokemontcg.length);
+    const english = { dir: 'tpci', suffix: 'EN', codes: [setCode.toUpperCase()], numbers: [/^\d+$/.test(number) ? plain.padStart(3, '0') : number.toUpperCase()] };
+    const japanese = {
+      dir: 'tpc',
+      suffix: 'JP',
+      codes: [setCode, sets.alias, ...sets.asia.map(set => set.id)].filter(Boolean).flatMap(code => [code, code.toUpperCase(), code.replace(/-/g, '')]),
+      numbers: [plain, /^\d+$/.test(number) ? plain.padStart(3, '0') : number],
+    };
+    const attempts = [];
+    for (const source of isJapanese ? [japanese, english] : [english, japanese]) {
+      for (const code of [...new Set(source.codes)]) {
+        for (const nr of [...new Set(source.numbers)]) {
+          attempts.push({ source, code, nr });
+        }
+      }
+    }
+    for (const { source, code, nr } of attempts.slice(0, 14)) {
+      const base = `${LIMITLESS_IMAGES}/${source.dir}/${code}/${code}_${nr}_R_${source.suffix}`;
       if (await probeImage(cardImageUrl(base))) {
-        const setName = (japanese ? sets.ja[0]?.name : sets.en[0]?.name || sets.pokemontcg[0]?.name) || code;
-        return { id: `${code}-${nr}`, name, localId: nr, setId: code, setName, image: base, lang: japanese ? 'ja' : 'en', source: 'limitless' };
+        const isJp = source.suffix === 'JP';
+        const setName = (isJp ? sets.asia[0]?.name : sets.en[0]?.name || sets.pokemontcg[0]?.name) || code;
+        return { id: `${code}-${nr}`, name, localId: nr, setId: code, setName, image: base, lang: isJp ? 'ja' : 'en', source: 'limitless' };
       }
     }
     return null;
+  }
+
+  // Exact card for a set code + number, from whichever source has it.
+  async function exactCard(reference, table, sets) {
+    const { name, number } = reference;
+    const accepted = [];
+    const rejected = [];
+    const skipSetNames = [];
+    for (const set of [...sets.en, ...sets.asia]) {
+      const card = await fetchTcgdexCard(set.lang, set.id, number);
+      if (!card) continue;
+      // Japanese/Chinese names can't be compared with the description.
+      if (set.lang === 'en' && name && !namesMatch(name, card.name)) {
+        rejected.push(card);
+        skipSetNames.push(simplify(set.name));
+        continue;
+      }
+      if (await tcgdexImageLoads(card)) accepted.push(card);
+    }
+    if (accepted.length) return accepted;
+    const fallback = await fallbackImage(reference, sets, table, { skipSetNames });
+    if (fallback) {
+      if (!fallback.category && name) fallback.category = await categoryFor(name) || undefined;
+      return [fallback];
+    }
+    return rejected.filter(card => card.image);
   }
 
   async function lookup(cardName, { setName = '' } = {}) {
@@ -245,21 +323,13 @@ export function createCardImageResolver({
     const { name, setCode, number } = reference;
     if (!name && !setCode) return { status: 'none' };
     const table = await setTable();
-    const sets = setCode ? findSets(table, setCode, { setName, cardText: cardName }) : { en: [], ja: [], pokemontcg: [] };
+    const sets = setCode ? findSets(table, setCode, { setName }) : { en: [], asia: [], pokemontcg: [], alias: '' };
 
     // 1. Set code + number: that exact card, from whichever source has it.
     if (setCode && number) {
-      const hits = [];
-      for (const [lang, list] of [['en', sets.en], ['ja', sets.ja]]) {
-        for (const set of list) {
-          const card = await fetchTcgdexCard(lang, set.id, number);
-          if (card) hits.push(card);
-        }
-      }
+      const hits = await exactCard(reference, table, sets);
       if (hits.length === 1) return { status: 'found', match: hits[0] };
       if (hits.length > 1) return { status: 'ambiguous', candidates: hits };
-      const fallback = await fallbackImage(reference, sets);
-      if (fallback) return { status: 'found', match: fallback };
     }
 
     // 2. Search by name, narrowed down by set and number when known.
@@ -269,6 +339,7 @@ export function createCardImageResolver({
       candidates = (await searchByName('en', name, { exact: false })).filter(card => simplify(card.name) === simplify(name));
     }
     if (!candidates.length && /[^\x00-\x7f]/.test(name)) candidates = await searchByName('ja', name);
+    if (sets.asia.length && !sets.en.length) return { status: 'none' }; // a Japanese set: an English card with that name would be wrong
 
     const setIds = sets.en.map(set => set.id);
     const inSet = setIds.length ? candidates.filter(card => setIds.includes(card.setId)) : [];
@@ -296,51 +367,31 @@ export function createCardImageResolver({
     return promise;
   }
 
-  // Picker search. "M1L", "M1L 087" or "PFL 14" browse that set (any language,
-  // so Japanese cards can be found without knowing their Japanese name);
+  // Picker search. "M1L", "M1L 087" or "PFL 14" look in that set (any
+  // language, so Japanese cards can be found without their Japanese name);
   // anything else searches card names.
-  async function search(query, { lang = 'en' } = {}) {
+  async function search(query, { lang = 'en', name = '' } = {}) {
     const text = String(query ?? '').trim();
     if (text.length < 2) return [];
     return schedule(async () => {
       const table = await setTable();
-      const [first, second] = text.split(/\s+/);
+      const parts = text.split(/\s+/);
+      const [first, second] = parts;
       const sets = findSets(table, first);
-      const browseList = lang === 'ja' ? [...sets.ja, ...sets.en] : [...sets.en, ...sets.ja];
-      if (browseList.length && (!second || /\d/.test(second)) && text.split(/\s+/).length <= 2) {
-        const results = [];
-        for (const set of browseList.slice(0, 2)) {
-          results.push(...await browseSet(set.lang, set.id).catch(() => []));
-        }
-        if (second) {
-          const exact = results.filter(card => sameCardNumber(card.localId, second));
-          if (!exact.length) {
-            const fallback = await fallbackImage({ name: text, setCode: first, number: second }, sets);
-            if (fallback) return [fallback, ...results];
-          }
-          return [...exact, ...results.filter(card => !exact.includes(card))];
-        }
+      const looksLikeCode = /\d|^[A-Z0-9-]+$/.test(first) && (!second || /\d/.test(second)) && parts.length <= 2;
+      const known = [...sets.en, ...sets.asia];
+      if (looksLikeCode && (known.length || second)) {
+        const exact = second ? await exactCard({ name, setCode: first, number: second }, table, sets) : [];
+        const browseList = lang === 'en' ? [...sets.en, ...sets.asia] : [...sets.asia, ...sets.en];
+        const browsed = [];
+        for (const set of browseList.slice(0, 2)) browsed.push(...await browseSet(set.lang, set.id).catch(() => []));
+        const rest = browsed.filter(card => !exact.some(hit => hit.id === card.id));
+        const results = [...exact, ...rest];
         if (results.length) return results;
       }
-      const byName = await searchByName(lang, text, { exact: false });
+      const byName = await searchByName(lang === 'ja' ? 'ja' : 'en', text, { exact: false });
       return byName.slice(0, MAX_CANDIDATES * 2);
     });
-  }
-
-  // Exact card for "CODE NUMBER" from any source (used by the picker).
-  async function lookupCode(setCode, number, cardText = '') {
-    const table = await setTable();
-    const sets = findSets(table, setCode, { cardText });
-    const hits = [];
-    for (const [lang, list] of [['en', sets.en], ['ja', sets.ja]]) {
-      for (const set of list) {
-        const card = await fetchTcgdexCard(lang, set.id, number).catch(() => null);
-        if (card) hits.push(card);
-      }
-    }
-    if (hits.length) return hits;
-    const fallback = await fallbackImage({ name: cardText, setCode, number }, sets);
-    return fallback ? [fallback] : [];
   }
 
   function forget(cardName) {
@@ -354,5 +405,5 @@ export function createCardImageResolver({
     } catch { /* ignore */ }
   }
 
-  return { resolve, search, lookupCode, forget };
+  return { resolve, search, categoryFor, forget };
 }
