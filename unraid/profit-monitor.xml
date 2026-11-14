@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>profit-monitor</Name>
+  <Repository>ghcr.io/brammeketv/profit-monitor-pkmn:latest</Repository>
+  <Registry>https://github.com/brammeketv/profit-monitor-pkmn/pkgs/container/profit-monitor-pkmn</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/brammeketv/profit-monitor-pkmn</Support>
+  <Project>https://github.com/brammeketv/profit-monitor-pkmn</Project>
+  <Overview>Profit Monitor for Pokémon TCG trading. Self-hosted: all tabs, transactions and trades are stored as one JSON file in the appdata folder, with a daily backup.</Overview>
+  <Category>Tools: Productivity:</Category>
+  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <TemplateURL/>
+  <Icon/>
+  <ExtraParams>--restart=unless-stopped</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config Name="WebUI port" Target="8080" Default="8080" Mode="tcp" Description="Port on your Unraid server where the app opens (http://UNRAID-IP:port)." Type="Port" Display="always" Required="true" Mask="false">8080</Config>
+  <Config Name="Data folder" Target="/data" Default="/mnt/user/appdata/profit-monitor" Mode="rw" Description="Where your data is stored on the server: profit-monitor.json plus a backups folder." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/profit-monitor</Config>
+  <Config Name="Timezone" Target="TZ" Default="Europe/Amsterdam" Mode="" Description="Used for the dates in backup file names." Type="Variable" Display="advanced" Required="false" Mask="false">Europe/Amsterdam</Config>
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="Owner of the data files (99 = nobody on Unraid)." Type="Variable" Display="advanced" Required="false" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Group of the data files (100 = users on Unraid)." Type="Variable" Display="advanced" Required="false" Mask="false">100</Config>
+  <Config Name="Backups to keep" Target="BACKUP_KEEP" Default="30" Mode="" Description="Number of daily backups kept in the backups folder." Type="Variable" Display="advanced" Required="false" Mask="false">30</Config>
+  <Config Name="Login user (optional)" Target="AUTH_USER" Default="" Mode="" Description="Set together with the password to require a login. Leave both empty for no login." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Login password (optional)" Target="AUTH_PASSWORD" Default="" Mode="" Description="Password for the optional login." Type="Variable" Display="advanced" Required="false" Mask="true"/>
+</Container>

@@ -384,31 +384,322 @@
     .tab-btn.drop-before { box-shadow: -5px 0 0 var(--text); }
     .tab-btn.drop-after { box-shadow: 5px 0 0 var(--text); }
 
-    .archive-panel {
-      padding: 12px 14px;
-      border: 2px dashed var(--border);
-      background: var(--surface);
-    }
-
-    .archive-title {
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 2px;
-      text-transform: uppercase;
+    /* ── archive: small icon next to the title, opens a pop-up ── */
+    .archive-toggle {
+      position: relative;
+      align-self: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 36px;
+      margin-left: 4px;
+      border: 2px solid var(--border);
+      background: var(--surface2);
       color: var(--muted);
-      margin-bottom: 10px;
+      cursor: pointer;
+      transform: var(--slant);
+      transition: border-color 120ms, color 120ms, background 120ms;
     }
+    .archive-toggle svg { transform: var(--unslant); }
+    .archive-toggle:hover { border-color: var(--text); color: var(--text); background: #2f2c29; }
+    .archive-toggle.has-items { color: var(--text); }
+    .archive-count {
+      position: absolute;
+      top: -9px;
+      right: -10px;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 5px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent);
+      color: var(--on-accent);
+      border: 2px solid var(--ink);
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .archive-count[hidden] { display: none; }
 
-    .archive-list { display: flex; flex-direction: column; gap: 8px; }
-
-    .archive-row {
+    .archive-modal { width: min(1120px, 100%); }
+    .archive-intro { color: var(--muted); font-size: 14px; margin-bottom: 18px; }
+    .archive-empty {
+      padding: 28px 18px;
+      border: 2px dashed var(--border);
+      color: var(--muted);
+      font-size: 14px;
+      text-align: center;
+    }
+    .archive-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+      gap: 20px;
+    }
+    .archive-card {
       display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 14px 16px 16px;
+      background: var(--surface2);
+      border: 3px solid var(--ink);
+      box-shadow: var(--block-sm);
+    }
+    .archive-card-name {
+      font-size: 18px;
+      font-weight: 700;
+      text-transform: uppercase;
+      overflow-wrap: anywhere;
+    }
+    .archive-card-meta { font-size: 12px; font-weight: 600; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
+    .archive-card-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .archive-mini { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .archive-mini-label { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+    .archive-mini-value { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .archive-card-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: auto; padding-top: 4px; }
+
+    .archive-detail-head {
+      display: flex;
+      flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
-      font-size: 14px;
-      color: var(--text2);
+      gap: 12px;
+      margin-bottom: 18px;
     }
+    .archive-detail-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; min-width: 0; }
+    .archive-detail-name { font-size: 22px; font-weight: 700; text-transform: uppercase; overflow-wrap: anywhere; }
+    .archive-detail-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+    .archive-kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(126px, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .archive-kpi {
+      padding: 10px 12px 12px;
+      background: var(--surface2);
+      border: 3px solid var(--ink);
+      box-shadow: var(--block-sm);
+      min-width: 0;
+    }
+    .archive-kpi .archive-mini-value { font-size: 19px; margin-top: 4px; }
+    .archive-section { margin-top: 22px; }
+    .archive-section .subsection-title { margin-bottom: 12px; }
+    .archive-modal .table-wrap { max-height: 420px; overflow: auto; border: 3px solid var(--ink); box-shadow: var(--block-sm); }
+    .archive-modal .table-wrap thead th { position: sticky; top: 0; z-index: 1; }
+    .archive-modal td.num, .archive-modal th.num { text-align: right; }
+
+    .archive-modal.is-detail {
+      width: min(1640px, 100%);
+      height: 92vh;
+      max-height: 92vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .archive-modal.is-detail #archiveContent { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .archive-modal.is-detail .section-header { margin-bottom: 10px; }
+    .archive-modal.is-detail .archive-detail-head { margin-bottom: 12px; }
+    .archive-preview-frame {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      border: 3px solid var(--ink);
+      background: var(--bg);
+    }
+
+    /* ── read-only preview inside the archive pop-up: condensed, no editing ── */
+    html.preview-mode .sidebar,
+    html.preview-mode .brand,
+    html.preview-mode .workspace-bar,
+    html.preview-mode #tabMsg,
+    html.preview-mode .sync-banner,
+    html.preview-mode .setnames-reminder,
+    html.preview-mode .media-edit,
+    html.preview-mode [data-card-pick],
+    html.preview-mode #tradesView .trade-form,
+    html.preview-mode .edit-btn,
+    html.preview-mode .delete-btn,
+    html.preview-mode [data-trade-action="edit"],
+    html.preview-mode [data-trade-action="delete"],
+    html.preview-mode [data-set-names-copy],
+    html.preview-mode .set-edit-icon { display: none !important; }
+    html.preview-mode .set-name-btn { pointer-events: none; }
+    html.preview-mode .layout {
+      grid-template-columns: minmax(0, 1fr);
+      padding: 14px 16px 28px;
+      row-gap: 16px;
+      min-height: 0;
+    }
+    html.preview-mode .topbar { gap: 14px; }
+    html.preview-mode .topbar-row { justify-content: flex-start; }
+    html.preview-mode .summary-row { justify-content: flex-start; }
+    html.preview-mode .section-title { font-size: 24px; }
+    html.preview-mode .view-toggle-btn { min-height: 38px; }
+    html.preview-mode .chart-canvas { height: 320px; }
+
+
+    /* ── media: card images and photos ── */
+    .txn-media { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+    .card-media { display: inline-flex; align-items: center; gap: 6px; }
+    .media-thumb {
+      display: inline-flex;
+      padding: 0;
+      border: 2px solid var(--border);
+      background: var(--field);
+      cursor: zoom-in;
+      overflow: hidden;
+      transition: border-color 120ms, transform 120ms;
+    }
+    .media-thumb img { display: block; height: 72px; width: auto; max-width: 120px; object-fit: cover; }
+    .card-thumb img { width: 52px; height: 72px; object-fit: contain; max-width: none; }
+    .media-thumb:hover { border-color: var(--text); transform: translateY(-2px); }
+    .media-thumb.is-compact { margin-right: 10px; vertical-align: middle; border-width: 1px; }
+    .media-thumb.is-compact img { width: 30px; height: 42px; }
+    .profit-card-cell { display: flex; align-items: center; }
+    .profit-card-cell .media-thumb { flex-shrink: 0; }
+    .media-edit {
+      width: 26px; height: 26px;
+      border: 2px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1;
+    }
+    .media-edit:hover { color: var(--text); border-color: var(--text); }
+    .media-status { font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+    .media-status-btn {
+      min-height: 28px;
+      padding: 0 10px;
+      border: 2px dashed var(--graded);
+      background: transparent;
+      color: var(--graded);
+      font: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .media-status-btn.subtle { border-color: var(--border); color: var(--muted); }
+    .media-status-btn:hover { color: var(--text); border-color: var(--text); }
+
+    .image-drop {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 10px;
+      border: 2px dashed var(--border);
+      background: var(--field);
+      transition: border-color 120ms, background 120ms;
+    }
+    .image-drop.is-over { border-color: var(--text); background: var(--surface2); }
+    .image-drop-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .image-add-btn { min-height: 34px; cursor: pointer; }
+    .image-hint { font-size: 12px; color: var(--muted); }
+    .image-strip { display: flex; flex-wrap: wrap; gap: 8px; }
+    .image-strip[hidden] { display: none; }
+    .image-tile { position: relative; width: 64px; height: 64px; border: 2px solid var(--border); background: var(--surface2); }
+    .image-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .image-tile.is-loading { background: repeating-linear-gradient(-45deg, var(--surface2) 0 8px, var(--surface) 8px 16px); animation: tile-load 1s linear infinite; background-size: 22px 22px; }
+    @keyframes tile-load { to { background-position: 22px 0; } }
+    .image-tile-remove {
+      position: absolute; top: -9px; right: -9px;
+      width: 22px; height: 22px;
+      border: 2px solid var(--ink);
+      background: var(--accent);
+      color: var(--on-accent);
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .card-picker-modal { width: min(1180px, 100%); }
+    .card-picker-search { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+    .card-picker-search .search-input { flex: 1 1 260px; }
+    .card-picker-search .form-select { width: auto; min-width: 120px; }
+    .card-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 16px;
+      max-height: 58vh;
+      overflow: auto;
+      padding: 4px 6px 8px 2px;
+    }
+    .card-option {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 8px;
+      border: 2px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 120ms, transform 120ms;
+    }
+    .card-option:hover { border-color: var(--text); transform: translateY(-2px); }
+    .card-option.is-hint { border-color: var(--graded); }
+    .card-option.is-current { border-color: var(--green); box-shadow: 0 0 0 2px var(--green); }
+    .card-option img { width: 100%; aspect-ratio: 245 / 337; object-fit: contain; background: var(--field); }
+    .card-option-name { font-size: 13px; font-weight: 700; line-height: 1.2; }
+    .card-option-set { font-size: 11px; color: var(--muted); line-height: 1.3; }
+    .card-picker-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 18px; }
+    .card-picker-credit { margin-left: auto; font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+
+    .media-viewer-backdrop { z-index: 60; }
+    .media-viewer {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: min(1100px, 100%);
+      max-height: 94vh;
+      padding: 14px;
+      background: var(--surface);
+      border: 3px solid var(--ink);
+      box-shadow: 10px 14px 0 var(--ink);
+    }
+    .media-viewer-stage { position: relative; display: flex; align-items: center; justify-content: center; min-height: 0; }
+    .media-viewer-stage img { max-width: 100%; max-height: calc(94vh - 110px); object-fit: contain; display: block; }
+    .media-nav {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      width: 40px; height: 56px;
+      border: 2px solid var(--ink);
+      background: rgba(15, 14, 13, 0.82);
+      color: var(--text);
+      font-size: 30px;
+      cursor: pointer;
+    }
+    .media-nav.prev { left: 6px; }
+    .media-nav.next { right: 6px; }
+    .media-viewer-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+    .media-viewer-caption { font-weight: 700; overflow-wrap: anywhere; }
+    .media-viewer-caption .muted { color: var(--muted); font-weight: 600; margin-left: 8px; }
+    .media-viewer-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .media-viewer-actions a.inline-btn { text-decoration: none; }
+    .media-viewer-actions .cancel-btn { min-height: 38px; }
+
+    /* ── server sync banner ── */
+    .sync-banner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 16px;
+      padding: 10px 14px;
+      border: 3px solid var(--ink);
+      background: var(--surface);
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .sync-banner[hidden] { display: none; }
+    .sync-banner.error { border-color: var(--red); color: var(--red); }
+    .sync-banner.conflict { border-color: var(--graded); }
+    .sync-banner-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 
     .view-toggle-bar {
       display: flex;
@@ -1831,6 +2122,10 @@
     <div class="topbar-row">
       <div class="brand">
         <span class="topbar-title">Profit Monitor</span>
+        <button class="archive-toggle" id="archiveToggleBtn" type="button" aria-haspopup="dialog" aria-label="Gearchiveerde tabs" title="Gearchiveerde tabs">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M2 3h16v4H2zM3.5 7v10h13V7M8 10.5h4" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+          <span class="archive-count" id="archiveCount" hidden>0</span>
+        </button>
         <span class="topbar-tab" id="activeTabName"></span>
       </div>
       <div class="summary-row" aria-label="Totalen">
@@ -1865,10 +2160,7 @@
       </div>
     </div>
     <div class="form-msg panel-message" id="tabMsg"></div>
-    <div class="archive-panel" id="tabArchivePanel" style="display:none;">
-      <div class="archive-title">Gearchiveerde tabs</div>
-      <div class="archive-list" id="tabArchiveList"></div>
-    </div>
+    <div class="sync-banner" id="syncBanner" role="status" hidden></div>
 
     <!-- View toggle -->
     <nav class="view-toggle-bar" aria-label="Weergave">
@@ -1883,6 +2175,7 @@
   <!-- main table -->
   <main class="main">
     <div class="setnames-reminder" id="setNamesReminder" hidden></div>
+    <div class="setnames-reminder" id="cardPicksReminder" hidden></div>
     <!-- Transactions view -->
     <div id="transactionsView">
       <div class="section-header">
@@ -2316,6 +2609,20 @@
       ></textarea>
     </div>
 
+    <div class="form-group">
+      <span class="form-label">Afbeeldingen <span class="form-label-note">optioneel · bijv. sealed of accessoires</span></span>
+      <div class="image-drop" id="fImagesDrop">
+        <div class="image-strip" id="fImagesStrip"></div>
+        <div class="image-drop-row">
+          <label class="inline-btn image-add-btn">
+            <input type="file" id="fImagesInput" accept="image/*" multiple hidden />
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2.4"/></svg>Foto
+          </label>
+          <span class="image-hint" id="fImagesHint">of plak / sleep een afbeelding hierheen</span>
+        </div>
+      </div>
+    </div>
+
     <div class="form-row toggle-row">
       <label class="toggle-switch" title="Kaartnaam en aantal worden uit de beschrijving gehaald.">
         <input type="checkbox" id="fHasCardName" />
@@ -2479,7 +2786,7 @@
     </button>
 
     <p class="side-note">
-      Data wordt lokaal opgeslagen in uw browser.<br/>
+      <span id="storageNote">Data wordt lokaal opgeslagen in uw browser.</span><br/>
       Kaartafbeeldingen via de Pokémon TCG API.
     </p>
     </div>
@@ -2495,6 +2802,32 @@
       <button class="cancel-btn" id="closeTradeDetailBtn">Sluiten</button>
     </div>
     <div id="tradeDetailContent"></div>
+  </div>
+</div>
+
+<div class="trade-detail-backdrop" id="cardPickerBackdrop">
+  <div class="trade-detail-modal card-picker-modal" role="dialog" aria-modal="true" aria-labelledby="cardPickerTitle">
+    <div class="section-header">
+      <span class="section-title" id="cardPickerTitle">Kaartafbeelding</span>
+      <button class="cancel-btn" id="closeCardPickerBtn">Sluiten</button>
+    </div>
+    <div id="cardPickerContent"></div>
+  </div>
+</div>
+
+<div class="trade-detail-backdrop media-viewer-backdrop" id="mediaViewerBackdrop">
+  <div class="media-viewer" role="dialog" aria-modal="true" aria-label="Afbeelding">
+    <div id="mediaViewerContent"></div>
+  </div>
+</div>
+
+<div class="trade-detail-backdrop" id="archiveBackdrop">
+  <div class="trade-detail-modal archive-modal" role="dialog" aria-modal="true" aria-labelledby="archiveModalTitle">
+    <div class="section-header">
+      <span class="section-title" id="archiveModalTitle">Archief</span>
+      <button class="cancel-btn" id="closeArchiveBtn">Sluiten</button>
+    </div>
+    <div id="archiveContent"></div>
   </div>
 </div>
 
@@ -2554,7 +2887,23 @@ import {
   updateTrade as updateStoredTrade,
   updateTransaction as updateStoredTransaction,
   validateTabName,
+  addAutoCardImages,
+  cardImageKey,
+  clearCardImage,
+  extractSetCode,
+  formatCardPicksForExport,
+  getCardImage,
+  getCustomCardPicks,
+  getSetName,
+  isCardPicksReminderDue,
+  normalizeTransactionImages,
+  parseCardReference,
+  SERVER_IMAGE_ID_PATTERN,
+  setCardImage,
+  snoozeCardPicksReminder,
+  MAX_TRANSACTION_IMAGES,
 } from './profit-monitor-core.mjs';
+import { cardImageUrl, createCardImageResolver } from './card-images.mjs';
 
 // Charts follow the app's dark theme and typeface.
 if (window.Chart) {
@@ -2705,19 +3054,245 @@ const formMsg = document.getElementById('formMsg');
 const importMsg = document.getElementById('importMsg');
 const dateInput = document.getElementById('fDate');
 
-function loadFromStorage() {
+// ── storage ────────────────────────────────────────────────────────────
+// Served by the self-hosted server (Docker), the workspace is stored on the
+// server through /api/state. Opened from GitHub Pages or as a plain file,
+// there is no API and the app falls back to the browser's localStorage.
+const MIGRATED_KEY = `${STORAGE_KEY}-migrated-to-server`;
+const storage = {
+  mode: 'local',          // 'local' | 'server'
+  revision: 0,
+  dirty: false,
+  saving: false,
+  conflict: null,         // server copy when another device saved first
+  error: false,
+  retryTimer: null,
+  lastSavedAt: null,
+};
+
+async function fetchServerState() {
   try {
-    appState = ensureAppState(localStorage.getItem(STORAGE_KEY));
+    const response = await fetch('api/state', { cache: 'no-store', headers: { Accept: 'application/json' } });
+    if (!response.ok) return null;
+    if (!(response.headers.get('content-type') || '').includes('application/json')) return null;
+    const body = await response.json();
+    return body && Number.isInteger(body.revision) ? body : null;
+  } catch {
+    return null;
+  }
+}
+
+function readLocalState() {
+  try {
+    return localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+// Read-only preview of one archived tab, shown inside the archive pop-up.
+// The parent page sends the data, so nothing is loaded from or saved to storage.
+const PREVIEW_TAB_ID = new URLSearchParams(location.search).get('preview');
+const IS_PREVIEW = Boolean(PREVIEW_TAB_ID) && window.parent !== window;
+if (IS_PREVIEW) document.documentElement.classList.add('preview-mode');
+
+function receivePreviewState() {
+  return new Promise(resolve => {
+    window.addEventListener('message', function onMessage(event) {
+      if (event.source !== window.parent || event.data?.type !== 'profit-monitor-preview-state') return;
+      window.removeEventListener('message', onMessage);
+      resolve(event.data.state);
+    });
+    window.parent.postMessage({ type: 'profit-monitor-preview-ready', tabId: PREVIEW_TAB_ID }, '*');
+  });
+}
+
+async function loadFromStorage() {
+  if (IS_PREVIEW) {
+    storage.mode = 'preview';
+    appState = ensureAppState(await receivePreviewState());
+    return;
+  }
+  const server = await fetchServerState();
+  if (server) {
+    storage.mode = 'server';
+    storage.revision = server.revision;
+    storage.lastSavedAt = server.updatedAt;
+    if (server.state) {
+      appState = ensureAppState(server.state);
+    } else {
+      // Empty server: bring along data this browser already had on this address.
+      const local = readLocalState();
+      appState = ensureAppState(local);
+      saveToStorage();
+      if (local) {
+        try { localStorage.setItem(MIGRATED_KEY, new Date().toISOString()); } catch { /* ignore */ }
+        showMessage(tabMsg, 'success', 'Je data uit deze browser is naar de server verplaatst.');
+      }
+    }
+    renderSyncStatus();
+    return;
+  }
+
+  storage.mode = 'local';
+  try {
+    appState = ensureAppState(readLocalState());
   } catch {
     appState = ensureAppState(null);
   }
-
   saveToStorage();
+  renderSyncStatus();
 }
 
 function saveToStorage() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+  if (storage.mode === 'preview') return;
+  if (storage.mode !== 'server') {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+    } catch {
+      showMessage(tabMsg, 'error', 'Opslaan in de browser is mislukt: de opslag is vol. Verwijder afbeeldingen of gebruik de server-versie (Docker).');
+    }
+    return;
+  }
+  storage.dirty = true;
+  flushServerSave();
 }
+
+async function flushServerSave({ force = false } = {}) {
+  if (storage.saving || !storage.dirty || (storage.conflict && !force)) return;
+  clearTimeout(storage.retryTimer);
+  storage.retryTimer = null;
+  storage.saving = true;
+  storage.dirty = false;
+  renderSyncStatus();
+
+  let retry = false;
+  try {
+    const response = await fetch('api/state', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state: appState, baseRevision: storage.revision, force }),
+    });
+    if (response.status === 409) {
+      storage.conflict = await response.json();
+      storage.dirty = true;
+    } else if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    } else {
+      const body = await response.json();
+      storage.revision = body.revision;
+      storage.lastSavedAt = body.updatedAt;
+      storage.conflict = null;
+      storage.error = false;
+    }
+  } catch {
+    storage.dirty = true;
+    storage.error = true;
+    retry = true;
+  } finally {
+    storage.saving = false;
+  }
+
+  if (retry) {
+    storage.retryTimer = setTimeout(() => flushServerSave(), 5000);
+  } else if (storage.dirty && !storage.conflict) {
+    flushServerSave();
+  }
+  renderSyncStatus();
+}
+
+// Another device saved in the meantime: keep theirs or overwrite with ours.
+function resolveConflict(choice) {
+  const serverCopy = storage.conflict;
+  if (!serverCopy) return;
+  if (choice === 'server') {
+    storage.conflict = null;
+    storage.dirty = false;
+    storage.revision = serverCopy.revision;
+    storage.lastSavedAt = serverCopy.updatedAt;
+    appState = ensureAppState(serverCopy.state);
+    refreshView();
+    renderSyncStatus();
+    return;
+  }
+  storage.revision = serverCopy.revision;
+  storage.conflict = null;
+  flushServerSave({ force: true });
+}
+
+// Coming back to the app (other tab, phone unlocked): pick up changes made elsewhere.
+async function pullServerChanges() {
+  if (storage.mode !== 'server' || storage.dirty || storage.saving || storage.conflict) return;
+  const server = await fetchServerState();
+  if (!server || server.revision === storage.revision || storage.dirty || storage.saving) return;
+  storage.revision = server.revision;
+  storage.lastSavedAt = server.updatedAt;
+  if (server.state) {
+    appState = ensureAppState(server.state);
+    refreshView();
+  }
+  renderSyncStatus();
+}
+
+function formatSyncTime(iso) {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+function renderSyncStatus() {
+  const note = document.getElementById('storageNote');
+  const banner = document.getElementById('syncBanner');
+  if (!note || !banner) return;
+
+  if (storage.mode === 'preview') {
+    banner.hidden = true;
+    return;
+  }
+  if (storage.mode !== 'server') {
+    note.textContent = 'Data wordt lokaal opgeslagen in uw browser.';
+    banner.hidden = true;
+    return;
+  }
+
+  if (storage.saving || storage.dirty) note.textContent = 'Opslaan op de server…';
+  else note.textContent = `Data staat op de server${storage.lastSavedAt ? ` · laatst opgeslagen ${formatSyncTime(storage.lastSavedAt)}` : ''}.`;
+
+  if (storage.conflict) {
+    banner.hidden = false;
+    banner.className = 'sync-banner conflict';
+    banner.innerHTML = `
+      <span>Op een ander apparaat is de data intussen gewijzigd${storage.conflict.updatedAt ? ` (${escHTML(formatSyncTime(storage.conflict.updatedAt))})` : ''}. Jouw laatste wijziging is nog niet opgeslagen.</span>
+      <span class="sync-banner-actions">
+        <button class="inline-btn" data-sync-choice="server">Server-versie laden</button>
+        <button class="inline-btn danger" data-sync-choice="mine">Mijn versie bewaren</button>
+      </span>`;
+  } else if (storage.error) {
+    banner.hidden = false;
+    banner.className = 'sync-banner error';
+    banner.innerHTML = '<span>Server niet bereikbaar — je wijzigingen zijn nog niet opgeslagen. Opnieuw proberen…</span>';
+  } else {
+    banner.hidden = true;
+    banner.innerHTML = '';
+  }
+}
+
+document.addEventListener('click', event => {
+  const button = event.target.closest('[data-sync-choice]');
+  if (button) resolveConflict(button.dataset.syncChoice);
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') pullServerChanges();
+});
+
+window.addEventListener('beforeunload', event => {
+  if (storage.mode === 'server' && (storage.dirty || storage.saving)) {
+    event.preventDefault();
+    event.returnValue = '';
+  }
+});
 
 function activeTransactions() {
   return getActiveTransactions(appState);
@@ -2891,33 +3466,679 @@ function renderTabs() {
   });
 })();
 
+// ── images on transactions ─────────────────────────────────────────────
+let draftImages = [];
+let imageUploadsPending = 0;
+
+function imageSrc(value) {
+  if (SERVER_IMAGE_ID_PATTERN.test(value)) return `api/images/${value}`;
+  return String(value).startsWith('data:image/') ? value : '';
+}
+
+function setDraftImages(images) {
+  draftImages = normalizeTransactionImages(images);
+  renderDraftImages();
+}
+
+function renderDraftImages() {
+  const strip = document.getElementById('fImagesStrip');
+  const pending = Array.from({ length: imageUploadsPending }, () => '<span class="image-tile is-loading" aria-label="Uploaden…"></span>');
+  strip.innerHTML = draftImages.map((image, index) => `
+    <span class="image-tile">
+      <img src="${escAttr(imageSrc(image))}" alt="">
+      <button type="button" class="image-tile-remove" data-draft-remove="${index}" aria-label="Afbeelding verwijderen" title="Verwijderen">×</button>
+    </span>`).join('') + pending.join('');
+  strip.hidden = !draftImages.length && !imageUploadsPending;
+}
+
+function loadImageElement(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Geen geldige afbeelding')); };
+    img.src = url;
+  });
+}
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise(resolve => canvas.toBlob(resolve, type, quality));
+}
+
+// Photos are scaled down before they are stored: big enough to see details,
+// small enough that hundreds of them stay manageable.
+async function prepareImage(file) {
+  const onServer = storage.mode === 'server';
+  const maxSide = onServer ? 1600 : 900;
+  const quality = onServer ? 0.85 : 0.72;
+  const img = await loadImageElement(file);
+  const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+  canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+  let blob = await canvasToBlob(canvas, 'image/webp', quality);
+  if (!blob || blob.type !== 'image/webp') blob = await canvasToBlob(canvas, 'image/jpeg', quality);
+  if (!blob) throw new Error('Afbeelding kon niet worden verwerkt');
+
+  if (onServer) {
+    const response = await fetch('api/images', { method: 'POST', headers: { 'Content-Type': blob.type }, body: blob });
+    if (!response.ok) throw new Error(`Uploaden mislukt (${response.status})`);
+    return (await response.json()).id;
+  }
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Afbeelding kon niet worden gelezen'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function addImageFiles(fileList) {
+  const files = Array.from(fileList || []).filter(file => file.type.startsWith('image/'));
+  if (!files.length) return;
+  const room = MAX_TRANSACTION_IMAGES - draftImages.length - imageUploadsPending;
+  if (room <= 0) {
+    showMessage(formMsg, 'error', `Maximaal ${MAX_TRANSACTION_IMAGES} afbeeldingen per transactie.`);
+    return;
+  }
+  const accepted = files.slice(0, room);
+  imageUploadsPending += accepted.length;
+  renderDraftImages();
+  for (const file of accepted) {
+    try {
+      const image = await prepareImage(file);
+      draftImages = normalizeTransactionImages([...draftImages, image]);
+    } catch (error) {
+      showMessage(formMsg, 'error', error.message || 'Afbeelding toevoegen mislukt.');
+    } finally {
+      imageUploadsPending -= 1;
+      renderDraftImages();
+    }
+  }
+}
+
+document.getElementById('fImagesInput').addEventListener('change', event => {
+  addImageFiles(event.target.files);
+  event.target.value = '';
+});
+document.getElementById('fImagesStrip').addEventListener('click', event => {
+  const button = event.target.closest('[data-draft-remove]');
+  if (!button) return;
+  draftImages = draftImages.filter((_, index) => index !== Number(button.dataset.draftRemove));
+  renderDraftImages();
+});
+for (const element of [document.getElementById('fImagesDrop'), document.getElementById('fDesc')]) {
+  element.addEventListener('paste', event => {
+    const files = Array.from(event.clipboardData?.files || []).filter(file => file.type.startsWith('image/'));
+    if (!files.length) return;
+    event.preventDefault();
+    addImageFiles(files);
+  });
+}
+const imageDrop = document.getElementById('fImagesDrop');
+imageDrop.addEventListener('dragover', event => {
+  if (!Array.from(event.dataTransfer?.items || []).some(item => item.kind === 'file')) return;
+  event.preventDefault();
+  imageDrop.classList.add('is-over');
+});
+imageDrop.addEventListener('dragleave', () => imageDrop.classList.remove('is-over'));
+imageDrop.addEventListener('drop', event => {
+  event.preventDefault();
+  imageDrop.classList.remove('is-over');
+  addImageFiles(event.dataTransfer?.files);
+});
+
+// ── card images (TCGdex) ───────────────────────────────────────────────
+const cardResolver = createCardImageResolver({ storage: (() => { try { return localStorage; } catch { return null; } })() });
+const cardLookups = new Map(); // key → { status, candidates? }
+let pendingAutoMatches = {};
+let autoSaveTimer = null;
+
+function cardSetName(cardName) {
+  return getSetName(extractSetCode(cardName), customSetNames());
+}
+
+function queueCardLookup(cardName) {
+  const key = cardImageKey(cardName);
+  if (!key || cardLookups.has(key)) return;
+  cardLookups.set(key, { status: 'pending' });
+  cardResolver.resolve(cardName, { setName: cardSetName(cardName) }).then(result => {
+    if (result.status === 'found') {
+      pendingAutoMatches[cardName] = result.match;
+      cardLookups.set(key, { status: 'found' });
+      clearTimeout(autoSaveTimer);
+      autoSaveTimer = setTimeout(flushAutoMatches, 800);
+    } else {
+      cardLookups.set(key, result);
+    }
+    updateCardMedia(cardName);
+  });
+}
+
+function flushAutoMatches() {
+  const matches = pendingAutoMatches;
+  pendingAutoMatches = {};
+  const next = addAutoCardImages(appState, matches);
+  if (next === appState) return;
+  appState = next;
+  saveToStorage();
+  Object.keys(matches).forEach(updateCardMedia);
+}
+
+function matchFor(cardName) {
+  return getCardImage(appState, cardName) || (pendingAutoMatches[cardName] ? { ...pendingAutoMatches[cardName], source: 'auto' } : null);
+}
+
+function cardThumbHTML(cardName, { compact = false } = {}) {
+  if (!cardName) return '';
+  const entry = matchFor(cardName);
+  if (!entry?.image) return '';
+  return `<button type="button" class="media-thumb card-thumb${compact ? ' is-compact' : ''}" data-card-view="${escAttr(cardName)}"
+    title="${escAttr([entry.name, entry.setName].filter(Boolean).join(' · '))}"><img src="${escAttr(cardImageUrl(entry.image))}" alt="" loading="lazy"></button>`;
+}
+
+function cardMediaInnerHTML(cardName) {
+  const entry = matchFor(cardName);
+  if (entry?.source === 'none') return '';
+  if (entry?.image) {
+    return `${cardThumbHTML(cardName)}${IS_PREVIEW ? '' : `<button type="button" class="media-edit" data-card-pick="${escAttr(cardName)}" title="Andere kaartafbeelding kiezen" aria-label="Andere kaartafbeelding kiezen">✎</button>`}`;
+  }
+  const key = cardImageKey(cardName);
+  const lookup = cardLookups.get(key);
+  if (!lookup) queueCardLookup(cardName);
+  if (!lookup || lookup.status === 'pending') return '<span class="media-status">Kaartafbeelding zoeken…</span>';
+  if (IS_PREVIEW) return '';
+  if (lookup.status === 'ambiguous') {
+    return `<button type="button" class="media-status-btn" data-card-pick="${escAttr(cardName)}">Kies kaartafbeelding (${lookup.candidates.length})</button>`;
+  }
+  const label = lookup.status === 'error' ? 'Zoeken mislukt · opnieuw' : 'Geen afbeelding gevonden · zoeken';
+  return `<button type="button" class="media-status-btn subtle" data-card-pick="${escAttr(cardName)}">${label}</button>`;
+}
+
+function transactionMediaHTML(transaction) {
+  const showCard = transaction.cardName && !isBulkTransaction(transaction);
+  const images = normalizeTransactionImages(transaction.images);
+  if (!showCard && !images.length) return '';
+  const cardPart = showCard
+    ? `<span class="card-media" data-card-media="${escAttr(cardImageKey(transaction.cardName))}" data-card-name="${escAttr(transaction.cardName)}">${cardMediaInnerHTML(transaction.cardName)}</span>`
+    : '';
+  const imagePart = images.map((image, index) => `
+    <button type="button" class="media-thumb" data-image-view="${escAttr(transaction.id)}" data-image-index="${index}" title="Afbeelding bekijken">
+      <img src="${escAttr(imageSrc(image))}" alt="" loading="lazy">
+    </button>`).join('');
+  return `<div class="txn-media">${cardPart}${imagePart}</div>`;
+}
+
+function updateCardMedia(cardName) {
+  const key = cardImageKey(cardName);
+  document.querySelectorAll(`[data-card-media="${CSS.escape(key)}"]`).forEach(element => {
+    element.innerHTML = cardMediaInnerHTML(element.dataset.cardName);
+  });
+  if (activeView === 'profit' && matchFor(cardName)?.image) renderProfitTable();
+}
+
+// ── card picker ────────────────────────────────────────────────────────
+const picker = { cardName: '', candidates: [], loading: false, error: '' };
+
+function openCardPicker(cardName) {
+  picker.cardName = cardName;
+  picker.error = '';
+  const lookup = cardLookups.get(cardImageKey(cardName));
+  picker.candidates = lookup?.status === 'ambiguous' ? lookup.candidates : [];
+  document.getElementById('cardPickerBackdrop').classList.add('open');
+  renderCardPicker();
+  if (!picker.candidates.length) runPickerSearch(parseCardReference(cardName).name || cardName, 'en');
+  setTimeout(() => document.getElementById('cardPickerQuery')?.focus(), 0);
+}
+
+function closeCardPicker() {
+  document.getElementById('cardPickerBackdrop').classList.remove('open');
+  picker.cardName = '';
+}
+
+async function runPickerSearch(query, lang) {
+  picker.loading = true;
+  picker.error = '';
+  renderCardPicker({ keepQuery: true });
+  try {
+    picker.candidates = await cardResolver.search(query, { lang });
+  } catch {
+    picker.candidates = [];
+    picker.error = 'TCGdex is niet bereikbaar. Probeer het later opnieuw.';
+  }
+  picker.loading = false;
+  renderCardPicker({ keepQuery: true });
+}
+
+function renderCardPicker({ keepQuery = false } = {}) {
+  const content = document.getElementById('cardPickerContent');
+  const queryInput = document.getElementById('cardPickerQuery');
+  const query = keepQuery && queryInput ? queryInput.value : (parseCardReference(picker.cardName).name || picker.cardName);
+  const lang = keepQuery ? (document.getElementById('cardPickerLang')?.value || 'en') : 'en';
+  const current = getCardImage(appState, picker.cardName);
+  const ownPicks = Object.keys(getCustomCardPicks(appState)).length;
+  const parsed = parseCardReference(picker.cardName);
+
+  const grid = picker.loading
+    ? '<div class="archive-empty">Zoeken…</div>'
+    : picker.error
+      ? `<div class="archive-empty">${escHTML(picker.error)}</div>`
+      : picker.candidates.length
+        ? `<div class="card-picker-grid">${picker.candidates.map((card, index) => {
+            const numberMatch = parsed.number && card.localId && Number(card.localId) === Number(parsed.number);
+            return `
+            <button type="button" class="card-option${current?.id === card.id ? ' is-current' : ''}${numberMatch ? ' is-hint' : ''}" data-pick-index="${index}">
+              <img src="${escAttr(cardImageUrl(card.image))}" alt="" loading="lazy">
+              <span class="card-option-name">${escHTML(card.name)}</span>
+              <span class="card-option-set">${escHTML(card.setName || card.setId)} · #${escHTML(card.localId)}${card.lang === 'ja' ? ' · JP' : ''}</span>
+            </button>`;
+          }).join('')}</div>`
+        : '<div class="archive-empty">Geen kaarten gevonden. Probeer een kortere naam, of zoek in de Japanse database.</div>';
+
+  content.innerHTML = `
+    <p class="archive-intro">Voor <strong>${escHTML(picker.cardName)}</strong>${parsed.setCode ? ` · set ${escHTML(parsed.setCode)}${cardSetName(picker.cardName) ? ` (${escHTML(cardSetName(picker.cardName))})` : ''}` : ''}${parsed.number ? ` · nr. ${escHTML(parsed.number)}. Kaarten met dit nummer hebben een gouden rand` : ''}.</p>
+    <form class="card-picker-search" id="cardPickerSearch">
+      <input type="search" class="search-input" id="cardPickerQuery" value="${escAttr(query)}" placeholder="Kaartnaam" autocomplete="off">
+      <select class="form-select" id="cardPickerLang" aria-label="Database">
+        <option value="en"${lang === 'en' ? ' selected' : ''}>Engels</option>
+        <option value="ja"${lang === 'ja' ? ' selected' : ''}>Japans</option>
+      </select>
+      <button type="submit" class="inline-btn">Zoek</button>
+    </form>
+    ${grid}
+    <div class="card-picker-footer">
+      <button type="button" class="inline-btn" data-picker-action="none">Geen afbeelding tonen</button>
+      ${current && !current.builtIn ? '<button type="button" class="inline-btn" data-picker-action="reset">Keuze wissen</button>' : ''}
+      ${ownPicks ? `<button type="button" class="set-footnote-link" data-picker-action="export">${ownPicks} eigen ${ownPicks === 1 ? 'keuze' : 'keuzes'} kopiëren voor Claude</button>` : ''}
+      <span class="card-picker-credit">Afbeeldingen via TCGdex</span>
+    </div>`;
+}
+
+function applyCardChoice(nextState) {
+  const cardName = picker.cardName;
+  appState = nextState;
+  cardLookups.delete(cardImageKey(cardName));
+  cardResolver.forget(cardName);
+  saveToStorage();
+  closeCardPicker();
+  renderCardPicksReminder();
+  updateCardMedia(cardName);
+  if (activeView === 'profit') renderProfitTable();
+}
+
+document.getElementById('cardPickerContent').addEventListener('submit', event => {
+  if (event.target.id !== 'cardPickerSearch') return;
+  event.preventDefault();
+  runPickerSearch(document.getElementById('cardPickerQuery').value, document.getElementById('cardPickerLang').value);
+});
+document.getElementById('cardPickerContent').addEventListener('click', event => {
+  const option = event.target.closest('[data-pick-index]');
+  if (option) {
+    const card = picker.candidates[Number(option.dataset.pickIndex)];
+    if (card) applyCardChoice(setCardImage(appState, picker.cardName, card, 'user'));
+    return;
+  }
+  const action = event.target.closest('[data-picker-action]')?.dataset.pickerAction;
+  if (action === 'none') applyCardChoice(setCardImage(appState, picker.cardName, null, 'none'));
+  if (action === 'reset') applyCardChoice(clearCardImage(appState, picker.cardName));
+  if (action === 'export') {
+    cardPicksExportOpen = true;
+    closeCardPicker();
+    renderCardPicksReminder();
+    document.getElementById('cardPicksReminder').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+});
+document.getElementById('closeCardPickerBtn').addEventListener('click', closeCardPicker);
+document.getElementById('cardPickerBackdrop').addEventListener('click', event => {
+  if (event.target.id === 'cardPickerBackdrop') closeCardPicker();
+});
+
+// ── viewer for card images and photos ──────────────────────────────────
+const viewer = { items: [], index: 0 };
+
+function openViewer(items, index = 0) {
+  viewer.items = items;
+  viewer.index = index;
+  document.getElementById('mediaViewerBackdrop').classList.add('open');
+  renderViewer();
+}
+
+function closeViewer() {
+  document.getElementById('mediaViewerBackdrop').classList.remove('open');
+  document.getElementById('mediaViewerContent').innerHTML = '';
+}
+
+function renderViewer() {
+  const item = viewer.items[viewer.index];
+  if (!item) return;
+  const many = viewer.items.length > 1;
+  document.getElementById('mediaViewerContent').innerHTML = `
+    <div class="media-viewer-stage">
+      ${many ? '<button type="button" class="media-nav prev" data-viewer="prev" aria-label="Vorige">‹</button>' : ''}
+      <img src="${escAttr(item.src)}" alt="${escAttr(item.caption || '')}">
+      ${many ? '<button type="button" class="media-nav next" data-viewer="next" aria-label="Volgende">›</button>' : ''}
+    </div>
+    <div class="media-viewer-bar">
+      <span class="media-viewer-caption">${escHTML(item.caption || '')}${many ? ` <span class="muted">${viewer.index + 1} / ${viewer.items.length}</span>` : ''}</span>
+      <span class="media-viewer-actions">
+        ${item.cardmarket ? `<a class="inline-btn" href="${escAttr(item.cardmarket)}" target="_blank" rel="noopener noreferrer">Cardmarket</a>` : ''}
+        ${item.cardName && !IS_PREVIEW ? `<button type="button" class="inline-btn" data-viewer="pick">Andere kiezen</button>` : ''}
+        ${item.open ? `<a class="inline-btn" href="${escAttr(item.open)}" target="_blank" rel="noopener">Origineel</a>` : ''}
+        <button type="button" class="cancel-btn" data-viewer="close">Sluiten</button>
+      </span>
+    </div>`;
+}
+
+document.getElementById('mediaViewerBackdrop').addEventListener('click', event => {
+  const action = event.target.closest('[data-viewer]')?.dataset.viewer;
+  if (event.target.id === 'mediaViewerBackdrop' || action === 'close') { closeViewer(); return; }
+  if (action === 'prev' || action === 'next') {
+    viewer.index = (viewer.index + (action === 'next' ? 1 : -1) + viewer.items.length) % viewer.items.length;
+    renderViewer();
+  }
+  if (action === 'pick') {
+    const cardName = viewer.items[viewer.index].cardName;
+    closeViewer();
+    openCardPicker(cardName);
+  }
+});
+
+// Thumbnails anywhere in the page (transactions, profit table, archive preview).
+document.addEventListener('click', event => {
+  const cardButton = event.target.closest('[data-card-view]');
+  if (cardButton) {
+    const cardName = cardButton.dataset.cardView;
+    const entry = matchFor(cardName);
+    if (!entry?.image) return;
+    const search = parseCardReference(cardName).name || cardName;
+    openViewer([{
+      src: cardImageUrl(entry.image, 'high'),
+      caption: [entry.name, entry.setName].filter(Boolean).join(' · '),
+      cardName,
+      cardmarket: `https://www.cardmarket.com/en/Pokemon/Products/Search?searchString=${encodeURIComponent(search)}`,
+    }]);
+    return;
+  }
+  const pickButton = event.target.closest('[data-card-pick]');
+  if (pickButton && !pickButton.closest('#cardPickerBackdrop')) {
+    openCardPicker(pickButton.dataset.cardPick);
+    return;
+  }
+  const imageButton = event.target.closest('[data-image-view]');
+  if (imageButton) {
+    const id = Number(imageButton.dataset.imageView);
+    const transaction = appState.tabs.flatMap(tab => tab.transactions).find(txn => txn.id === id);
+    const images = normalizeTransactionImages(transaction?.images);
+    if (!images.length) return;
+    openViewer(images.map(image => ({
+      src: imageSrc(image),
+      caption: transaction.description.split('\n')[0],
+      open: SERVER_IMAGE_ID_PATTERN.test(image) ? imageSrc(image) : '',
+    })), Number(imageButton.dataset.imageIndex) || 0);
+  }
+});
+
+document.addEventListener('keydown', event => {
+  if (!document.getElementById('mediaViewerBackdrop').classList.contains('open')) {
+    if (event.key === 'Escape' && document.getElementById('cardPickerBackdrop').classList.contains('open')) closeCardPicker();
+    return;
+  }
+  if (event.key === 'Escape') closeViewer();
+  if (event.key === 'ArrowRight' && viewer.items.length > 1) { viewer.index = (viewer.index + 1) % viewer.items.length; renderViewer(); }
+  if (event.key === 'ArrowLeft' && viewer.items.length > 1) { viewer.index = (viewer.index - 1 + viewer.items.length) % viewer.items.length; renderViewer(); }
+});
+
+// ── monthly reminder: send hand-picked card images to Claude ───────────
+let cardPicksExportOpen = false;
+
+function renderCardPicksReminder() {
+  const banner = document.getElementById('cardPicksReminder');
+  if (IS_PREVIEW) { banner.hidden = true; return; }
+  const picks = getCustomCardPicks(appState);
+  const count = Object.keys(picks).length;
+  const show = count > 0 && (cardPicksExportOpen || isCardPicksReminderDue(appState));
+  banner.hidden = !show;
+  if (!show) { banner.innerHTML = ''; return; }
+  banner.innerHTML = `
+    <div class="setnames-reminder-head">
+      <span class="setnames-reminder-title">Eigen kaartkeuzes doorsturen</span>
+      <span class="setnames-reminder-text">Je hebt voor ${count} ${count === 1 ? 'kaart' : 'kaarten'} zelf de afbeelding gekozen. Kopieer de lijst en stuur hem naar Claude, dan worden ze vast in de app opgenomen.</span>
+    </div>
+    <textarea class="setnames-reminder-list" readonly rows="${Math.min(count, 6)}" aria-label="Eigen kaartkeuzes">${escHTML(formatCardPicksForExport(picks))}</textarea>
+    <div class="setnames-reminder-actions">
+      <button type="button" class="setnames-btn primary" data-cardpicks="copy">Kopieer lijst</button>
+      <button type="button" class="setnames-btn" data-cardpicks="later">Herinner me later</button>
+      <span class="setnames-reminder-msg" id="cardPicksReminderMsg" role="status"></span>
+    </div>`;
+}
+
+document.getElementById('cardPicksReminder').addEventListener('click', async event => {
+  const action = event.target.closest('[data-cardpicks]')?.dataset.cardpicks;
+  if (!action) return;
+  const banner = document.getElementById('cardPicksReminder');
+  if (action === 'copy') {
+    const textarea = banner.querySelector('.setnames-reminder-list');
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(textarea.value);
+      copied = true;
+    } catch {
+      textarea.focus();
+      textarea.select();
+      try { copied = document.execCommand('copy'); } catch { copied = false; }
+    }
+    if (!copied) {
+      document.getElementById('cardPicksReminderMsg').textContent = 'Kopiëren lukte niet. De lijst is geselecteerd, kopieer hem met Ctrl+C.';
+      return;
+    }
+    appState = snoozeCardPicksReminder(appState);
+    saveToStorage();
+    cardPicksExportOpen = false;
+    banner.innerHTML = '<div class="setnames-reminder-head"><span class="setnames-reminder-title">Gekopieerd</span><span class="setnames-reminder-text">Plak de lijst in je chat met Claude. Over een maand volgt de volgende herinnering.</span></div>';
+    setTimeout(() => renderCardPicksReminder(), 4000);
+    return;
+  }
+  if (action === 'later') {
+    appState = snoozeCardPicksReminder(appState, SET_NAMES_SNOOZE_DAYS);
+    saveToStorage();
+    cardPicksExportOpen = false;
+    renderCardPicksReminder();
+  }
+});
+
+// ── archive pop-up ─────────────────────────────────────────────────────
+const archiveView = { open: false, tabId: null, renderedTabId: null };
+
+function archivedTabList() {
+  return appState.tabs.filter(tab => tab.archived);
+}
+
+function computeTabStats(tab) {
+  const transactions = (Array.isArray(tab.transactions) ? tab.transactions : []).map(txn => normalizeTransaction(txn));
+  const trades = (Array.isArray(tab.trades) ? tab.trades : []).map(trade => normalizeTrade(trade));
+  const summary = computeSummary(transactions);
+  const tradeStats = computeTradeAnalytics(trades);
+  const dates = [...transactions.map(txn => txn.date), ...trades.map(trade => trade.date)].filter(Boolean).sort();
+  const cards = computeProfitByCard(transactions.filter(txn => !isBulkTransaction(txn)))
+    .filter(row => row.soldQty > 0 && row.allocatedBuyCost > 0);
+  return {
+    transactions,
+    trades,
+    summary,
+    tradeStats,
+    cards,
+    firstDate: dates[0] || '',
+    lastDate: dates[dates.length - 1] || '',
+  };
+}
+
+function signClass(value) {
+  if (value > 0) return 'positive';
+  if (value < 0) return 'negative';
+  return 'neutral';
+}
+
+function archivePeriodLabel(stats) {
+  if (!stats.firstDate) return 'Geen datums';
+  if (stats.firstDate === stats.lastDate) return formatDate(stats.firstDate);
+  return `${formatDate(stats.firstDate)} – ${formatDate(stats.lastDate)}`;
+}
+
+function archiveMiniHTML(label, value, cls = 'neutral') {
+  return `<div class="archive-mini"><span class="archive-mini-label">${escHTML(label)}</span><span class="archive-mini-value ${cls}">${escHTML(value)}</span></div>`;
+}
+
+function renderArchiveList(container) {
+  const tabs = archivedTabList();
+  if (!tabs.length) {
+    container.innerHTML = `<div class="archive-empty">Nog geen gearchiveerde tabs. Een tab komt hier terecht wanneer je hem via <strong>Importeer uit tab</strong> samenvoegt met een andere tab.</div>`;
+    return;
+  }
+  container.innerHTML = `
+    <p class="archive-intro">${tabs.length} gearchiveerde tab${tabs.length !== 1 ? 's' : ''}. Bekijk de cijfers, of zet een tab terug in de tabbalk.</p>
+    <div class="archive-grid">
+      ${tabs.map(tab => {
+        const stats = computeTabStats(tab);
+        return `
+          <article class="archive-card">
+            <div>
+              <div class="archive-card-name">${escHTML(tab.name)}</div>
+              <div class="archive-card-meta">${escHTML(archivePeriodLabel(stats))}</div>
+            </div>
+            <div class="archive-card-stats">
+              ${archiveMiniHTML('Winst', fmt(stats.summary.profit), signClass(stats.summary.profit))}
+              ${archiveMiniHTML('Transacties', String(stats.summary.count))}
+              ${archiveMiniHTML('Trades', String(stats.tradeStats.totalTrades))}
+            </div>
+            <div class="archive-card-actions">
+              <button class="inline-btn" data-archive-open="${escAttr(tab.id)}">Bekijken</button>
+              <button class="inline-btn" data-archive-restore="${escAttr(tab.id)}">Herstel</button>
+            </div>
+          </article>`;
+      }).join('')}
+    </div>`;
+}
+
+function previewStateFor(tab) {
+  const { tabs, activeTabId, ...rest } = appState;
+  return { ...rest, tabs: [{ ...tab, archived: false }], activeTabId: tab.id };
+}
+
+function renderArchiveDetail(container, tab) {
+  const stats = computeTabStats(tab);
+  container.innerHTML = `
+    <div class="archive-detail-head">
+      <div class="archive-detail-title">
+        <button class="inline-btn" data-archive-back>← Archief</button>
+        <span class="archive-detail-name">${escHTML(tab.name)}</span>
+        <span class="archive-card-meta">${escHTML(archivePeriodLabel(stats))} · alleen lezen</span>
+      </div>
+      <div class="archive-detail-actions">
+        <button class="inline-btn" data-archive-restore="${escAttr(tab.id)}">Herstel naar tabbalk</button>
+        <button class="inline-btn danger" data-archive-delete="${escAttr(tab.id)}">Definitief verwijderen</button>
+      </div>
+    </div>
+    <iframe class="archive-preview-frame" id="archivePreviewFrame"
+      src="index.html?preview=${encodeURIComponent(tab.id)}"
+      title="Voorbeeld van gearchiveerde tab ${escAttr(tab.name)}"></iframe>`;
+}
+
+// The preview frame asks for its data once it has loaded.
+window.addEventListener('message', event => {
+  if (event.data?.type !== 'profit-monitor-preview-ready') return;
+  const frame = document.getElementById('archivePreviewFrame');
+  if (!frame || event.source !== frame.contentWindow) return;
+  const tab = appState.tabs.find(entry => entry.id === event.data.tabId && entry.archived);
+  if (!tab) return;
+  event.source.postMessage(
+    { type: 'profit-monitor-preview-state', state: previewStateFor(tab) },
+    location.origin === 'null' ? '*' : location.origin,
+  );
+});
+
 function renderArchivedTabs() {
-  const archivePanel = document.getElementById('tabArchivePanel');
-  const archiveList = document.getElementById('tabArchiveList');
-  const archivedTabs = appState.tabs.filter(tab => tab.archived);
-  if (!archivedTabs.length) {
-    archivePanel.style.display = 'none';
-    archiveList.innerHTML = '';
+  const tabs = archivedTabList();
+  const toggle = document.getElementById('archiveToggleBtn');
+  const count = document.getElementById('archiveCount');
+  count.hidden = tabs.length === 0;
+  count.textContent = String(tabs.length);
+  toggle.classList.toggle('has-items', tabs.length > 0);
+  const label = tabs.length ? `Archief: ${tabs.length} gearchiveerde tab${tabs.length !== 1 ? 's' : ''}` : 'Archief: geen gearchiveerde tabs';
+  toggle.title = label;
+  toggle.setAttribute('aria-label', label);
+
+  if (!archiveView.open) return;
+  const container = document.getElementById('archiveContent');
+  const modal = document.querySelector('#archiveBackdrop .archive-modal');
+  const tab = archiveView.tabId ? tabs.find(entry => entry.id === archiveView.tabId) : null;
+  modal.classList.toggle('is-detail', Boolean(tab));
+  if (tab) {
+    // Don't reload the preview on unrelated refreshes (e.g. a sync from another device).
+    if (archiveView.renderedTabId === tab.id && document.getElementById('archivePreviewFrame')) return;
+    archiveView.renderedTabId = tab.id;
+    renderArchiveDetail(container, tab);
+  } else {
+    archiveView.tabId = null;
+    archiveView.renderedTabId = null;
+    renderArchiveList(container);
+  }
+}
+
+function openArchive(tabId = null) {
+  archiveView.open = true;
+  archiveView.tabId = tabId;
+  document.getElementById('archiveBackdrop').classList.add('open');
+  renderArchivedTabs();
+  document.querySelector('#archiveBackdrop .archive-modal').scrollTop = 0;
+}
+
+function closeArchive() {
+  archiveView.open = false;
+  archiveView.tabId = null;
+  archiveView.renderedTabId = null;
+  document.getElementById('archiveContent').innerHTML = '';
+  document.getElementById('archiveBackdrop').classList.remove('open');
+  document.getElementById('archiveToggleBtn').focus();
+}
+
+document.getElementById('archiveToggleBtn').addEventListener('click', () => openArchive());
+document.getElementById('closeArchiveBtn').addEventListener('click', closeArchive);
+document.getElementById('archiveBackdrop').addEventListener('click', event => {
+  if (event.target.id === 'archiveBackdrop') { closeArchive(); return; }
+  const openButton = event.target.closest('[data-archive-open]');
+  if (openButton) { openArchive(openButton.dataset.archiveOpen); return; }
+  if (event.target.closest('[data-archive-back]')) { openArchive(); return; }
+
+  const restoreButton = event.target.closest('[data-archive-restore]');
+  if (restoreButton) {
+    const tabId = restoreButton.dataset.archiveRestore;
+    const tab = appState.tabs.find(entry => entry.id === tabId);
+    appState = restoreTab(appState, tabId);
+    closeArchive();
+    switchToTab(tabId);
+    saveToStorage();
+    refreshView();
+    showMessage(tabMsg, 'success', `Tab "${tab?.name ?? ''}" hersteld uit archief.`);
     return;
   }
 
-  archivePanel.style.display = '';
-  archiveList.innerHTML = archivedTabs.map(tab => `
-    <div class="archive-row">
-      <span>${escHTML(tab.name)} (${tab.transactions.length} transacties, ${(Array.isArray(tab.trades) ? tab.trades.length : 0)} trades)</span>
-      <button class="inline-btn" data-restore-tab-id="${escAttr(tab.id)}">Herstel</button>
-    </div>
-  `).join('');
-
-  archiveList.querySelectorAll('[data-restore-tab-id]').forEach(button => {
-    button.addEventListener('click', () => {
-      appState = restoreTab(appState, button.dataset.restoreTabId);
-      saveToStorage();
-      refreshView();
-      showMessage(tabMsg, 'success', 'Tab hersteld uit archief.');
-    });
-  });
-}
+  const deleteButton = event.target.closest('[data-archive-delete]');
+  if (deleteButton) {
+    const tab = appState.tabs.find(entry => entry.id === deleteButton.dataset.archiveDelete);
+    if (!tab) return;
+    const tradeCount = Array.isArray(tab.trades) ? tab.trades.length : 0;
+    if (!confirm(`Gearchiveerde tab "${tab.name}" definitief verwijderen? De ${tab.transactions.length} transacties en ${tradeCount} trades erin worden ook verwijderd.`)) return;
+    appState = deleteTab(appState, tab.id);
+    saveToStorage();
+    archiveView.tabId = null;
+    refreshView();
+    showMessage(tabMsg, 'success', `Tab "${tab.name}" verwijderd.`);
+  }
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && archiveView.open) closeArchive();
+});
 
 function renderSummary() {
   const summary = computeSummary(activeTransactions());
@@ -3191,6 +4412,7 @@ function rowHTML(transaction) {
         ${metaItems.join('')}
         ${orderLinksHTML}
       </div>
+      ${transactionMediaHTML(normalized)}
     </td>
     <td style="white-space:nowrap;vertical-align:middle;">
       <button class="edit-btn" data-id="${normalized.id}" title="Bewerken" aria-label="Bewerk transactie">
@@ -3332,7 +4554,7 @@ function renderProfitTable() {
   } else {
     tbody.innerHTML = rows.map(row => `
       <tr${row.gradingCompany && row.gradingValue ? ' class="is-graded"' : ''}>
-        <td><span class="profit-card-name">${escHTML(row.cardName)}${gradeBadgeHTML(row.gradingCompany, row.gradingValue)}</span></td>
+        <td><span class="profit-card-cell">${cardThumbHTML(row.cardName, { compact: true })}<span class="profit-card-name">${escHTML(row.cardName)}${gradeBadgeHTML(row.gradingCompany, row.gradingValue)}</span></span></td>
         <td>${row.boughtQty}</td>
         <td>${row.soldQty}</td>
         <td>${fmt(row.allocatedBuyCost)}</td>
@@ -3672,6 +4894,7 @@ function showSetNamesExport(fromReminder) {
 }
 
 function renderSetNamesReminder(force = false) {
+  if (IS_PREVIEW) return;
   const banner = document.getElementById('setNamesReminder');
   const names = customSetNames();
   const count = Object.keys(names).length;
@@ -4659,6 +5882,7 @@ document.getElementById('importFromTabBtn').addEventListener('click', () => {
 function refreshView() {
   syncTopbarTitle();
   renderSetNamesReminder();
+  renderCardPicksReminder();
   updateSortButtons();
   setSectionCollapsed('transactions', collapsedSections.transactions);
   setSectionCollapsed('profitTable', collapsedSections.profitTable);
@@ -4742,8 +5966,14 @@ document.getElementById('submitBtn').addEventListener('click', () => {
     ? normalizeQuantity(document.getElementById('fQuantity').value)
     : 1;
   const date = document.getElementById('fDate').value || todayISO();
+  const images = draftImages.slice();
 
   showMessage(formMsg);
+
+  if (imageUploadsPending > 0) {
+    showMessage(formMsg, 'error', 'Wacht tot de afbeeldingen zijn geüpload.');
+    return;
+  }
 
   const amount = Number.parseFloat(amountRaw.replace(',', '.'));
   if (!amountRaw || Number.isNaN(amount) || amount <= 0) {
@@ -4765,7 +5995,7 @@ document.getElementById('submitBtn').addEventListener('click', () => {
     // null → let normalizeTransaction infer from description
     // '' → explicitly no card name (no inference)
     const cardName = hasCardName ? null : '';
-    const txnData = { type, amount, description, cardName, quantity, date, gradingCompany, gradingValue };
+    const txnData = { type, amount, description, cardName, quantity, date, gradingCompany, gradingValue, images };
     appState = updateStoredTransaction(appState, editingId, txnData);
     saveToStorage();
     cancelEdit();
@@ -4776,7 +6006,7 @@ document.getElementById('submitBtn').addEventListener('click', () => {
     // When toggle is ON and description is multi-line, split into per-card transactions
     const parts = hasCardName ? splitMultiLineDescription(description, amount) : null;
     if (parts) {
-      const txns = parts.map(part => ({
+      const txns = parts.map((part, index) => ({
         type,
         amount: part.amount,
         description: part.description,
@@ -4785,6 +6015,8 @@ document.getElementById('submitBtn').addEventListener('click', () => {
         date,
         gradingCompany,
         gradingValue,
+        // Photos go with the first card of a split entry.
+        images: index === 0 ? images : [],
       }));
       appState = appendTransactions(appState, txns);
     } else {
@@ -4798,10 +6030,12 @@ document.getElementById('submitBtn').addEventListener('click', () => {
         date,
         gradingCompany,
         gradingValue,
+        images,
       });
     }
     saveToStorage();
     refreshView();
+    setDraftImages([]);
     document.getElementById('fAmount').value = '';
     document.getElementById('fDesc').value = '';
     document.getElementById('fHasCardName').checked = false;
@@ -4830,6 +6064,7 @@ function startEdit(transaction) {
   document.getElementById('fIsGraded').checked = Boolean(transaction.gradingCompany && transaction.gradingValue);
   document.getElementById('fGradingCompany').value = transaction.gradingCompany || '';
   document.getElementById('fDate').value = transaction.date;
+  setDraftImages(normalizeTransactionImages(transaction.images));
   syncDescriptionParsing();
   syncGradingParsing();
   if (transaction.gradingValue) {
@@ -4854,6 +6089,7 @@ function cancelEdit() {
   document.getElementById('fGradingCompany').value = '';
   document.getElementById('fGradingValue').value = '';
   document.getElementById('fDate').value = todayISO();
+  setDraftImages([]);
   syncDescriptionParsing();
   syncGradingParsing();
   showMessage(formMsg);
@@ -5207,7 +6443,7 @@ function escAttr(value) {
 dateInput.value = todayISO();
 syncDescriptionParsing();
 syncGradingParsing();
-loadFromStorage();
+await loadFromStorage();
 refreshView();
 loadGradingLogos();
 </script>

@@ -1,0 +1,17 @@
+# Alternative to the Unraid template: `docker compose up -d`
+services:
+  profit-monitor:
+    image: ghcr.io/brammeketv/profit-monitor-pkmn:latest
+    # build: .            # use this line instead of `image:` to build from this folder
+    container_name: profit-monitor
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      TZ: Europe/Amsterdam
+      PUID: "99"
+      PGID: "100"
+      # AUTH_USER: bram
+      # AUTH_PASSWORD: change-me
+    volumes:
+      - /mnt/user/appdata/profit-monitor:/data

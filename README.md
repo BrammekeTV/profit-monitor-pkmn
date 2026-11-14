@@ -1,6 +1,8 @@
 # profit-monitor-pkmn
 
-A static profit tracker for Pokémon TCG trading that runs entirely in the browser — no server required.
+A profit tracker for Pokémon TCG trading. Use it straight from GitHub Pages (data in your browser), or self-host it with Docker so the data lives on your own server.
+
+**Self-hosting on Unraid / Docker:** see [UNRAID.md](UNRAID.md).
 
 **[→ Open the app](https://brammeketv.github.io/profit-monitor-pkmn/)**
 
@@ -11,7 +13,8 @@ A static profit tracker for Pokémon TCG trading that runs entirely in the brows
 - Filter by type (Verkocht / Gekocht) and search by description
 - Sort columns in both transaction and profit tables
 - Collapse/expand transaction and profit sections for a cleaner overview
-- Add new transactions — saved to browser localStorage
+- Add new transactions — saved on your server (Docker) or in browser localStorage (GitHub Pages)
+- Archived tabs live behind the small archive icon next to the title. The pop-up lists them, and opens a read-only preview of each one with every view (Transacties, Winst per kaart, Analyse, Trades, Trades – Analyse), plus restore and delete
 - Mark cards as graded with company-specific grade options (PSA/BGS/CGC/TAG); graded rows get a subtle gold accent and a company | grade badge
 - **Gegradeerd** filter next to the type filters (with count), plus per-company chips; search also matches grades like "psa 10" or "gem mint"
 - Delete individual transactions
@@ -24,11 +27,14 @@ A static profit tracker for Pokémon TCG trading that runs entirely in the brows
 - Aparte tab **Trades - Analyse** met trade-statistieken en performancegrafiek
 - Sold transactions with `#123456789` in the description show Cardmarket order links
 - **Import from `.xlsm` / `.xlsx`** — reads your existing spreadsheet client-side and merges the data into the active tab; rows that already exist there are skipped, so re-importing the same file is safe
-- Pokémon card image lookup: descriptions in the format `CardName (SETCODE NUMBER)` show images from the [Pokémon TCG API](https://pokemontcg.io), with links to Cardmarket
+- **Card images** are found automatically through [TCGdex](https://tcgdex.dev) (free, no key, English and Japanese sets). With `CardName (SETCODE NUMBER)` the exact card is fetched; with only a name, a unique match is used directly. When several cards fit, the row shows **Kies kaartafbeelding (n)** and you pick the right one. You can always change or hide an image with ✎. Hand-picked choices trigger a monthly reminder to send them to Claude, so they can be built into the app (`CARD_IMAGES` in `profit-monitor-core.mjs`)
+- **Photos on transactions** (e.g. sealed product or accessories): add them in the form with **+ Foto**, by pasting, or by dragging them in. They show after the description and open full size on click. They are scaled down before saving. On the server they are stored in `/data/images`; without a server they are kept in the browser, which only has room for a few dozen
 
 ## Data storage
 
-All transaction data is stored in your browser's `localStorage` under the key `profit-monitor-pkmn`.
+**Self-hosted (Docker):** `server.mjs` serves the app and stores the workspace as `profit-monitor.json` in `DATA_DIR` (`/data` in the container), with one backup per day in `backups/`. The browser loads and saves it through `GET/PUT /api/state`; each save carries the revision it was based on, so a stale device gets a conflict prompt instead of silently overwriting newer data. Setup: [UNRAID.md](UNRAID.md).
+
+**GitHub Pages / plain file:** with no server API available, all data is stored in your browser's `localStorage` under the key `profit-monitor-pkmn`.
 
 The browser app now stores a workspace object:
 

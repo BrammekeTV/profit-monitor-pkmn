@@ -1,0 +1,12 @@
+.git
+.github
+__pycache__
+tests
+example
+templates
+app.py
+requirements.txt
+data-store
+*.md
+unraid
+docker-compose.yml
