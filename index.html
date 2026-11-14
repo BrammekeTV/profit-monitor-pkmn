@@ -384,31 +384,130 @@
     .tab-btn.drop-before { box-shadow: -5px 0 0 var(--text); }
     .tab-btn.drop-after { box-shadow: 5px 0 0 var(--text); }
 
-    .archive-panel {
-      padding: 12px 14px;
-      border: 2px dashed var(--border);
-      background: var(--surface);
-    }
-
-    .archive-title {
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 2px;
-      text-transform: uppercase;
+    /* ── archive: small icon next to the title, opens a pop-up ── */
+    .archive-toggle {
+      position: relative;
+      align-self: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 36px;
+      margin-left: 4px;
+      border: 2px solid var(--border);
+      background: var(--surface2);
       color: var(--muted);
-      margin-bottom: 10px;
+      cursor: pointer;
+      transform: var(--slant);
+      transition: border-color 120ms, color 120ms, background 120ms;
     }
+    .archive-toggle svg { transform: var(--unslant); }
+    .archive-toggle:hover { border-color: var(--text); color: var(--text); background: #2f2c29; }
+    .archive-toggle.has-items { color: var(--text); }
+    .archive-count {
+      position: absolute;
+      top: -9px;
+      right: -10px;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 5px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent);
+      color: var(--on-accent);
+      border: 2px solid var(--ink);
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .archive-count[hidden] { display: none; }
 
-    .archive-list { display: flex; flex-direction: column; gap: 8px; }
-
-    .archive-row {
+    .archive-modal { width: min(1120px, 100%); }
+    .archive-intro { color: var(--muted); font-size: 14px; margin-bottom: 18px; }
+    .archive-empty {
+      padding: 28px 18px;
+      border: 2px dashed var(--border);
+      color: var(--muted);
+      font-size: 14px;
+      text-align: center;
+    }
+    .archive-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+      gap: 20px;
+    }
+    .archive-card {
       display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 14px 16px 16px;
+      background: var(--surface2);
+      border: 3px solid var(--ink);
+      box-shadow: var(--block-sm);
+    }
+    .archive-card-name {
+      font-size: 18px;
+      font-weight: 700;
+      text-transform: uppercase;
+      overflow-wrap: anywhere;
+    }
+    .archive-card-meta { font-size: 12px; font-weight: 600; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
+    .archive-card-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .archive-mini { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .archive-mini-label { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+    .archive-mini-value { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .archive-card-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: auto; padding-top: 4px; }
+
+    .archive-detail-head {
+      display: flex;
+      flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
-      font-size: 14px;
-      color: var(--text2);
+      gap: 12px;
+      margin-bottom: 18px;
     }
+    .archive-detail-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; min-width: 0; }
+    .archive-detail-name { font-size: 22px; font-weight: 700; text-transform: uppercase; overflow-wrap: anywhere; }
+    .archive-detail-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+    .archive-kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(126px, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .archive-kpi {
+      padding: 10px 12px 12px;
+      background: var(--surface2);
+      border: 3px solid var(--ink);
+      box-shadow: var(--block-sm);
+      min-width: 0;
+    }
+    .archive-kpi .archive-mini-value { font-size: 19px; margin-top: 4px; }
+    .archive-section { margin-top: 22px; }
+    .archive-section .subsection-title { margin-bottom: 12px; }
+    .archive-modal .table-wrap { max-height: 420px; overflow: auto; border: 3px solid var(--ink); box-shadow: var(--block-sm); }
+    .archive-modal .table-wrap thead th { position: sticky; top: 0; z-index: 1; }
+    .archive-modal td.num, .archive-modal th.num { text-align: right; }
+
+    /* ── server sync banner ── */
+    .sync-banner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 16px;
+      padding: 10px 14px;
+      border: 3px solid var(--ink);
+      background: var(--surface);
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .sync-banner[hidden] { display: none; }
+    .sync-banner.error { border-color: var(--red); color: var(--red); }
+    .sync-banner.conflict { border-color: var(--graded); }
+    .sync-banner-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 
     .view-toggle-bar {
       display: flex;
@@ -1831,6 +1930,10 @@
     <div class="topbar-row">
       <div class="brand">
         <span class="topbar-title">Profit Monitor</span>
+        <button class="archive-toggle" id="archiveToggleBtn" type="button" aria-haspopup="dialog" aria-label="Gearchiveerde tabs" title="Gearchiveerde tabs">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M2 3h16v4H2zM3.5 7v10h13V7M8 10.5h4" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+          <span class="archive-count" id="archiveCount" hidden>0</span>
+        </button>
         <span class="topbar-tab" id="activeTabName"></span>
       </div>
       <div class="summary-row" aria-label="Totalen">
@@ -1865,10 +1968,7 @@
       </div>
     </div>
     <div class="form-msg panel-message" id="tabMsg"></div>
-    <div class="archive-panel" id="tabArchivePanel" style="display:none;">
-      <div class="archive-title">Gearchiveerde tabs</div>
-      <div class="archive-list" id="tabArchiveList"></div>
-    </div>
+    <div class="sync-banner" id="syncBanner" role="status" hidden></div>
 
     <!-- View toggle -->
     <nav class="view-toggle-bar" aria-label="Weergave">
@@ -2479,7 +2579,7 @@
     </button>
 
     <p class="side-note">
-      Data wordt lokaal opgeslagen in uw browser.<br/>
+      <span id="storageNote">Data wordt lokaal opgeslagen in uw browser.</span><br/>
       Kaartafbeeldingen via de Pokémon TCG API.
     </p>
     </div>
@@ -2495,6 +2595,16 @@
       <button class="cancel-btn" id="closeTradeDetailBtn">Sluiten</button>
     </div>
     <div id="tradeDetailContent"></div>
+  </div>
+</div>
+
+<div class="trade-detail-backdrop" id="archiveBackdrop">
+  <div class="trade-detail-modal archive-modal" role="dialog" aria-modal="true" aria-labelledby="archiveModalTitle">
+    <div class="section-header">
+      <span class="section-title" id="archiveModalTitle">Archief</span>
+      <button class="cancel-btn" id="closeArchiveBtn">Sluiten</button>
+    </div>
+    <div id="archiveContent"></div>
   </div>
 </div>
 
@@ -2705,19 +2815,214 @@ const formMsg = document.getElementById('formMsg');
 const importMsg = document.getElementById('importMsg');
 const dateInput = document.getElementById('fDate');
 
-function loadFromStorage() {
+// ── storage ────────────────────────────────────────────────────────────
+// Served by the self-hosted server (Docker), the workspace is stored on the
+// server through /api/state. Opened from GitHub Pages or as a plain file,
+// there is no API and the app falls back to the browser's localStorage.
+const MIGRATED_KEY = `${STORAGE_KEY}-migrated-to-server`;
+const storage = {
+  mode: 'local',          // 'local' | 'server'
+  revision: 0,
+  dirty: false,
+  saving: false,
+  conflict: null,         // server copy when another device saved first
+  error: false,
+  retryTimer: null,
+  lastSavedAt: null,
+};
+
+async function fetchServerState() {
   try {
-    appState = ensureAppState(localStorage.getItem(STORAGE_KEY));
+    const response = await fetch('api/state', { cache: 'no-store', headers: { Accept: 'application/json' } });
+    if (!response.ok) return null;
+    if (!(response.headers.get('content-type') || '').includes('application/json')) return null;
+    const body = await response.json();
+    return body && Number.isInteger(body.revision) ? body : null;
+  } catch {
+    return null;
+  }
+}
+
+function readLocalState() {
+  try {
+    return localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+async function loadFromStorage() {
+  const server = await fetchServerState();
+  if (server) {
+    storage.mode = 'server';
+    storage.revision = server.revision;
+    storage.lastSavedAt = server.updatedAt;
+    if (server.state) {
+      appState = ensureAppState(server.state);
+    } else {
+      // Empty server: bring along data this browser already had on this address.
+      const local = readLocalState();
+      appState = ensureAppState(local);
+      saveToStorage();
+      if (local) {
+        try { localStorage.setItem(MIGRATED_KEY, new Date().toISOString()); } catch { /* ignore */ }
+        showMessage(tabMsg, 'success', 'Je data uit deze browser is naar de server verplaatst.');
+      }
+    }
+    renderSyncStatus();
+    return;
+  }
+
+  storage.mode = 'local';
+  try {
+    appState = ensureAppState(readLocalState());
   } catch {
     appState = ensureAppState(null);
   }
-
   saveToStorage();
+  renderSyncStatus();
 }
 
 function saveToStorage() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+  if (storage.mode !== 'server') {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+    return;
+  }
+  storage.dirty = true;
+  flushServerSave();
 }
+
+async function flushServerSave({ force = false } = {}) {
+  if (storage.saving || !storage.dirty || (storage.conflict && !force)) return;
+  clearTimeout(storage.retryTimer);
+  storage.retryTimer = null;
+  storage.saving = true;
+  storage.dirty = false;
+  renderSyncStatus();
+
+  let retry = false;
+  try {
+    const response = await fetch('api/state', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state: appState, baseRevision: storage.revision, force }),
+    });
+    if (response.status === 409) {
+      storage.conflict = await response.json();
+      storage.dirty = true;
+    } else if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    } else {
+      const body = await response.json();
+      storage.revision = body.revision;
+      storage.lastSavedAt = body.updatedAt;
+      storage.conflict = null;
+      storage.error = false;
+    }
+  } catch {
+    storage.dirty = true;
+    storage.error = true;
+    retry = true;
+  } finally {
+    storage.saving = false;
+  }
+
+  if (retry) {
+    storage.retryTimer = setTimeout(() => flushServerSave(), 5000);
+  } else if (storage.dirty && !storage.conflict) {
+    flushServerSave();
+  }
+  renderSyncStatus();
+}
+
+// Another device saved in the meantime: keep theirs or overwrite with ours.
+function resolveConflict(choice) {
+  const serverCopy = storage.conflict;
+  if (!serverCopy) return;
+  if (choice === 'server') {
+    storage.conflict = null;
+    storage.dirty = false;
+    storage.revision = serverCopy.revision;
+    storage.lastSavedAt = serverCopy.updatedAt;
+    appState = ensureAppState(serverCopy.state);
+    refreshView();
+    renderSyncStatus();
+    return;
+  }
+  storage.revision = serverCopy.revision;
+  storage.conflict = null;
+  flushServerSave({ force: true });
+}
+
+// Coming back to the app (other tab, phone unlocked): pick up changes made elsewhere.
+async function pullServerChanges() {
+  if (storage.mode !== 'server' || storage.dirty || storage.saving || storage.conflict) return;
+  const server = await fetchServerState();
+  if (!server || server.revision === storage.revision || storage.dirty || storage.saving) return;
+  storage.revision = server.revision;
+  storage.lastSavedAt = server.updatedAt;
+  if (server.state) {
+    appState = ensureAppState(server.state);
+    refreshView();
+  }
+  renderSyncStatus();
+}
+
+function formatSyncTime(iso) {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+function renderSyncStatus() {
+  const note = document.getElementById('storageNote');
+  const banner = document.getElementById('syncBanner');
+  if (!note || !banner) return;
+
+  if (storage.mode !== 'server') {
+    note.textContent = 'Data wordt lokaal opgeslagen in uw browser.';
+    banner.hidden = true;
+    return;
+  }
+
+  if (storage.saving || storage.dirty) note.textContent = 'Opslaan op de server…';
+  else note.textContent = `Data staat op de server${storage.lastSavedAt ? ` · laatst opgeslagen ${formatSyncTime(storage.lastSavedAt)}` : ''}.`;
+
+  if (storage.conflict) {
+    banner.hidden = false;
+    banner.className = 'sync-banner conflict';
+    banner.innerHTML = `
+      <span>Op een ander apparaat is de data intussen gewijzigd${storage.conflict.updatedAt ? ` (${escHTML(formatSyncTime(storage.conflict.updatedAt))})` : ''}. Jouw laatste wijziging is nog niet opgeslagen.</span>
+      <span class="sync-banner-actions">
+        <button class="inline-btn" data-sync-choice="server">Server-versie laden</button>
+        <button class="inline-btn danger" data-sync-choice="mine">Mijn versie bewaren</button>
+      </span>`;
+  } else if (storage.error) {
+    banner.hidden = false;
+    banner.className = 'sync-banner error';
+    banner.innerHTML = '<span>Server niet bereikbaar — je wijzigingen zijn nog niet opgeslagen. Opnieuw proberen…</span>';
+  } else {
+    banner.hidden = true;
+    banner.innerHTML = '';
+  }
+}
+
+document.addEventListener('click', event => {
+  const button = event.target.closest('[data-sync-choice]');
+  if (button) resolveConflict(button.dataset.syncChoice);
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') pullServerChanges();
+});
+
+window.addEventListener('beforeunload', event => {
+  if (storage.mode === 'server' && (storage.dirty || storage.saving)) {
+    event.preventDefault();
+    event.returnValue = '';
+  }
+});
 
 function activeTransactions() {
   return getActiveTransactions(appState);
@@ -2891,33 +3196,244 @@ function renderTabs() {
   });
 })();
 
+// ── archive pop-up ─────────────────────────────────────────────────────
+const archiveView = { open: false, tabId: null };
+
+function archivedTabList() {
+  return appState.tabs.filter(tab => tab.archived);
+}
+
+function computeTabStats(tab) {
+  const transactions = (Array.isArray(tab.transactions) ? tab.transactions : []).map(txn => normalizeTransaction(txn));
+  const trades = (Array.isArray(tab.trades) ? tab.trades : []).map(trade => normalizeTrade(trade));
+  const summary = computeSummary(transactions);
+  const tradeStats = computeTradeAnalytics(trades);
+  const dates = [...transactions.map(txn => txn.date), ...trades.map(trade => trade.date)].filter(Boolean).sort();
+  const cards = computeProfitByCard(transactions.filter(txn => !isBulkTransaction(txn)))
+    .filter(row => row.soldQty > 0 && row.allocatedBuyCost > 0);
+  return {
+    transactions,
+    trades,
+    summary,
+    tradeStats,
+    cards,
+    firstDate: dates[0] || '',
+    lastDate: dates[dates.length - 1] || '',
+  };
+}
+
+function signClass(value) {
+  if (value > 0) return 'positive';
+  if (value < 0) return 'negative';
+  return 'neutral';
+}
+
+function archivePeriodLabel(stats) {
+  if (!stats.firstDate) return 'Geen datums';
+  if (stats.firstDate === stats.lastDate) return formatDate(stats.firstDate);
+  return `${formatDate(stats.firstDate)} – ${formatDate(stats.lastDate)}`;
+}
+
+function archiveMiniHTML(label, value, cls = 'neutral') {
+  return `<div class="archive-mini"><span class="archive-mini-label">${escHTML(label)}</span><span class="archive-mini-value ${cls}">${escHTML(value)}</span></div>`;
+}
+
+function renderArchiveList(container) {
+  const tabs = archivedTabList();
+  if (!tabs.length) {
+    container.innerHTML = `<div class="archive-empty">Nog geen gearchiveerde tabs. Een tab komt hier terecht wanneer je hem via <strong>Importeer uit tab</strong> samenvoegt met een andere tab.</div>`;
+    return;
+  }
+  container.innerHTML = `
+    <p class="archive-intro">${tabs.length} gearchiveerde tab${tabs.length !== 1 ? 's' : ''}. Bekijk de cijfers, of zet een tab terug in de tabbalk.</p>
+    <div class="archive-grid">
+      ${tabs.map(tab => {
+        const stats = computeTabStats(tab);
+        return `
+          <article class="archive-card">
+            <div>
+              <div class="archive-card-name">${escHTML(tab.name)}</div>
+              <div class="archive-card-meta">${escHTML(archivePeriodLabel(stats))}</div>
+            </div>
+            <div class="archive-card-stats">
+              ${archiveMiniHTML('Winst', fmt(stats.summary.profit), signClass(stats.summary.profit))}
+              ${archiveMiniHTML('Transacties', String(stats.summary.count))}
+              ${archiveMiniHTML('Trades', String(stats.tradeStats.totalTrades))}
+            </div>
+            <div class="archive-card-actions">
+              <button class="inline-btn" data-archive-open="${escAttr(tab.id)}">Bekijken</button>
+              <button class="inline-btn" data-archive-restore="${escAttr(tab.id)}">Herstel</button>
+            </div>
+          </article>`;
+      }).join('')}
+    </div>`;
+}
+
+function renderArchiveDetail(container, tab) {
+  const stats = computeTabStats(tab);
+  const topCards = stats.cards.slice().sort((a, b) => b.realizedProfit - a.realizedProfit).slice(0, 5);
+  const transactions = stats.transactions.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.id ?? 0) - (a.id ?? 0));
+  const trades = stats.trades.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const avgMargin = stats.cards.length
+    ? roundMoney(stats.cards.reduce((sum, row) => sum + (row.profitMargin ?? 0), 0) / stats.cards.length)
+    : null;
+
+  const kpis = [
+    ['Verkocht', fmt(stats.summary.totalSold), 'positive'],
+    ['Gekocht', fmt(stats.summary.totalBought), 'negative'],
+    ['Winst/Verlies', fmt(stats.summary.profit), signClass(stats.summary.profit)],
+    ['Transacties', String(stats.summary.count), 'neutral'],
+    ['Gem. marge', avgMargin === null ? '—' : `${avgMargin.toLocaleString('nl-NL')}%`, avgMargin === null ? 'neutral' : signClass(avgMargin)],
+    ['Trades', String(stats.tradeStats.totalTrades), 'neutral'],
+    ['Trade-saldo', fmt(stats.tradeStats.totalDifference), signClass(stats.tradeStats.totalDifference)],
+  ];
+
+  container.innerHTML = `
+    <div class="archive-detail-head">
+      <div class="archive-detail-title">
+        <button class="inline-btn" data-archive-back>← Archief</button>
+        <span class="archive-detail-name">${escHTML(tab.name)}</span>
+        <span class="archive-card-meta">${escHTML(archivePeriodLabel(stats))}</span>
+      </div>
+      <div class="archive-detail-actions">
+        <button class="inline-btn" data-archive-restore="${escAttr(tab.id)}">Herstel naar tabbalk</button>
+        <button class="inline-btn danger" data-archive-delete="${escAttr(tab.id)}">Definitief verwijderen</button>
+      </div>
+    </div>
+
+    <div class="archive-kpis">
+      ${kpis.map(([label, value, cls]) => `<div class="archive-kpi">${archiveMiniHTML(label, value, cls)}</div>`).join('')}
+    </div>
+
+    ${topCards.length ? `
+      <section class="archive-section">
+        <span class="subsection-title">Beste kaarten</span>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Kaart</th><th class="num">Verkocht</th><th class="num">Kosten</th><th class="num">Winst</th><th class="num">Marge</th></tr></thead>
+          <tbody>${topCards.map(row => `
+            <tr>
+              <td>${escHTML(row.cardName)} ${gradeBadgeHTML(row.gradingCompany, row.gradingValue)}</td>
+              <td class="num amount-cell">${fmt(row.soldValue)}</td>
+              <td class="num amount-cell">${fmt(row.allocatedBuyCost)}</td>
+              <td class="num amount-cell ${signClass(row.realizedProfit)}">${fmt(row.realizedProfit)}</td>
+              <td class="num amount-cell ${signClass(row.profitMargin ?? 0)}">${row.profitMargin === null ? '—' : `${row.profitMargin.toLocaleString('nl-NL')}%`}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table></div>
+      </section>` : ''}
+
+    <section class="archive-section">
+      <span class="subsection-title">Transacties (${transactions.length})</span>
+      ${transactions.length ? `
+        <div class="table-wrap"><table>
+          <thead><tr><th>Datum</th><th>Type</th><th>Omschrijving</th><th class="num">Aantal</th><th class="num">Bedrag</th></tr></thead>
+          <tbody>${transactions.map(txn => {
+            const sold = txn.type === TYPE_SELL;
+            return `
+            <tr>
+              <td>${escHTML(formatDate(txn.date))}</td>
+              <td><span class="type-badge ${sold ? 'sold' : 'bought'}">${sold ? 'Verkocht' : 'Gekocht'}</span></td>
+              <td class="desc-cell">${escHTML(txn.description).replace(/\n/g, '<br>')} ${gradeBadgeHTML(txn.gradingCompany, txn.gradingValue)}</td>
+              <td class="num">${txn.quantity}</td>
+              <td class="num amount-cell ${signClass(txn.amount)}">${fmt(txn.amount)}</td>
+            </tr>`;
+          }).join('')}
+          </tbody>
+        </table></div>` : '<div class="archive-empty">Geen transacties in deze tab.</div>'}
+    </section>
+
+    ${trades.length ? `
+      <section class="archive-section">
+        <span class="subsection-title">Trades (${trades.length})</span>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Datum</th><th>Ik geef</th><th>Ik ontvang</th><th class="num">Verschil</th><th class="num">ROI</th></tr></thead>
+          <tbody>${trades.map(trade => `
+            <tr>
+              <td>${escHTML(formatDate(trade.date))}</td>
+              <td>${escHTML(trade.givenItems.map(item => `${item.quantity > 1 ? `${item.quantity}× ` : ''}${item.cardName}`).join(', ') || '—')} <span class="amount-cell">${fmt(trade.totalGiven)}</span></td>
+              <td>${escHTML(trade.receivedItems.map(item => `${item.quantity > 1 ? `${item.quantity}× ` : ''}${item.cardName}`).join(', ') || '—')} <span class="amount-cell">${fmt(trade.totalReceived)}</span></td>
+              <td class="num amount-cell ${signClass(trade.difference)}">${fmt(trade.difference)}</td>
+              <td class="num amount-cell ${signClass(trade.roi)}">${Number(trade.roi).toLocaleString('nl-NL')}%</td>
+            </tr>`).join('')}
+          </tbody>
+        </table></div>
+      </section>` : ''}
+  `;
+}
+
 function renderArchivedTabs() {
-  const archivePanel = document.getElementById('tabArchivePanel');
-  const archiveList = document.getElementById('tabArchiveList');
-  const archivedTabs = appState.tabs.filter(tab => tab.archived);
-  if (!archivedTabs.length) {
-    archivePanel.style.display = 'none';
-    archiveList.innerHTML = '';
+  const tabs = archivedTabList();
+  const toggle = document.getElementById('archiveToggleBtn');
+  const count = document.getElementById('archiveCount');
+  count.hidden = tabs.length === 0;
+  count.textContent = String(tabs.length);
+  toggle.classList.toggle('has-items', tabs.length > 0);
+  const label = tabs.length ? `Archief: ${tabs.length} gearchiveerde tab${tabs.length !== 1 ? 's' : ''}` : 'Archief: geen gearchiveerde tabs';
+  toggle.title = label;
+  toggle.setAttribute('aria-label', label);
+
+  if (!archiveView.open) return;
+  const container = document.getElementById('archiveContent');
+  const tab = archiveView.tabId ? tabs.find(entry => entry.id === archiveView.tabId) : null;
+  if (tab) renderArchiveDetail(container, tab);
+  else {
+    archiveView.tabId = null;
+    renderArchiveList(container);
+  }
+}
+
+function openArchive(tabId = null) {
+  archiveView.open = true;
+  archiveView.tabId = tabId;
+  document.getElementById('archiveBackdrop').classList.add('open');
+  renderArchivedTabs();
+  document.querySelector('#archiveBackdrop .archive-modal').scrollTop = 0;
+}
+
+function closeArchive() {
+  archiveView.open = false;
+  archiveView.tabId = null;
+  document.getElementById('archiveBackdrop').classList.remove('open');
+  document.getElementById('archiveToggleBtn').focus();
+}
+
+document.getElementById('archiveToggleBtn').addEventListener('click', () => openArchive());
+document.getElementById('closeArchiveBtn').addEventListener('click', closeArchive);
+document.getElementById('archiveBackdrop').addEventListener('click', event => {
+  if (event.target.id === 'archiveBackdrop') { closeArchive(); return; }
+  const openButton = event.target.closest('[data-archive-open]');
+  if (openButton) { openArchive(openButton.dataset.archiveOpen); return; }
+  if (event.target.closest('[data-archive-back]')) { openArchive(); return; }
+
+  const restoreButton = event.target.closest('[data-archive-restore]');
+  if (restoreButton) {
+    const tabId = restoreButton.dataset.archiveRestore;
+    const tab = appState.tabs.find(entry => entry.id === tabId);
+    appState = restoreTab(appState, tabId);
+    closeArchive();
+    switchToTab(tabId);
+    saveToStorage();
+    refreshView();
+    showMessage(tabMsg, 'success', `Tab "${tab?.name ?? ''}" hersteld uit archief.`);
     return;
   }
 
-  archivePanel.style.display = '';
-  archiveList.innerHTML = archivedTabs.map(tab => `
-    <div class="archive-row">
-      <span>${escHTML(tab.name)} (${tab.transactions.length} transacties, ${(Array.isArray(tab.trades) ? tab.trades.length : 0)} trades)</span>
-      <button class="inline-btn" data-restore-tab-id="${escAttr(tab.id)}">Herstel</button>
-    </div>
-  `).join('');
-
-  archiveList.querySelectorAll('[data-restore-tab-id]').forEach(button => {
-    button.addEventListener('click', () => {
-      appState = restoreTab(appState, button.dataset.restoreTabId);
-      saveToStorage();
-      refreshView();
-      showMessage(tabMsg, 'success', 'Tab hersteld uit archief.');
-    });
-  });
-}
+  const deleteButton = event.target.closest('[data-archive-delete]');
+  if (deleteButton) {
+    const tab = appState.tabs.find(entry => entry.id === deleteButton.dataset.archiveDelete);
+    if (!tab) return;
+    const tradeCount = Array.isArray(tab.trades) ? tab.trades.length : 0;
+    if (!confirm(`Gearchiveerde tab "${tab.name}" definitief verwijderen? De ${tab.transactions.length} transacties en ${tradeCount} trades erin worden ook verwijderd.`)) return;
+    appState = deleteTab(appState, tab.id);
+    saveToStorage();
+    archiveView.tabId = null;
+    refreshView();
+    showMessage(tabMsg, 'success', `Tab "${tab.name}" verwijderd.`);
+  }
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && archiveView.open) closeArchive();
+});
 
 function renderSummary() {
   const summary = computeSummary(activeTransactions());
@@ -5207,7 +5723,7 @@ function escAttr(value) {
 dateInput.value = todayISO();
 syncDescriptionParsing();
 syncGradingParsing();
-loadFromStorage();
+await loadFromStorage();
 refreshView();
 loadGradingLogos();
 </script>

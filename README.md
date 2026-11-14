@@ -1,6 +1,8 @@
 # profit-monitor-pkmn
 
-A static profit tracker for Pokémon TCG trading that runs entirely in the browser — no server required.
+A profit tracker for Pokémon TCG trading. Use it straight from GitHub Pages (data in your browser), or self-host it with Docker so the data lives on your own server.
+
+**Self-hosting on Unraid / Docker:** see [UNRAID.md](UNRAID.md).
 
 **[→ Open the app](https://brammeketv.github.io/profit-monitor-pkmn/)**
 
@@ -11,7 +13,8 @@ A static profit tracker for Pokémon TCG trading that runs entirely in the brows
 - Filter by type (Verkocht / Gekocht) and search by description
 - Sort columns in both transaction and profit tables
 - Collapse/expand transaction and profit sections for a cleaner overview
-- Add new transactions — saved to browser localStorage
+- Add new transactions — saved on your server (Docker) or in browser localStorage (GitHub Pages)
+- Archived tabs live behind the small archive icon next to the title, with a pop-up to view each tab's stats, transactions and trades, restore it, or delete it
 - Mark cards as graded with company-specific grade options (PSA/BGS/CGC/TAG); graded rows get a subtle gold accent and a company | grade badge
 - **Gegradeerd** filter next to the type filters (with count), plus per-company chips; search also matches grades like "psa 10" or "gem mint"
 - Delete individual transactions
@@ -28,7 +31,9 @@ A static profit tracker for Pokémon TCG trading that runs entirely in the brows
 
 ## Data storage
 
-All transaction data is stored in your browser's `localStorage` under the key `profit-monitor-pkmn`.
+**Self-hosted (Docker):** `server.mjs` serves the app and stores the workspace as `profit-monitor.json` in `DATA_DIR` (`/data` in the container), with one backup per day in `backups/`. The browser loads and saves it through `GET/PUT /api/state`; each save carries the revision it was based on, so a stale device gets a conflict prompt instead of silently overwriting newer data. Setup: [UNRAID.md](UNRAID.md).
+
+**GitHub Pages / plain file:** with no server API available, all data is stored in your browser's `localStorage` under the key `profit-monitor-pkmn`.
 
 The browser app now stores a workspace object:
 
