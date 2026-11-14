@@ -14,7 +14,7 @@ A profit tracker for Pokémon TCG trading. Use it straight from GitHub Pages (da
 - Sort columns in both transaction and profit tables
 - Collapse/expand transaction and profit sections for a cleaner overview
 - Add new transactions — saved on your server (Docker) or in browser localStorage (GitHub Pages)
-- Archived tabs live behind the small archive icon next to the title, with a pop-up to view each tab's stats, transactions and trades, restore it, or delete it
+- Archived tabs live behind the small archive icon next to the title. The pop-up lists them, and opens a read-only preview of each one with every view (Transacties, Winst per kaart, Analyse, Trades, Trades – Analyse), plus restore and delete
 - Mark cards as graded with company-specific grade options (PSA/BGS/CGC/TAG); graded rows get a subtle gold accent and a company | grade badge
 - **Gegradeerd** filter next to the type filters (with count), plus per-company chips; search also matches grades like "psa 10" or "gem mint"
 - Delete individual transactions
