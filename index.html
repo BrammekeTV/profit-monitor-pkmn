@@ -491,6 +491,53 @@
     .archive-modal .table-wrap thead th { position: sticky; top: 0; z-index: 1; }
     .archive-modal td.num, .archive-modal th.num { text-align: right; }
 
+    .archive-modal.is-detail {
+      width: min(1640px, 100%);
+      height: 92vh;
+      max-height: 92vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .archive-modal.is-detail #archiveContent { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .archive-modal.is-detail .section-header { margin-bottom: 10px; }
+    .archive-modal.is-detail .archive-detail-head { margin-bottom: 12px; }
+    .archive-preview-frame {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      border: 3px solid var(--ink);
+      background: var(--bg);
+    }
+
+    /* ── read-only preview inside the archive pop-up: condensed, no editing ── */
+    html.preview-mode .sidebar,
+    html.preview-mode .brand,
+    html.preview-mode .workspace-bar,
+    html.preview-mode #tabMsg,
+    html.preview-mode .sync-banner,
+    html.preview-mode .setnames-reminder,
+    html.preview-mode #tradesView .trade-form,
+    html.preview-mode .edit-btn,
+    html.preview-mode .delete-btn,
+    html.preview-mode [data-trade-action="edit"],
+    html.preview-mode [data-trade-action="delete"],
+    html.preview-mode [data-set-names-copy],
+    html.preview-mode .set-edit-icon { display: none !important; }
+    html.preview-mode .set-name-btn { pointer-events: none; }
+    html.preview-mode .layout {
+      grid-template-columns: minmax(0, 1fr);
+      padding: 14px 16px 28px;
+      row-gap: 16px;
+      min-height: 0;
+    }
+    html.preview-mode .topbar { gap: 14px; }
+    html.preview-mode .topbar-row { justify-content: flex-start; }
+    html.preview-mode .summary-row { justify-content: flex-start; }
+    html.preview-mode .section-title { font-size: 24px; }
+    html.preview-mode .view-toggle-btn { min-height: 38px; }
+    html.preview-mode .chart-canvas { height: 320px; }
+
     /* ── server sync banner ── */
     .sync-banner {
       display: flex;
@@ -2851,7 +2898,29 @@ function readLocalState() {
   }
 }
 
+// Read-only preview of one archived tab, shown inside the archive pop-up.
+// The parent page sends the data, so nothing is loaded from or saved to storage.
+const PREVIEW_TAB_ID = new URLSearchParams(location.search).get('preview');
+const IS_PREVIEW = Boolean(PREVIEW_TAB_ID) && window.parent !== window;
+if (IS_PREVIEW) document.documentElement.classList.add('preview-mode');
+
+function receivePreviewState() {
+  return new Promise(resolve => {
+    window.addEventListener('message', function onMessage(event) {
+      if (event.source !== window.parent || event.data?.type !== 'profit-monitor-preview-state') return;
+      window.removeEventListener('message', onMessage);
+      resolve(event.data.state);
+    });
+    window.parent.postMessage({ type: 'profit-monitor-preview-ready', tabId: PREVIEW_TAB_ID }, '*');
+  });
+}
+
 async function loadFromStorage() {
+  if (IS_PREVIEW) {
+    storage.mode = 'preview';
+    appState = ensureAppState(await receivePreviewState());
+    return;
+  }
   const server = await fetchServerState();
   if (server) {
     storage.mode = 'server';
@@ -2884,6 +2953,7 @@ async function loadFromStorage() {
 }
 
 function saveToStorage() {
+  if (storage.mode === 'preview') return;
   if (storage.mode !== 'server') {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
     return;
@@ -2980,6 +3050,10 @@ function renderSyncStatus() {
   const banner = document.getElementById('syncBanner');
   if (!note || !banner) return;
 
+  if (storage.mode === 'preview') {
+    banner.hidden = true;
+    return;
+  }
   if (storage.mode !== 'server') {
     note.textContent = 'Data wordt lokaal opgeslagen in uw browser.';
     banner.hidden = true;
@@ -3197,7 +3271,7 @@ function renderTabs() {
 })();
 
 // ── archive pop-up ─────────────────────────────────────────────────────
-const archiveView = { open: false, tabId: null };
+const archiveView = { open: false, tabId: null, renderedTabId: null };
 
 function archivedTabList() {
   return appState.tabs.filter(tab => tab.archived);
@@ -3269,97 +3343,42 @@ function renderArchiveList(container) {
     </div>`;
 }
 
+function previewStateFor(tab) {
+  const { tabs, activeTabId, ...rest } = appState;
+  return { ...rest, tabs: [{ ...tab, archived: false }], activeTabId: tab.id };
+}
+
 function renderArchiveDetail(container, tab) {
   const stats = computeTabStats(tab);
-  const topCards = stats.cards.slice().sort((a, b) => b.realizedProfit - a.realizedProfit).slice(0, 5);
-  const transactions = stats.transactions.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.id ?? 0) - (a.id ?? 0));
-  const trades = stats.trades.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  const avgMargin = stats.cards.length
-    ? roundMoney(stats.cards.reduce((sum, row) => sum + (row.profitMargin ?? 0), 0) / stats.cards.length)
-    : null;
-
-  const kpis = [
-    ['Verkocht', fmt(stats.summary.totalSold), 'positive'],
-    ['Gekocht', fmt(stats.summary.totalBought), 'negative'],
-    ['Winst/Verlies', fmt(stats.summary.profit), signClass(stats.summary.profit)],
-    ['Transacties', String(stats.summary.count), 'neutral'],
-    ['Gem. marge', avgMargin === null ? '—' : `${avgMargin.toLocaleString('nl-NL')}%`, avgMargin === null ? 'neutral' : signClass(avgMargin)],
-    ['Trades', String(stats.tradeStats.totalTrades), 'neutral'],
-    ['Trade-saldo', fmt(stats.tradeStats.totalDifference), signClass(stats.tradeStats.totalDifference)],
-  ];
-
   container.innerHTML = `
     <div class="archive-detail-head">
       <div class="archive-detail-title">
         <button class="inline-btn" data-archive-back>← Archief</button>
         <span class="archive-detail-name">${escHTML(tab.name)}</span>
-        <span class="archive-card-meta">${escHTML(archivePeriodLabel(stats))}</span>
+        <span class="archive-card-meta">${escHTML(archivePeriodLabel(stats))} · alleen lezen</span>
       </div>
       <div class="archive-detail-actions">
         <button class="inline-btn" data-archive-restore="${escAttr(tab.id)}">Herstel naar tabbalk</button>
         <button class="inline-btn danger" data-archive-delete="${escAttr(tab.id)}">Definitief verwijderen</button>
       </div>
     </div>
-
-    <div class="archive-kpis">
-      ${kpis.map(([label, value, cls]) => `<div class="archive-kpi">${archiveMiniHTML(label, value, cls)}</div>`).join('')}
-    </div>
-
-    ${topCards.length ? `
-      <section class="archive-section">
-        <span class="subsection-title">Beste kaarten</span>
-        <div class="table-wrap"><table>
-          <thead><tr><th>Kaart</th><th class="num">Verkocht</th><th class="num">Kosten</th><th class="num">Winst</th><th class="num">Marge</th></tr></thead>
-          <tbody>${topCards.map(row => `
-            <tr>
-              <td>${escHTML(row.cardName)} ${gradeBadgeHTML(row.gradingCompany, row.gradingValue)}</td>
-              <td class="num amount-cell">${fmt(row.soldValue)}</td>
-              <td class="num amount-cell">${fmt(row.allocatedBuyCost)}</td>
-              <td class="num amount-cell ${signClass(row.realizedProfit)}">${fmt(row.realizedProfit)}</td>
-              <td class="num amount-cell ${signClass(row.profitMargin ?? 0)}">${row.profitMargin === null ? '—' : `${row.profitMargin.toLocaleString('nl-NL')}%`}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table></div>
-      </section>` : ''}
-
-    <section class="archive-section">
-      <span class="subsection-title">Transacties (${transactions.length})</span>
-      ${transactions.length ? `
-        <div class="table-wrap"><table>
-          <thead><tr><th>Datum</th><th>Type</th><th>Omschrijving</th><th class="num">Aantal</th><th class="num">Bedrag</th></tr></thead>
-          <tbody>${transactions.map(txn => {
-            const sold = txn.type === TYPE_SELL;
-            return `
-            <tr>
-              <td>${escHTML(formatDate(txn.date))}</td>
-              <td><span class="type-badge ${sold ? 'sold' : 'bought'}">${sold ? 'Verkocht' : 'Gekocht'}</span></td>
-              <td class="desc-cell">${escHTML(txn.description).replace(/\n/g, '<br>')} ${gradeBadgeHTML(txn.gradingCompany, txn.gradingValue)}</td>
-              <td class="num">${txn.quantity}</td>
-              <td class="num amount-cell ${signClass(txn.amount)}">${fmt(txn.amount)}</td>
-            </tr>`;
-          }).join('')}
-          </tbody>
-        </table></div>` : '<div class="archive-empty">Geen transacties in deze tab.</div>'}
-    </section>
-
-    ${trades.length ? `
-      <section class="archive-section">
-        <span class="subsection-title">Trades (${trades.length})</span>
-        <div class="table-wrap"><table>
-          <thead><tr><th>Datum</th><th>Ik geef</th><th>Ik ontvang</th><th class="num">Verschil</th><th class="num">ROI</th></tr></thead>
-          <tbody>${trades.map(trade => `
-            <tr>
-              <td>${escHTML(formatDate(trade.date))}</td>
-              <td>${escHTML(trade.givenItems.map(item => `${item.quantity > 1 ? `${item.quantity}× ` : ''}${item.cardName}`).join(', ') || '—')} <span class="amount-cell">${fmt(trade.totalGiven)}</span></td>
-              <td>${escHTML(trade.receivedItems.map(item => `${item.quantity > 1 ? `${item.quantity}× ` : ''}${item.cardName}`).join(', ') || '—')} <span class="amount-cell">${fmt(trade.totalReceived)}</span></td>
-              <td class="num amount-cell ${signClass(trade.difference)}">${fmt(trade.difference)}</td>
-              <td class="num amount-cell ${signClass(trade.roi)}">${Number(trade.roi).toLocaleString('nl-NL')}%</td>
-            </tr>`).join('')}
-          </tbody>
-        </table></div>
-      </section>` : ''}
-  `;
+    <iframe class="archive-preview-frame" id="archivePreviewFrame"
+      src="index.html?preview=${encodeURIComponent(tab.id)}"
+      title="Voorbeeld van gearchiveerde tab ${escAttr(tab.name)}"></iframe>`;
 }
+
+// The preview frame asks for its data once it has loaded.
+window.addEventListener('message', event => {
+  if (event.data?.type !== 'profit-monitor-preview-ready') return;
+  const frame = document.getElementById('archivePreviewFrame');
+  if (!frame || event.source !== frame.contentWindow) return;
+  const tab = appState.tabs.find(entry => entry.id === event.data.tabId && entry.archived);
+  if (!tab) return;
+  event.source.postMessage(
+    { type: 'profit-monitor-preview-state', state: previewStateFor(tab) },
+    location.origin === 'null' ? '*' : location.origin,
+  );
+});
 
 function renderArchivedTabs() {
   const tabs = archivedTabList();
@@ -3374,10 +3393,17 @@ function renderArchivedTabs() {
 
   if (!archiveView.open) return;
   const container = document.getElementById('archiveContent');
+  const modal = document.querySelector('#archiveBackdrop .archive-modal');
   const tab = archiveView.tabId ? tabs.find(entry => entry.id === archiveView.tabId) : null;
-  if (tab) renderArchiveDetail(container, tab);
-  else {
+  modal.classList.toggle('is-detail', Boolean(tab));
+  if (tab) {
+    // Don't reload the preview on unrelated refreshes (e.g. a sync from another device).
+    if (archiveView.renderedTabId === tab.id && document.getElementById('archivePreviewFrame')) return;
+    archiveView.renderedTabId = tab.id;
+    renderArchiveDetail(container, tab);
+  } else {
     archiveView.tabId = null;
+    archiveView.renderedTabId = null;
     renderArchiveList(container);
   }
 }
@@ -3393,6 +3419,8 @@ function openArchive(tabId = null) {
 function closeArchive() {
   archiveView.open = false;
   archiveView.tabId = null;
+  archiveView.renderedTabId = null;
+  document.getElementById('archiveContent').innerHTML = '';
   document.getElementById('archiveBackdrop').classList.remove('open');
   document.getElementById('archiveToggleBtn').focus();
 }
@@ -4188,6 +4216,7 @@ function showSetNamesExport(fromReminder) {
 }
 
 function renderSetNamesReminder(force = false) {
+  if (IS_PREVIEW) return;
   const banner = document.getElementById('setNamesReminder');
   const names = customSetNames();
   const count = Object.keys(names).length;
