@@ -1306,6 +1306,7 @@ export const SET_NAMES = Object.freeze({
   m3: 'Nihil Zero',
   m5: 'Abyss Eye',
   m6: 'Storm Emeralda',
+  smM: 'Tag Team GX Starter Sets',
 });
 
 const NUMBER_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
@@ -1562,11 +1563,13 @@ export function parseCardReference(cardName = '') {
   const name = (setCode ? text.slice(0, text.indexOf('(')) : text.replace(/\([^)]*\)/g, ''))
     .replace(/\s+/g, ' ')
     .trim();
+  // A second code before the number names the card's original set.
+  const inner = text.match(new RegExp(`\\(${setCode.replace(/[-]/g, '\\-')}\\s+([A-Za-z][A-Za-z0-9-]*)\\s+[^\\s()]*\\d`));
   // Prize Pack cards are stamped reprints: "(PPS9 PFL 068)" is PFL 068.
-  if (/^PPS\d+$/i.test(setCode)) {
-    const inner = text.match(new RegExp(`\\(${setCode}\\s+([A-Za-z0-9]+)\\s+[^\\s()]*\\d`));
-    if (inner) return { name, setCode: inner[1], number, prizePack: setCode };
-  }
+  if (inner && /^PPS\d+$/i.test(setCode)) return { name, setCode: inner[1], number, prizePack: setCode };
+  // Classic Collection reprints: "Raikou (30C VIV 50)" is Raikou from the
+  // 30th Celebration Classic Collection, originally Vivid Voltage 50.
+  if (inner) return { name, setCode, number, originalSet: inner[1] };
   return { name, setCode, number };
 }
 

@@ -27,6 +27,7 @@ test('parseCardReference splits name, set code and number', () => {
   assert.deepEqual(parseCardReference('Toxtricity (PPS9 PFL 068) (Holo Version)'), { name: 'Toxtricity', setCode: 'PFL', number: '068', prizePack: 'PPS9' });
   assert.deepEqual(parseCardReference('Umbreon VMAX (EVS 215/203) #123456789'), { name: 'Umbreon VMAX', setCode: 'EVS', number: '215' });
   assert.deepEqual(parseCardReference('Pikachu (Reverse Holo)'), { name: 'Pikachu', setCode: '', number: '' });
+  assert.deepEqual(parseCardReference('Raikou (30C VIV 50)'), { name: 'Raikou', setCode: '30C', number: '50', originalSet: 'VIV' });
   assert.deepEqual(parseCardReference('Mega Gardevoir ex'), { name: 'Mega Gardevoir ex', setCode: '', number: '' });
 });
 
@@ -141,6 +142,10 @@ function fakeSources() {
     Quaxly: [{ id: 'sv1-52', localId: '52', name: 'Quaxly', image: `${T}/en/sv/sv1/52` }],
   };
   const sets = {
+    'en/30th-c': { id: '30th-c', name: '30th Classic Collection', cards: [
+      { id: '30th-c-001', localId: '001', name: 'Charizard', image: `${T}/en/me/30th-c/001` },
+      { id: '30th-c-017', localId: '017', name: 'Raikou', image: `${T}/en/me/30th-c/017` },
+    ] },
     'ja/M1L': { id: 'M1L', name: 'メガブレイブ', cards: [
       { id: 'M1L-001', localId: '001', name: 'フシギダネ', image: `${T}/ja/M/M1L/001` },
       { id: 'M1L-087', localId: '087', name: 'メガサーナイトex', image: `${T}/ja/M/M1L/087` },
@@ -170,6 +175,7 @@ function fakeSources() {
   const loadable = new Set([
     ...Object.values(cards).filter(c => c.image && !/SM9b|E1\//.test(c.image)).map(c => `${c.image}/low.webp`),
     `${T}/en/sv/sv03.5/6/low.webp`,
+    `${T}/en/me/30th-c/017/low.webp`,
     'https://images.pokemontcg.io/mcd21/25.png',
     'https://images.pokemontcg.io/ecard2/74.png',
     'https://images.pokemontcg.io/me55c/4.png',
@@ -220,6 +226,11 @@ test('resolver: the cards that were reported missing', async () => {
   const classic = await found('Charizard (30C 4)');
   assert.equal(cardImageUrl(classic.image), 'https://images.pokemontcg.io/me55c/4.png');
   assert.equal((await found('Blastoise (30C 004)')).id, '30th-c-004');
+
+  // Classic Collection in the "(30C VIV 50)" format: by name in the Classic Collection set.
+  assert.equal((await found('Raikou (30C VIV 50)')).id, '30th-c-017');
+  assert.equal((await resolver.resolve('Zapdos (30C FO 15)')).status, 'none', 'never a main-set card instead');
+  assert.equal((await resolver.search('30C VIV 50', { name: 'Raikou' }))[0].id, '30th-c-017');
 
   assert.equal((await found('Pikachu (MCD21 25)')).source, 'pokemontcg');
   assert.equal((await found('Drowzee (AQ 74)')).source, 'pokemontcg');

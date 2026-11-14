@@ -3842,6 +3842,7 @@ const picker = { cardName: '', candidates: [], loading: false, error: '', query:
 
 function pickerStartQuery(cardName) {
   const parsed = parseCardReference(cardName);
+  if (parsed.originalSet) return `${parsed.setCode} ${parsed.originalSet} ${parsed.number}`;
   if (parsed.setCode && parsed.number) return `${parsed.setCode} ${parsed.number}`;
   return parsed.name || cardName;
 }

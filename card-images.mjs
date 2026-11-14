@@ -292,6 +292,31 @@ export function createCardImageResolver({
     return null;
   }
 
+  // Classic Collection reprint ("Raikou (30C VIV 50)"): look for the name in
+  // the Classic Collection set; the number is the one from the original set.
+  async function classicCard({ name, setCode, number }, table) {
+    const code = simplify(setCode);
+    const isClassic = set => /classic/i.test(set.name) && simplify(set.code).startsWith(code);
+    const results = [];
+    for (const set of (table?.tcgdex || []).filter(set => set.lang === 'en' && set.cards !== 0 && isClassic(set))) {
+      const cards = await browseSet('en', set.id).catch(() => []);
+      const exact = cards.filter(card => simplify(card.name) === simplify(name));
+      for (const card of exact.length ? exact : cards.filter(card => namesMatch(name, card.name))) {
+        if (await tcgdexImageLoads(card)) results.push(card);
+      }
+    }
+    if (results.length) return results;
+    for (const set of (table?.pokemontcg || []).filter(isClassic)) {
+      if (!pokemontcgNameFits(table, set, String(Number(number) || number), name)) continue;
+      const plain = /^\d+$/.test(number) ? String(Number(number)) : number;
+      const base = `${POKEMONTCG_IMAGES}/${set.id}/${encodeURIComponent(plain)}`;
+      if (await probeImage(cardImageUrl(base))) {
+        return [{ id: `${set.id}-${plain}`, name, localId: plain, setId: set.id, setName: set.name, image: base, lang: 'en', source: 'pokemontcg' }];
+      }
+    }
+    return [];
+  }
+
   // Exact card for a set code + number, from whichever source has it.
   async function exactCard(reference, table, sets) {
     const { name, number } = reference;
@@ -324,6 +349,13 @@ export function createCardImageResolver({
     if (!name && !setCode) return { status: 'none' };
     const table = await setTable();
     const sets = setCode ? findSets(table, setCode, { setName }) : { en: [], asia: [], pokemontcg: [], alias: '' };
+
+    if (reference.originalSet) {
+      const hits = await classicCard(reference, table);
+      if (hits.length === 1) return { status: 'found', match: hits[0] };
+      if (hits.length > 1) return { status: 'ambiguous', candidates: hits };
+      return { status: 'none' };
+    }
 
     // 1. Set code + number: that exact card, from whichever source has it.
     if (setCode && number) {
@@ -377,6 +409,11 @@ export function createCardImageResolver({
       const table = await setTable();
       const parts = text.split(/\s+/);
       const [first, second] = parts;
+      // "30C VIV 50": a Classic Collection reprint.
+      if (parts.length === 3 && /^[A-Za-z]/.test(second) && /\d/.test(parts[2])) {
+        const hits = await classicCard({ name, setCode: first, number: parts[2] }, table);
+        if (hits.length) return hits;
+      }
       const sets = findSets(table, first);
       const looksLikeCode = /\d|^[A-Z0-9-]+$/.test(first) && (!second || /\d/.test(second)) && parts.length <= 2;
       const known = [...sets.en, ...sets.asia];
