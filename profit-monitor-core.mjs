@@ -1306,6 +1306,7 @@ export const SET_NAMES = Object.freeze({
   m3: 'Nihil Zero',
   m5: 'Abyss Eye',
   m6: 'Storm Emeralda',
+  smM: 'Tag Team GX Starter Sets',
 });
 
 const NUMBER_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
@@ -1316,7 +1317,7 @@ const NUMBER_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Sev
 // Brackets that are clearly not a set — "(Reverse Holo)", "(Korean)" — are
 // skipped: a code needs a card number after it, or must be all caps/digits.
 export function extractSetCode(cardName = '') {
-  for (const match of String(cardName ?? '').matchAll(/\(([A-Za-z0-9]+)((?:\s+[^\s()]+)*)\s*\)/g)) {
+  for (const match of String(cardName ?? '').matchAll(/\(([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)((?:\s+[^\s()]+)*)\s*\)/g)) {
     const [, code, rest] = match;
     if (/\d/.test(rest) || /^[A-Z0-9]+$/.test(code)) return code;
   }
@@ -1349,7 +1350,7 @@ export function getSetName(code = '', customNames = {}) {
 }
 
 // ── User-entered set names ──────────────────────────────────────────────
-export const SET_CODE_PATTERN = /^[A-Za-z0-9]{1,12}$/;
+export const SET_CODE_PATTERN = /^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/;
 export const SET_NAMES_REMINDER_DAYS = 30;
 const SET_NAME_MAX_LENGTH = 120;
 
@@ -1516,6 +1517,7 @@ export const CARD_IMAGES = Object.freeze({
 
 export const CARD_PICKS_REMINDER_DAYS = 30;
 const CARD_IMAGE_SOURCES = new Set(['auto', 'user', 'none']);
+export const CARD_CATEGORIES = ['Pokemon', 'Trainer', 'Energy'];
 // Image hosts used for automatic matches. A hand-picked image may also be any
 // https link, a photo stored by the server, or (without server) a data: URL.
 const CARD_IMAGE_HOST_PATTERN = /^https:\/\/(?:assets\.tcgdex\.net|images\.pokemontcg\.io|limitlesstcg\.nyc3\.cdn\.digitaloceanspaces\.com)\/[A-Za-z0-9._%/-]+$/;
@@ -1535,10 +1537,14 @@ export function cardImageKey(cardName = '') {
 // What to draw on top of a card image.
 export function getCardFinish(cardName = '') {
   const text = String(cardName ?? '');
+  const holo = /\(\s*holo(?:\s*version)?\s*\)/i.test(text);
+  const prizePack = /\(\s*PPS\d+\b/i.test(text);
   return {
     reverseHolo: /\(\s*reverse\s*holo/i.test(text),
-    holo: /\(\s*holo(?:\s*version)?\s*\)/i.test(text),
-    prizePack: /\(\s*PPS\d+\b/i.test(text),
+    holo,
+    prizePack,
+    // A Prize Pack "Holo Version" is a cosmos holo: pattern on the artwork and the border.
+    cosmos: holo && prizePack,
   };
 }
 
@@ -1549,7 +1555,7 @@ export function parseCardReference(cardName = '') {
   const setCode = extractSetCode(text);
   let number = '';
   if (setCode) {
-    const bracket = text.match(new RegExp(`\\(${setCode}((?:\\s+[^\\s()]+)*)\\s*\\)`));
+    const bracket = text.match(new RegExp(`\\(${setCode.replace(/[-]/g, '\\-')}((?:\\s+[^\\s()]+)*)\\s*\\)`));
     const tokens = (bracket?.[1] || '').trim().split(/\s+/).filter(Boolean);
     const numberToken = tokens.reverse().find(token => /\d/.test(token));
     if (numberToken) number = numberToken.split('/')[0];
@@ -1557,11 +1563,13 @@ export function parseCardReference(cardName = '') {
   const name = (setCode ? text.slice(0, text.indexOf('(')) : text.replace(/\([^)]*\)/g, ''))
     .replace(/\s+/g, ' ')
     .trim();
+  // A second code before the number names the card's original set.
+  const inner = text.match(new RegExp(`\\(${setCode.replace(/[-]/g, '\\-')}\\s+([A-Za-z][A-Za-z0-9-]*)\\s+[^\\s()]*\\d`));
   // Prize Pack cards are stamped reprints: "(PPS9 PFL 068)" is PFL 068.
-  if (/^PPS\d+$/i.test(setCode)) {
-    const inner = text.match(new RegExp(`\\(${setCode}\\s+([A-Za-z0-9]+)\\s+[^\\s()]*\\d`));
-    if (inner) return { name, setCode: inner[1], number, prizePack: setCode };
-  }
+  if (inner && /^PPS\d+$/i.test(setCode)) return { name, setCode: inner[1], number, prizePack: setCode };
+  // Classic Collection reprints: "Raikou (30C VIV 50)" is Raikou from the
+  // 30th Celebration Classic Collection, originally Vivid Voltage 50.
+  if (inner) return { name, setCode, number, originalSet: inner[1] };
   return { name, setCode, number };
 }
 
@@ -1578,6 +1586,8 @@ export function normalizeCardImageEntry(raw) {
     name: String(raw.name ?? '').trim().slice(0, 160),
     setName: String(raw.setName ?? '').trim().slice(0, 160),
     source,
+    // Pokémon and Trainer cards have their artwork in a different place.
+    ...(CARD_CATEGORIES.includes(raw.category) ? { category: raw.category } : {}),
   };
 }
 
@@ -1644,6 +1654,14 @@ export function setCardImage(state, cardName, match, source = 'user', options = 
   if (!hasPicks) delete next.cardPicksReminderAt;
   else if (!next.cardPicksReminderAt) next.cardPicksReminderAt = addDaysISO(todayISO(options.now), CARD_PICKS_REMINDER_DAYS);
   return next;
+}
+
+// Records whether a card is a Pokémon, Trainer or Energy card (keeps the image).
+export function setCardImageCategory(state, cardName, category) {
+  const key = cardImageKey(cardName);
+  const entry = state.cardImages?.[key];
+  if (!entry || entry.source === 'none' || !CARD_CATEGORIES.includes(category) || entry.category === category) return state;
+  return { ...state, cardImages: { ...state.cardImages, [key]: { ...entry, category } } };
 }
 
 // Forget the choice for a card, so it is looked up automatically again.

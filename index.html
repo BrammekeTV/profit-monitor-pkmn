@@ -545,13 +545,23 @@
     .desc-layout { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px 18px; }
     .desc-main { min-width: 0; flex: 1 1 auto; }
     .txn-media { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: flex-start; gap: 8px; flex: 0 1 auto; max-width: 55%; }
-    .card-frame { position: relative; display: block; line-height: 0; overflow: hidden; border-radius: 4.2% / 3.1%; }
+    /* Where the artwork and the Play! Pokémon stamp sit, measured on real cards. */
+    .card-frame {
+      --art-l: 8.2%; --art-t: 9.4%; --art-r: 90.7%; --art-b: 47%;
+      --stamp-l: 79.7%; --stamp-t: 38.6%; --stamp-w: 17.6%;
+      position: relative; display: block; line-height: 0; overflow: hidden; border-radius: 4.2% / 3.1%;
+    }
+    .card-frame.is-trainer {
+      --art-l: 7.8%; --art-t: 13.9%; --art-r: 93.1%; --art-b: 51.9%;
+      --stamp-l: 73.7%; --stamp-t: 10.9%; --stamp-w: 12.6%;
+    }
     .card-frame > img:first-child { display: block; }
-    .pps-stamp {
+    .card-frame .pps-stamp {
       position: absolute;
-      left: 73.5%;
-      top: 10.9%;
-      width: 13%;
+      z-index: 2;
+      left: var(--stamp-l);
+      top: var(--stamp-t);
+      width: var(--stamp-w);
       height: auto;
       filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45));
       pointer-events: none;
@@ -578,14 +588,53 @@
     .is-reverse-holo .holo-sheen {
       clip-path: polygon(evenodd,
         0 0, 100% 0, 100% 100%, 0 100%, 0 0,
-        8.2% 9.4%, 8.2% 47%, 90.7% 47%, 90.7% 9.4%, 8.2% 9.4%);
+        var(--art-l) var(--art-t), var(--art-l) var(--art-b), var(--art-r) var(--art-b), var(--art-r) var(--art-t), var(--art-l) var(--art-t));
     }
-    .is-holo .holo-sheen { clip-path: inset(9.4% 9.3% 53% 8.2%); }
+    .is-holo .holo-sheen {
+      clip-path: polygon(var(--art-l) var(--art-t), var(--art-r) var(--art-t), var(--art-r) var(--art-b), var(--art-l) var(--art-b));
+    }
+    /* Cosmos holo (Prize Pack "Holo Version"): a pattern of shining circles on
+       the artwork and on the border, with a slow rainbow sweep across it. */
+    .is-cosmos .holo-sheen {
+      opacity: 0.85;
+      clip-path: polygon(evenodd,
+        0 0, 100% 0, 100% 100%, 0 100%, 0 0,
+        3.8% 2.8%, 3.8% 97.2%, 96.2% 97.2%, 96.2% 2.8%, 3.8% 2.8%,
+        var(--art-l) var(--art-t), var(--art-r) var(--art-t), var(--art-r) var(--art-b), var(--art-l) var(--art-b), var(--art-l) var(--art-t),
+        3.8% 2.8%);
+    }
+    .is-cosmos .holo-sheen::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 20% 25%, rgba(255, 255, 255, 0.9) 0 4%, rgba(255, 255, 255, 0) 4.6%),
+        radial-gradient(circle at 64% 40%, rgba(255, 170, 245, 0.85) 0 7%, rgba(255, 170, 245, 0.25) 7.6% 11%, transparent 11.6%),
+        radial-gradient(circle at 36% 74%, rgba(150, 225, 255, 0.85) 0 9%, rgba(150, 225, 255, 0.2) 9.6% 14%, transparent 14.6%),
+        radial-gradient(circle at 84% 82%, rgba(255, 240, 140, 0.85) 0 3%, transparent 3.6%),
+        radial-gradient(circle at 88% 12%, rgba(180, 255, 200, 0.8) 0 5%, transparent 5.6%),
+        radial-gradient(circle at 8% 60%, rgba(255, 210, 170, 0.8) 0 2.4%, transparent 3%);
+      background-size: 26% 19%;
+      mix-blend-mode: screen;
+      animation: cosmos-twinkle 3.2s ease-in-out infinite alternate;
+    }
+    @keyframes cosmos-twinkle {
+      from { opacity: 0.55; }
+      to   { opacity: 1; }
+    }
     @keyframes holo-shift {
       from { background-position: 0% 0%; }
       to   { background-position: 100% 100%; }
     }
-    @media (prefers-reduced-motion: reduce) { .holo-sheen { animation: none; background-position: 50% 50%; } }
+    @media (prefers-reduced-motion: reduce) {
+      .holo-sheen, .is-cosmos .holo-sheen::before { animation: none; background-position: 50% 50%; }
+    }
+    .card-option-missing {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; aspect-ratio: 245 / 337;
+      background: var(--field); color: var(--muted);
+      font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+    }
     .media-viewer-stage .card-frame { border-radius: 3.4% / 2.5%; }
     .media-viewer-stage .card-frame > img:first-child { max-width: 100%; max-height: calc(94vh - 110px); width: auto; }
     .card-option-tag {
@@ -2949,6 +2998,7 @@ import {
   cardImageKey,
   clearCardImage,
   getCardFinish,
+  setCardImageCategory,
   extractSetCode,
   formatCardPicksForExport,
   getCardImage,
@@ -3695,14 +3745,42 @@ function cardImageSrc(image, quality = 'low') {
 
 function finishLabels(cardName) {
   const finish = getCardFinish(cardName);
-  return [finish.prizePack && 'Prize Pack', finish.reverseHolo && 'Reverse Holo', finish.holo && 'Holo'].filter(Boolean);
+  return [finish.prizePack && 'Prize Pack', finish.reverseHolo && 'Reverse Holo', finish.cosmos ? 'Cosmos Holo' : finish.holo && 'Holo'].filter(Boolean);
+}
+
+function hasOverlay(cardName) {
+  const finish = getCardFinish(cardName);
+  return finish.prizePack || finish.reverseHolo || finish.holo;
+}
+
+// Overlays need to know where the artwork is (Trainer cards differ): fill in
+// the card type once for cards that don't have it yet.
+const pendingCategories = new Set();
+function ensureCardCategory(cardName, entry) {
+  if (!entry || entry.category || entry.builtIn || !hasOverlay(cardName)) return;
+  const key = cardImageKey(cardName);
+  if (pendingCategories.has(key) || !appState.cardImages?.[key]) return;
+  pendingCategories.add(key);
+  cardResolver.categoryFor(entry.name || parseCardReference(cardName).name).then(category => {
+    if (!category) return;
+    const next = setCardImageCategory(appState, cardName, category);
+    if (next === appState) return;
+    appState = next;
+    saveToStorage();
+    updateCardMedia(cardName);
+  });
 }
 
 // The card image plus what is drawn on top: the Play! Pokémon stamp for
 // Prize Pack cards and an animated sheen for (reverse) holo cards.
 function cardFrameHTML(cardName, entry, quality = 'low') {
   const finish = getCardFinish(cardName);
-  const classes = ['card-frame', finish.reverseHolo && 'is-reverse-holo', finish.holo && 'is-holo'].filter(Boolean).join(' ');
+  ensureCardCategory(cardName, entry);
+  const classes = ['card-frame',
+    entry.category === 'Trainer' && 'is-trainer',
+    finish.reverseHolo && 'is-reverse-holo',
+    finish.cosmos ? 'is-cosmos' : finish.holo && 'is-holo',
+  ].filter(Boolean).join(' ');
   return `<span class="${classes}">
       <img src="${escAttr(cardImageSrc(entry.image, quality))}" alt="" ${quality === 'low' ? 'loading="lazy"' : ''}>
       ${finish.reverseHolo || finish.holo ? '<span class="holo-sheen" aria-hidden="true"></span>' : ''}
@@ -3764,6 +3842,7 @@ const picker = { cardName: '', candidates: [], loading: false, error: '', query:
 
 function pickerStartQuery(cardName) {
   const parsed = parseCardReference(cardName);
+  if (parsed.originalSet) return `${parsed.setCode} ${parsed.originalSet} ${parsed.number}`;
   if (parsed.setCode && parsed.number) return `${parsed.setCode} ${parsed.number}`;
   return parsed.name || cardName;
 }
@@ -3791,7 +3870,7 @@ async function runPickerSearch(query, lang) {
   picker.lang = lang;
   renderCardPicker({ keepQuery: true });
   try {
-    picker.candidates = await cardResolver.search(query, { lang });
+    picker.candidates = await cardResolver.search(query, { lang, name: parseCardReference(picker.cardName).name });
   } catch {
     picker.candidates = [];
     picker.error = 'De kaartdatabase is niet bereikbaar. Probeer het later opnieuw.';
@@ -3820,7 +3899,7 @@ function renderCardPicker({ keepQuery = false } = {}) {
       : ordered.length
         ? `<div class="card-picker-grid">${ordered.map(card => `
             <button type="button" class="card-option${current?.id === card.id ? ' is-current' : ''}" data-pick-index="${picker.candidates.indexOf(card)}">
-              <img src="${escAttr(cardImageUrl(card.image))}" alt="" loading="lazy">
+              <img src="${escAttr(cardImageUrl(card.image))}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'), { className: 'card-option-missing', textContent: 'Geen afbeelding' }))">
               <span class="card-option-name">${escHTML(card.name || parsed.name)}</span>
               <span class="card-option-set">${escHTML(card.setName || card.setId)} · #${escHTML(card.localId)}${card.lang === 'ja' ? ' · JP' : ''}</span>
               ${numbered.includes(card) ? '<span class="card-option-tag">Zelfde nummer</span>' : ''}
@@ -3947,6 +4026,7 @@ function renderViewer() {
       <span class="media-viewer-caption">${escHTML(item.caption || '')}${many ? ` <span class="muted">${viewer.index + 1} / ${viewer.items.length}</span>` : ''}</span>
       <span class="media-viewer-actions">
         ${item.cardmarket ? `<a class="inline-btn" href="${escAttr(item.cardmarket)}" target="_blank" rel="noopener noreferrer">Cardmarket</a>` : ''}
+        ${item.layoutToggle && !IS_PREVIEW ? `<button type="button" class="inline-btn" data-viewer="layout" title="Bepaalt waar het logo en de glans op de kaart komen">Indeling: ${item.layoutToggle === 'Trainer' ? 'Trainer' : 'Pokémon'}</button>` : ''}
         ${item.cardName && !IS_PREVIEW ? `<button type="button" class="inline-btn" data-viewer="pick">Andere kiezen</button>` : ''}
         ${item.open ? `<a class="inline-btn" href="${escAttr(item.open)}" target="_blank" rel="noopener">Origineel</a>` : ''}
         <button type="button" class="cancel-btn" data-viewer="close">Sluiten</button>
@@ -3960,6 +4040,19 @@ document.getElementById('mediaViewerBackdrop').addEventListener('click', event =
   if (action === 'prev' || action === 'next') {
     viewer.index = (viewer.index + (action === 'next' ? 1 : -1) + viewer.items.length) % viewer.items.length;
     renderViewer();
+  }
+  if (action === 'layout') {
+    const item = viewer.items[viewer.index];
+    const next = setCardImageCategory(appState, item.cardName, item.layoutToggle === 'Trainer' ? 'Pokemon' : 'Trainer');
+    if (next !== appState) {
+      appState = next;
+      saveToStorage();
+      updateCardMedia(item.cardName);
+      const entry = matchFor(item.cardName);
+      viewer.items[viewer.index] = { ...item, html: cardFrameHTML(item.cardName, entry, 'high'), layoutToggle: entry.category === 'Trainer' ? 'Trainer' : 'Pokemon' };
+      renderViewer();
+    }
+    return;
   }
   if (action === 'pick') {
     const cardName = viewer.items[viewer.index].cardName;
@@ -3978,6 +4071,8 @@ document.addEventListener('click', event => {
     const search = parseCardReference(cardName).name || cardName;
     openViewer([{
       html: cardFrameHTML(cardName, entry, 'high'),
+      layoutToggle: hasOverlay(cardName) && getCardImage(appState, cardName) && appState.cardImages?.[cardImageKey(cardName)]
+        ? (entry.category === 'Trainer' ? 'Trainer' : 'Pokemon') : '',
       caption: [entry.name, entry.setName, ...finishLabels(cardName)].filter(Boolean).join(' · '),
       cardName,
       cardmarket: `https://www.cardmarket.com/en/Pokemon/Products/Search?searchString=${encodeURIComponent(search)}`,

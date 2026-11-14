@@ -16,8 +16,8 @@ import {
   setCardImage,
   snoozeCardPicksReminder,
 } from '../profit-monitor-core.mjs';
-import { cardImageUrl, createCardImageResolver, findSets, numberVariants, sameCardNumber } from '../card-images.mjs';
-import { getCardFinish } from '../profit-monitor-core.mjs';
+import { cardImageUrl, createCardImageResolver, findSets, namesMatch, numberVariants, sameCardNumber } from '../card-images.mjs';
+import { getCardFinish, setCardImageCategory } from '../profit-monitor-core.mjs';
 
 const SERVER_IMG = 'img-0f8fad5b-d9cb-469f-a165-70867728950e.webp';
 
@@ -27,6 +27,7 @@ test('parseCardReference splits name, set code and number', () => {
   assert.deepEqual(parseCardReference('Toxtricity (PPS9 PFL 068) (Holo Version)'), { name: 'Toxtricity', setCode: 'PFL', number: '068', prizePack: 'PPS9' });
   assert.deepEqual(parseCardReference('Umbreon VMAX (EVS 215/203) #123456789'), { name: 'Umbreon VMAX', setCode: 'EVS', number: '215' });
   assert.deepEqual(parseCardReference('Pikachu (Reverse Holo)'), { name: 'Pikachu', setCode: '', number: '' });
+  assert.deepEqual(parseCardReference('Raikou (30C VIV 50)'), { name: 'Raikou', setCode: '30C', number: '50', originalSet: 'VIV' });
   assert.deepEqual(parseCardReference('Mega Gardevoir ex'), { name: 'Mega Gardevoir ex', setCode: '', number: '' });
 });
 
@@ -86,47 +87,68 @@ test('number helpers', () => {
 });
 
 const TABLE = {
+  aliases: { EC1: 'E1', XY5t: 'XY5b' },
   tcgdex: [
-    { lang: 'en', id: 'sv03', code: 'OBF', name: 'Obsidian Flames' },
-    { lang: 'en', id: 'sv03.5', code: 'MEW', name: '151' },
-    { lang: 'en', id: 'me02', code: 'PFL', name: 'Phantasmal Flames' },
-    { lang: 'en', id: 'mep', code: 'MEP', name: 'MEP Black Star Promos' },
-    { lang: 'en', id: '2021swsh', code: 'MCD21', name: "McDonald's Collection 2021" },
-    { lang: 'en', id: '30th', code: '30C', name: '30th Celebration' },
-    { lang: 'en', id: '30th-c', code: '30C', name: '30th Classic Collection' },
-    { lang: 'en', id: 'ecard2', code: 'AQ', name: 'Aquapolis' },
-    { lang: 'ja', id: 'M1L', code: '', name: 'メガブレイブ' },
+    { lang: 'en', cards: 200, id: 'sv03', code: 'OBF', name: 'Obsidian Flames' },
+    { lang: 'en', cards: 200, id: 'sv03.5', code: 'MEW', name: '151' },
+    { lang: 'en', cards: 130, id: 'me02', code: 'PFL', name: 'Phantasmal Flames' },
+    { lang: 'en', cards: 112, id: 'mep', code: 'MEP', name: 'MEP Black Star Promos' },
+    { lang: 'en', cards: 25, id: '2021swsh', code: 'MCD21', name: "McDonald's Collection 2021" },
+    { lang: 'en', cards: 161, id: '30th', code: '30C', name: '30th Celebration' },
+    { lang: 'en', cards: 30, id: '30th-c', code: '30C', name: '30th Classic Collection' },
+    { lang: 'en', cards: 186, id: 'ecard2', code: 'AQ', name: 'Aquapolis' },
+    { lang: 'ja', cards: 92, id: 'M1L', code: '', name: 'メガブレイブ' },
+    { lang: 'ja', cards: 69, id: 'SM9b', code: '', name: 'フルメタルウォール' },
+    { lang: 'ja', cards: 128, id: 'E1', code: '', name: '基本拡張パック' },
+    { lang: 'th', cards: 313, id: 'S-P', code: '', name: 'การ์ดโปรโม' },
   ],
   pokemontcg: [
     { id: 'mcd21', code: 'MCD21', name: "McDonald's Collection 2021" },
     { id: 'ecard2', code: 'AQ', name: 'Aquapolis' },
+    { id: 'me55', code: '30C', name: '30th Celebration' },
+    { id: 'me55c', code: '30C', name: '30th Celebration: Classic Collection' },
   ],
+  numberedNames: { me55c: { 4: 'Charizard', 58: 'Pikachu' } },
 };
+
+const T = 'https://assets.tcgdex.net';
+const L = 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com';
 
 // A tiny fake TCGdex plus a fake "does this image load" check.
 function fakeSources() {
   const calls = [];
+  const card = (id, localId, name, image, set, category = 'Pokemon') => ({ id, localId, name, image, set, category });
   const cards = {
-    'en/sv03-125': { id: 'sv03-125', localId: '125', name: 'Charizard ex', image: 'https://assets.tcgdex.net/en/sv/sv03/125', set: { id: 'sv03', name: 'Obsidian Flames' } },
-    'en/me02-068': { id: 'me02-068', localId: '068', name: 'Toxtricity', image: 'https://assets.tcgdex.net/en/me/me02/068', set: { id: 'me02', name: 'Phantasmal Flames' } },
-    'en/30th-154': { id: '30th-154', localId: '154', name: 'Gengar ex', image: 'https://assets.tcgdex.net/en/me/30th/154', set: { id: '30th', name: '30th Celebration' } },
-    'en/30th-c-005': { id: '30th-c-005', localId: '005', name: 'Charizard', image: 'https://assets.tcgdex.net/en/me/30th-c/005', set: { id: '30th-c', name: '30th Classic Collection' } },
-    // Known to TCGdex, but without an image yet:
-    'en/2021swsh-25': { id: '2021swsh-25', localId: '25', name: 'Pikachu', set: { id: '2021swsh' } },
-    'en/mep-063': { id: 'mep-063', localId: '063', name: 'Quaxly', set: { id: 'mep' } },
-    'ja/M1L-087': { id: 'M1L-087', localId: '087', name: 'メガサーナイトex', image: 'https://assets.tcgdex.net/ja/M/M1L/087', set: { id: 'M1L', name: 'メガブレイブ' } },
+    'en/sv03-125': card('sv03-125', '125', 'Charizard ex', `${T}/en/sv/sv03/125`, { id: 'sv03', name: 'Obsidian Flames' }),
+    'en/me02-068': card('me02-068', '068', 'Toxtricity', `${T}/en/me/me02/068`, { id: 'me02', name: 'Phantasmal Flames' }),
+    'en/30th-154': card('30th-154', '154', 'Gengar ex', `${T}/en/me/30th/154`, { id: '30th', name: '30th Celebration' }),
+    'en/30th-004': card('30th-004', '004', 'Bulbasaur', `${T}/en/me/30th/004`, { id: '30th', name: '30th Celebration' }),
+    'en/30th-c-004': card('30th-c-004', '004', 'Blastoise', `${T}/en/me/30th-c/004`, { id: '30th-c', name: '30th Classic Collection' }),
+    'en/2021swsh-25': card('2021swsh-25', '25', 'Pikachu', undefined, { id: '2021swsh' }),
+    'en/mep-063': card('mep-063', '063', 'Quaxly', undefined, { id: 'mep' }),
+    'ja/M1L-087': card('M1L-087', '087', 'メガサーナイトex', `${T}/ja/M/M1L/087`, { id: 'M1L', name: 'メガブレイブ' }),
+    // Listed with an image address, but no file behind it:
+    'ja/SM9b-010': card('SM9b-010', '010', 'カメックスGX', `${T}/ja/SM/SM9b/010`, { id: 'SM9b' }),
+    'ja/E1-127': card('E1-127', '127', 'バンギラス', `${T}/ja/e/E1/127`, { id: 'E1' }),
+    'en/swsh1-1': card('swsh1-1', '1', 'Core Memory', `${T}/en/me/me02/1`, { id: 'x' }, 'Trainer'),
   };
   const byName = {
     'Charizard ex': [
-      { id: 'sv03-125', localId: '125', name: 'Charizard ex', image: 'https://assets.tcgdex.net/en/sv/sv03/125' },
-      { id: 'sv03.5-6', localId: '6', name: 'Charizard ex', image: 'https://assets.tcgdex.net/en/sv/sv03.5/6' },
+      { id: 'sv03-125', localId: '125', name: 'Charizard ex', image: `${T}/en/sv/sv03/125` },
+      { id: 'sv03.5-6', localId: '6', name: 'Charizard ex', image: `${T}/en/sv/sv03.5/6` },
     ],
-    'Mew ex': [{ id: 'sv03.5-151', localId: '151', name: 'Mew ex', image: 'https://assets.tcgdex.net/en/sv/sv03.5/151' }],
+    'Mew ex': [{ id: 'sv03.5-151', localId: '151', name: 'Mew ex', image: `${T}/en/sv/sv03.5/151` }],
+    'Core Memory': [{ id: 'swsh1-1', localId: '1', name: 'Core Memory', image: `${T}/en/me/me02/1` }],
+    Quaxly: [{ id: 'sv1-52', localId: '52', name: 'Quaxly', image: `${T}/en/sv/sv1/52` }],
   };
   const sets = {
+    'en/30th-c': { id: '30th-c', name: '30th Classic Collection', cards: [
+      { id: '30th-c-001', localId: '001', name: 'Charizard', image: `${T}/en/me/30th-c/001` },
+      { id: '30th-c-017', localId: '017', name: 'Raikou', image: `${T}/en/me/30th-c/017` },
+    ] },
     'ja/M1L': { id: 'M1L', name: 'メガブレイブ', cards: [
-      { id: 'M1L-001', localId: '001', name: 'フシギダネ', image: 'https://assets.tcgdex.net/ja/M/M1L/001' },
-      { id: 'M1L-087', localId: '087', name: 'メガサーナイトex', image: 'https://assets.tcgdex.net/ja/M/M1L/087' },
+      { id: 'M1L-001', localId: '001', name: 'フシギダネ', image: `${T}/ja/M/M1L/001` },
+      { id: 'M1L-087', localId: '087', name: 'メガサーナイトex', image: `${T}/ja/M/M1L/087` },
     ] },
   };
   const fetchImpl = async url => {
@@ -137,8 +159,8 @@ function fakeSources() {
     const missing = { ok: false, status: 404, json: async () => ({}) };
     if (kind === 'sets' && id) return sets[`${lang}/${decodeURIComponent(id)}`] ? json(sets[`${lang}/${decodeURIComponent(id)}`]) : missing;
     if (kind === 'cards' && id) {
-      const card = cards[`${lang}/${decodeURIComponent(id)}`];
-      return card ? json(card) : missing;
+      const found = cards[`${lang}/${decodeURIComponent(id)}`];
+      return found ? json(found) : missing;
     }
     if (kind === 'cards') {
       const name = u.searchParams.get('name') || '';
@@ -151,11 +173,19 @@ function fakeSources() {
     return { ok: false, status: 500, json: async () => ({}) };
   };
   const loadable = new Set([
+    ...Object.values(cards).filter(c => c.image && !/SM9b|E1\//.test(c.image)).map(c => `${c.image}/low.webp`),
+    `${T}/en/sv/sv03.5/6/low.webp`,
+    `${T}/en/me/30th-c/017/low.webp`,
     'https://images.pokemontcg.io/mcd21/25.png',
     'https://images.pokemontcg.io/ecard2/74.png',
-    'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/MEP/MEP_113_R_EN_SM.png',
-    'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/MEP/MEP_063_R_EN_SM.png',
-    'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/CLV/CLV_001_R_EN_SM.png',
+    'https://images.pokemontcg.io/me55c/4.png',
+    'https://images.pokemontcg.io/me55/4.png',
+    `${L}/tpci/MEP/MEP_113_R_EN_SM.png`,
+    `${L}/tpci/MEP/MEP_063_R_EN_SM.png`,
+    `${L}/tpc/SM9b/SM9b_10_R_JP_SM.png`,
+    `${L}/tpc/E1/E1_127_R_JP_SM.png`,
+    `${L}/tpc/XY5t/XY5t_44_R_JP_SM.png`,
+    `${L}/tpc/S-P/S-P_232_R_JP_SM.png`,
   ]);
   const probes = [];
   const probeImage = async url => { probes.push(url); return loadable.has(url); };
@@ -167,93 +197,100 @@ function memoryStorage() {
   return { getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, v), removeItem: k => store.delete(k), key: i => [...store.keys()][i], get length() { return store.size; } };
 }
 
-test('findSets: codes, names, and the 30C classic collection', () => {
+function newResolver(sources, storage = memoryStorage()) {
+  return createCardImageResolver({ fetchImpl: sources.fetchImpl, storage, probeImage: sources.probeImage, loadSetTable: async () => TABLE });
+}
+
+test('findSets: codes, aliases, names and Asian sets', () => {
   assert.deepEqual(findSets(TABLE, 'MCD21').pokemontcg.map(set => set.id), ['mcd21']);
-  assert.deepEqual(findSets(TABLE, 'm1L').ja.map(set => set.id), ['M1L']);
-  assert.deepEqual(findSets(TABLE, '30C', { cardText: 'Gengar ex (30C 154)' }).en.map(set => set.id), ['30th']);
-  assert.deepEqual(findSets(TABLE, '30C', { cardText: 'Charizard (30C 5) Classic Collection' }).en.map(set => set.id), ['30th-c']);
+  assert.deepEqual(findSets(TABLE, 'm1L').asia.map(set => set.id), ['M1L']);
+  assert.deepEqual(findSets(TABLE, 'EC1').asia.map(set => set.id), ['E1']);
+  assert.deepEqual(findSets(TABLE, 'S-P').asia.map(set => set.lang), ['th']);
+  assert.deepEqual(findSets(TABLE, '30C').en.map(set => set.id), ['30th', '30th-c']);
   assert.deepEqual(findSets(TABLE, 'MEP', { setName: 'Mega Evolution Black Star Promos' }).en.map(set => set.id), ['mep']);
+  assert.ok(namesMatch('Mudkip Lv.7', 'Mudkip'));
+  assert.ok(namesMatch('Sharpedo EX', 'Sharpedo-EX'));
+  assert.ok(!namesMatch('Charizard', 'Bulbasaur'));
 });
 
-test('resolver: every source, Prize Pack, Japanese sets, ambiguity, caching', async () => {
-  const { fetchImpl, calls, probeImage, probes } = fakeSources();
-  const storage = memoryStorage();
-  const resolver = createCardImageResolver({ fetchImpl, storage, probeImage, loadSetTable: async () => TABLE });
+test('resolver: the cards that were reported missing', async () => {
+  const sources = fakeSources();
+  const resolver = newResolver(sources);
+  const found = async (name, setName) => (await resolver.resolve(name, { setName })).match;
 
-  const exact = await resolver.resolve('Charizard ex (OBF 125)', { setName: 'Obsidian Flames' });
-  assert.equal(exact.status, 'found');
-  assert.equal(exact.match.id, 'sv03-125');
+  assert.equal((await found('Charizard ex (OBF 125)', 'Obsidian Flames')).id, 'sv03-125');
+  assert.equal((await found('Toxtricity (PPS9 PFL 068) (Holo Version)')).id, 'me02-068');
+  assert.equal((await found('Mega Gardevoir ex (m1L 087)')).lang, 'ja');
+  assert.equal((await found('Gengar ex (30C 154)')).id, '30th-154');
+  // Classic Collection keeps original numbers: 4 is Charizard there, Bulbasaur in the main set.
+  const classic = await found('Charizard (30C 4)');
+  assert.equal(cardImageUrl(classic.image), 'https://images.pokemontcg.io/me55c/4.png');
+  assert.equal((await found('Blastoise (30C 004)')).id, '30th-c-004');
 
-  const prizePack = await resolver.resolve('Toxtricity (PPS9 PFL 068) (Holo Version)');
-  assert.equal(prizePack.match.id, 'me02-068');
+  // Classic Collection in the "(30C VIV 50)" format: by name in the Classic Collection set.
+  assert.equal((await found('Raikou (30C VIV 50)')).id, '30th-c-017');
+  assert.equal((await resolver.resolve('Zapdos (30C FO 15)')).status, 'none', 'never a main-set card instead');
+  assert.equal((await resolver.search('30C VIV 50', { name: 'Raikou' }))[0].id, '30th-c-017');
 
-  const japanese = await resolver.resolve('Mega Gardevoir ex (m1L 087)', { setName: 'Mega Brave' });
-  assert.equal(japanese.match.lang, 'ja');
+  assert.equal((await found('Pikachu (MCD21 25)')).source, 'pokemontcg');
+  assert.equal((await found('Drowzee (AQ 74)')).source, 'pokemontcg');
+  assert.equal((await found('Quaxly (MEP 063)')).source, 'limitless');
+  assert.equal(cardImageUrl((await found('Enamorus (MEP 113)')).image, 'high'), `${L}/tpci/MEP/MEP_113_R_EN_LG.png`);
 
-  const celebration = await resolver.resolve('Gengar ex (30C 154)');
-  assert.equal(celebration.match.id, '30th-154');
+  // Japanese: TCGdex lists an image that isn't there → Limitless (plain numbers).
+  assert.equal(cardImageUrl((await found('Blastoise GX (sm9b 010)')).image), `${L}/tpc/SM9b/SM9b_10_R_JP_SM.png`);
+  assert.equal((await found('Tyranitar (EC1 127)')).source, 'limitless');
+  assert.equal((await found('Sharpedo EX (XY5t 044)')).source, 'limitless');
+  assert.equal((await found('Piplup (S-P 232)')).source, 'limitless');
 
-  // TCGdex knows the card but has no image: pokemontcg.io's image is used.
-  const mcdonalds = await resolver.resolve('Pikachu (MCD21 25)', { setName: "McDonald's Collection 2021" });
-  assert.equal(mcdonalds.match.source, 'pokemontcg');
-  assert.equal(cardImageUrl(mcdonalds.match.image), 'https://images.pokemontcg.io/mcd21/25.png');
-  assert.equal(cardImageUrl(mcdonalds.match.image, 'high'), 'https://images.pokemontcg.io/mcd21/25_hires.png');
-
-  assert.equal((await resolver.resolve('Drowzee (AQ 74)', { setName: 'Aquapolis' })).match.source, 'pokemontcg');
-
-  // Newest promos: only Limitless has them.
-  const quaxly = await resolver.resolve('Quaxly (MEP 063)', { setName: 'Mega Evolution Black Star Promos' });
-  assert.equal(quaxly.match.source, 'limitless');
-  const enamorus = await resolver.resolve('Enamorus (MEP 113)', { setName: 'Mega Evolution Black Star Promos' });
-  assert.equal(cardImageUrl(enamorus.match.image, 'high'), 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/MEP/MEP_113_R_EN_LG.png');
-
-  // A code that is in no table (Pokémon TCG Classic) still tries Limitless.
-  assert.equal((await resolver.resolve('Venusaur (CLV 1)')).match.source, 'limitless');
-  assert.ok(probes.length > 0);
+  // Not in any source: nothing, never an English card with the same name.
+  assert.equal((await resolver.resolve('Cubone (CBB3C 04)')).status, 'none');
+  assert.equal((await resolver.resolve('Scyther (CLV 006)')).status, 'none');
 
   const ambiguous = await resolver.resolve('Charizard ex');
   assert.equal(ambiguous.status, 'ambiguous');
   assert.equal(ambiguous.candidates[1].setName, '151');
-
   assert.equal((await resolver.resolve('Mew ex')).status, 'found');
   assert.equal((await resolver.resolve('Nonexistent card')).status, 'none');
+});
 
-  const before = calls.length;
+test('resolver: card type, caching, picker search', async () => {
+  const sources = fakeSources();
+  const storage = memoryStorage();
+  const resolver = newResolver(sources, storage);
+
+  assert.equal((await resolver.resolve('Charizard ex (OBF 125)', { setName: 'Obsidian Flames' })).match.category, 'Pokemon');
+  assert.equal(await resolver.categoryFor('Core Memory'), 'Trainer');
+
+  const before = sources.calls.length;
   await resolver.resolve('Charizard ex (OBF 125)', { setName: 'Obsidian Flames' });
-  assert.equal(calls.length, before, 'second lookup comes from the cache');
-  const again = createCardImageResolver({ fetchImpl, storage, probeImage, loadSetTable: async () => TABLE });
-  await again.resolve('Charizard ex');
-  assert.equal(calls.length, before, 'a new page reuses the saved cache');
+  assert.equal(sources.calls.length, before, 'second lookup comes from the cache');
+  await newResolver(sources, storage).resolve('Charizard ex (OBF 125)', { setName: 'Obsidian Flames' });
+  assert.equal(sources.calls.length, before, 'a new page reuses the saved cache');
 
-  // Picker: set code + number browses a set (Japanese cards findable), names search.
   const browse = await resolver.search('M1L 087');
   assert.equal(browse[0].id, 'M1L-087');
-  assert.equal(browse.length, 2);
-  assert.equal((await resolver.search('MEP 113'))[0].source, 'limitless');
+  assert.equal((await resolver.search('MEP 113', { name: 'Enamorus' }))[0].source, 'limitless');
+  assert.equal((await resolver.search('sm9b 010'))[0].source, 'limitless');
   assert.equal((await resolver.search('chari')).length, 2);
 });
 
-test('finishes: Prize Pack stamp, reverse holo and holo', () => {
-  assert.deepEqual(getCardFinish('Moltres (PPS9 PFL 014)'), { reverseHolo: false, holo: false, prizePack: true });
-  assert.deepEqual(getCardFinish('Mudkip Lv.7 (GE 80) (Reverse Holo)'), { reverseHolo: true, holo: false, prizePack: false });
-  assert.deepEqual(getCardFinish('Toxtricity (PPS9 PFL 068) (Holo Version)'), { reverseHolo: false, holo: true, prizePack: true });
+test('finishes: Prize Pack stamp, reverse holo, holo and cosmos', () => {
+  assert.deepEqual(getCardFinish('Moltres (PPS9 PFL 014)'), { reverseHolo: false, holo: false, prizePack: true, cosmos: false });
+  assert.deepEqual(getCardFinish('Mudkip Lv.7 (GE 80) (Reverse Holo)'), { reverseHolo: true, holo: false, prizePack: false, cosmos: false });
+  assert.deepEqual(getCardFinish('Toxtricity (PPS9 PFL 068) (Holo Version)'), { reverseHolo: false, holo: true, prizePack: true, cosmos: true });
+  assert.deepEqual(getCardFinish('Pikachu (SVI 063) (Holo)'), { reverseHolo: false, holo: true, prizePack: false, cosmos: false });
   // Variants share one image choice.
   assert.equal(cardImageKey('Mudkip Lv.7 (GE 80) (Reverse Holo)'), cardImageKey('Mudkip Lv.7 (GE 80)'));
 });
 
-test('resolver reports errors without caching them', async () => {
-  let fail = true;
-  const resolver = createCardImageResolver({
-    loadSetTable: async () => TABLE,
-    probeImage: async () => false,
-    fetchImpl: async () => {
-      if (fail) throw new Error('offline');
-      return { ok: true, status: 200, json: async () => [] };
-    },
-  });
-  assert.equal((await resolver.resolve('Pikachu')).status, 'error');
-  fail = false;
-  assert.equal((await resolver.resolve('Pikachu')).status, 'none');
+test('card type is kept and can be changed without losing the image', () => {
+  let state = setCardImage(ensureAppState(null), 'Core Memory (POR 070)', { id: 'x', image: `${T}/en/me/x/70`, category: 'Pokemon' }, 'user');
+  state = setCardImageCategory(state, 'Core Memory (POR 070)', 'Trainer');
+  const entry = getCardImage(state, 'Core Memory (POR 070)');
+  assert.equal(entry.category, 'Trainer');
+  assert.equal(entry.source, 'user');
+  assert.equal(ensureAppState(JSON.parse(JSON.stringify(state))).cardImages['core memory (por 070)'].category, 'Trainer');
 });
 
 test('own images: any https link or upload for hand-picked, never for automatic', () => {
