@@ -17,7 +17,7 @@ import {
   snoozeCardPicksReminder,
 } from '../profit-monitor-core.mjs';
 import { cardImageUrl, createCardImageResolver, findSets, namesMatch, numberVariants, sameCardNumber } from '../card-images.mjs';
-import { getCardFinish, setCardImageCategory } from '../profit-monitor-core.mjs';
+import { CARD_IMAGES, getCardFinish, setCardImageCategory } from '../profit-monitor-core.mjs';
 
 const SERVER_IMG = 'img-0f8fad5b-d9cb-469f-a165-70867728950e.webp';
 
@@ -222,18 +222,19 @@ test('resolver: the cards that were reported missing', async () => {
   assert.equal((await found('Toxtricity (PPS9 PFL 068) (Holo Version)')).id, 'me02-068');
   assert.equal((await found('Mega Gardevoir ex (m1L 087)')).lang, 'ja');
   assert.equal((await found('Gengar ex (30C 154)')).id, '30th-154');
-  // Classic Collection keeps original numbers: 4 is Charizard there, Bulbasaur in the main set.
-  const classic = await found('Charizard (30C 4)');
-  assert.equal(cardImageUrl(classic.image), 'https://images.pokemontcg.io/me55c/4.png');
+  // Same number in 30th Celebration and its Classic Collection: the name decides,
+  // and a card whose name doesn't fit is never shown instead.
   assert.equal((await found('Blastoise (30C 004)')).id, '30th-c-004');
+  assert.notEqual((await resolver.resolve('Charizard (30C 4)')).status, 'found');
 
   // Classic Collection in the "(30C VIV 50)" format: by name in the Classic Collection set.
   assert.equal((await found('Raikou (30C VIV 50)')).id, '30th-c-017');
   assert.equal((await resolver.resolve('Zapdos (30C FO 15)')).status, 'none', 'never a main-set card instead');
   assert.equal((await resolver.search('30C VIV 50', { name: 'Raikou' }))[0].id, '30th-c-017');
 
-  assert.equal((await found('Pikachu (MCD21 25)')).source, 'pokemontcg');
-  assert.equal((await found('Drowzee (AQ 74)')).source, 'pokemontcg');
+  // pokemontcg.io images are never used (it shows a card back for missing ones).
+  assert.notEqual((await resolver.resolve('Pikachu (MCD21 25)')).match?.source, 'pokemontcg');
+  assert.ok(!sources.probes.some(url => url.includes('images.pokemontcg.io')));
   assert.equal((await found('Quaxly (MEP 063)')).source, 'limitless');
   assert.equal(cardImageUrl((await found('Enamorus (MEP 113)')).image, 'high'), `${L}/tpci/MEP/MEP_113_R_EN_LG.png`);
 
@@ -302,4 +303,21 @@ test('own images: any https link or upload for hand-picked, never for automatic'
   assert.equal(addAutoCardImages(state, { X: { id: 'x', image: 'https://example.com/x.jpg' } }), state);
   assert.equal(setCardImage(state, 'Y', { id: 'y', image: 'javascript:alert(1)' }, 'user').cardImages.y, undefined);
   assert.match(formatCardPicksForExport(getCustomCardPicks(state)), /lugia \(clv 2\) = eigen upload/);
+});
+
+test('built-in picks, and pokemontcg.io links are dropped', () => {
+  let state = ensureAppState(null);
+  const builtIn = getCardImage(state, 'Piplup (S-P 232)');
+  assert.equal(builtIn.builtIn, true);
+  assert.equal(builtIn.image, CARD_IMAGES['piplup (s-p 232)'].image);
+  // The same choice made by hand is not "own" anymore, so no reminder for it.
+  state = setCardImage(state, 'Piplup (S-P 232)', CARD_IMAGES['piplup (s-p 232)'], 'user');
+  assert.deepEqual(getCustomCardPicks(state), {});
+  // Saved pokemontcg.io images (card backs) disappear, so the card is looked up again.
+  const loaded = ensureAppState({ cardImages: {
+    'raikou (30c viv 50)': { id: 'me55c-50', image: 'https://images.pokemontcg.io/me55c/50', source: 'user' },
+    'eevee (mcd18 11)': { id: 'mcd18-11', image: 'https://images.pokemontcg.io/mcd18/11', source: 'auto' },
+  } });
+  assert.equal(loaded.cardImages, undefined);
+  assert.equal(setCardImage(state, 'X', { id: 'x', image: 'https://images.pokemontcg.io/a/1' }, 'user').cardImages.x, undefined);
 });

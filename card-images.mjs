@@ -1,9 +1,10 @@
 // Card image lookup. Runs in the browser; tried in this order:
 //   1. TCGdex (https://tcgdex.dev): free, no key, English + Japanese sets.
-//   2. The pokemontcg.io image library (images.pokemontcg.io), for cards
-//      TCGdex lists without an image (McDonald's, older sets).
-//   3. Limitless TCG's card images, which use the official set codes
+//   2. Limitless TCG's card images, which use the official set codes
 //      (newest promos such as MEP, Japanese sets).
+// The pokemontcg.io data is still used to know sets and card names, but not
+// its images: images.pokemontcg.io shows a card back for cards it lacks,
+// which can't be told apart from a real image.
 // Which set a code like "PFL", "MCD21" or "M1L" means comes from
 // data/card-sets.json (built by scripts/build-card-sets.mjs).
 //
@@ -240,27 +241,9 @@ export function createCardImageResolver({
     return cards.map(card => toCandidate({ ...card, set: { id: setId, name: set.name } }, lang, setId)).filter(Boolean);
   }
 
-  function pokemontcgNameFits(table, set, number, name) {
-    const names = table?.numberedNames?.[set.id];
-    if (!names) return null; // unknown: can't tell
-    const found = names[String(Number(number))] ?? names[number];
-    return found ? namesMatch(name, found) : false;
-  }
-
   // Images that exist as files only: build the address, check that it loads.
-  async function fallbackImage({ name, setCode, number }, sets, table, { skipSetNames = [] } = {}) {
+  async function fallbackImage({ name, setCode, number }, sets) {
     const plain = /^\d+$/.test(number) ? String(Number(number)) : number;
-    // pokemontcg.io: sets whose names we know first, then the others.
-    const ordered = [...sets.pokemontcg].sort((a, b) => (table?.numberedNames?.[b.id] ? 1 : 0) - (table?.numberedNames?.[a.id] ? 1 : 0));
-    for (const set of ordered) {
-      const fits = pokemontcgNameFits(table, set, plain, name);
-      if (fits === false) continue;
-      if (fits === null && skipSetNames.includes(simplify(set.name))) continue;
-      const base = `${POKEMONTCG_IMAGES}/${set.id}/${encodeURIComponent(plain)}`;
-      if (await probeImage(cardImageUrl(base))) {
-        return { id: `${set.id}-${plain}`, name, localId: plain, setId: set.id, setName: set.name, image: base, lang: 'en', source: 'pokemontcg' };
-      }
-    }
 
     // Limitless: English sets live under tpci/ with 3-digit numbers, Japanese
     // ones under tpc/ with plain numbers. Japanese codes have lowercase
@@ -305,16 +288,7 @@ export function createCardImageResolver({
         if (await tcgdexImageLoads(card)) results.push(card);
       }
     }
-    if (results.length) return results;
-    for (const set of (table?.pokemontcg || []).filter(isClassic)) {
-      if (!pokemontcgNameFits(table, set, String(Number(number) || number), name)) continue;
-      const plain = /^\d+$/.test(number) ? String(Number(number)) : number;
-      const base = `${POKEMONTCG_IMAGES}/${set.id}/${encodeURIComponent(plain)}`;
-      if (await probeImage(cardImageUrl(base))) {
-        return [{ id: `${set.id}-${plain}`, name, localId: plain, setId: set.id, setName: set.name, image: base, lang: 'en', source: 'pokemontcg' }];
-      }
-    }
-    return [];
+    return results;
   }
 
   // Exact card for a set code + number, from whichever source has it.
@@ -335,7 +309,7 @@ export function createCardImageResolver({
       if (await tcgdexImageLoads(card)) accepted.push(card);
     }
     if (accepted.length) return accepted;
-    const fallback = await fallbackImage(reference, sets, table, { skipSetNames });
+    const fallback = skipSetNames.length && !sets.asia.length ? null : await fallbackImage(reference, sets);
     if (fallback) {
       if (!fallback.category && name) fallback.category = await categoryFor(name) || undefined;
       return [fallback];

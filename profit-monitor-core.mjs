@@ -1513,6 +1513,12 @@ export function computeCardmarketSurplus(transactions) {
 // Built-in matches, keyed by card key (see cardImageKey). Add entries here
 // from the "Eigen kaartkeuzes doorsturen" export.
 export const CARD_IMAGES = Object.freeze({
+  // Sent in on 2026-11-15
+  'charizard ex (sv2a 185)': { id: 'SV2a-185', image: 'https://assets.tcgdex.net/ja/SV/SV2a/185', name: 'Charizard ex', setName: 'Pokémon Card 151', category: 'Pokemon' },
+  'charmeleon (pps9 pfl 012)': { id: 'me02-012', image: 'https://assets.tcgdex.net/en/me/me02/012', name: 'Charmeleon', setName: 'Phantasmal Flames', category: 'Pokemon' },
+  'moltres (pps9 pfl 014)': { id: 'me02-014', image: 'https://assets.tcgdex.net/en/me/me02/014', name: 'Moltres', setName: 'Phantasmal Flames', category: 'Pokemon' },
+  'piplup (s-p 232)': { id: 'SP-232', image: 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpc/SP/SP_232_R_JP', name: 'Piplup', setName: 'Sword & Shield Promos', category: 'Pokemon' },
+  'sharpedo ex (xy5t 044)': { id: 'XY5t-44', image: 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpc/XY5t/XY5t_44_R_JP', name: 'Sharpedo EX', setName: 'Tidal Storm', category: 'Pokemon' },
 });
 
 export const CARD_PICKS_REMINDER_DAYS = 30;
@@ -1520,7 +1526,10 @@ const CARD_IMAGE_SOURCES = new Set(['auto', 'user', 'none']);
 export const CARD_CATEGORIES = ['Pokemon', 'Trainer', 'Energy'];
 // Image hosts used for automatic matches. A hand-picked image may also be any
 // https link, a photo stored by the server, or (without server) a data: URL.
-const CARD_IMAGE_HOST_PATTERN = /^https:\/\/(?:assets\.tcgdex\.net|images\.pokemontcg\.io|limitlesstcg\.nyc3\.cdn\.digitaloceanspaces\.com)\/[A-Za-z0-9._%/-]+$/;
+const CARD_IMAGE_HOST_PATTERN = /^https:\/\/(?:assets\.tcgdex\.net|limitlesstcg\.nyc3\.cdn\.digitaloceanspaces\.com)\/[A-Za-z0-9._%/-]+$/;
+// images.pokemontcg.io answers with a picture of a card back for cards it has
+// no image of, so its links can't be trusted; saved ones are dropped.
+const UNRELIABLE_IMAGE_PATTERN = /^https:\/\/images\.pokemontcg\.io\//;
 const FINISH_PATTERN = /\(\s*(?:reverse\s*holo(?:\s*version)?|holo(?:\s*version)?)\s*\)/gi;
 
 function isUserCardImage(value) {
@@ -1579,7 +1588,8 @@ export function normalizeCardImageEntry(raw) {
   if (source === 'none') return { source: 'none' };
   const image = String(raw.image ?? '');
   const id = String(raw.id ?? '').trim() || (source === 'user' ? 'eigen' : '');
-  if (!id || !(CARD_IMAGE_HOST_PATTERN.test(image) || (source === 'user' && isUserCardImage(image)))) return null;
+  if (!id || UNRELIABLE_IMAGE_PATTERN.test(image)) return null;
+  if (!(CARD_IMAGE_HOST_PATTERN.test(image) || (source === 'user' && isUserCardImage(image)))) return null;
   return {
     id: id.slice(0, 80),
     image,
