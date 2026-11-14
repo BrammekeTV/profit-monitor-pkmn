@@ -14,7 +14,7 @@ WORKDIR /app
 # tzdata so TZ is honoured (daily backup file names follow local time)
 RUN apk add --no-cache tzdata
 
-COPY server.mjs index.html profit-monitor-core.mjs ./
+COPY server.mjs index.html profit-monitor-core.mjs card-images.mjs ./
 COPY assets ./assets
 COPY data ./data
 

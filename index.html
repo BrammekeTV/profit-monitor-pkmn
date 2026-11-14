@@ -517,6 +517,8 @@
     html.preview-mode #tabMsg,
     html.preview-mode .sync-banner,
     html.preview-mode .setnames-reminder,
+    html.preview-mode .media-edit,
+    html.preview-mode [data-card-pick],
     html.preview-mode #tradesView .trade-form,
     html.preview-mode .edit-btn,
     html.preview-mode .delete-btn,
@@ -537,6 +539,149 @@
     html.preview-mode .section-title { font-size: 24px; }
     html.preview-mode .view-toggle-btn { min-height: 38px; }
     html.preview-mode .chart-canvas { height: 320px; }
+
+
+    /* ── media: card images and photos ── */
+    .txn-media { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+    .card-media { display: inline-flex; align-items: center; gap: 6px; }
+    .media-thumb {
+      display: inline-flex;
+      padding: 0;
+      border: 2px solid var(--border);
+      background: var(--field);
+      cursor: zoom-in;
+      overflow: hidden;
+      transition: border-color 120ms, transform 120ms;
+    }
+    .media-thumb img { display: block; height: 72px; width: auto; max-width: 120px; object-fit: cover; }
+    .card-thumb img { width: 52px; height: 72px; object-fit: contain; max-width: none; }
+    .media-thumb:hover { border-color: var(--text); transform: translateY(-2px); }
+    .media-thumb.is-compact { margin-right: 10px; vertical-align: middle; border-width: 1px; }
+    .media-thumb.is-compact img { width: 30px; height: 42px; }
+    .profit-card-cell { display: flex; align-items: center; }
+    .profit-card-cell .media-thumb { flex-shrink: 0; }
+    .media-edit {
+      width: 26px; height: 26px;
+      border: 2px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1;
+    }
+    .media-edit:hover { color: var(--text); border-color: var(--text); }
+    .media-status { font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+    .media-status-btn {
+      min-height: 28px;
+      padding: 0 10px;
+      border: 2px dashed var(--graded);
+      background: transparent;
+      color: var(--graded);
+      font: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .media-status-btn.subtle { border-color: var(--border); color: var(--muted); }
+    .media-status-btn:hover { color: var(--text); border-color: var(--text); }
+
+    .image-drop {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 10px;
+      border: 2px dashed var(--border);
+      background: var(--field);
+      transition: border-color 120ms, background 120ms;
+    }
+    .image-drop.is-over { border-color: var(--text); background: var(--surface2); }
+    .image-drop-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .image-add-btn { min-height: 34px; cursor: pointer; }
+    .image-hint { font-size: 12px; color: var(--muted); }
+    .image-strip { display: flex; flex-wrap: wrap; gap: 8px; }
+    .image-strip[hidden] { display: none; }
+    .image-tile { position: relative; width: 64px; height: 64px; border: 2px solid var(--border); background: var(--surface2); }
+    .image-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .image-tile.is-loading { background: repeating-linear-gradient(-45deg, var(--surface2) 0 8px, var(--surface) 8px 16px); animation: tile-load 1s linear infinite; background-size: 22px 22px; }
+    @keyframes tile-load { to { background-position: 22px 0; } }
+    .image-tile-remove {
+      position: absolute; top: -9px; right: -9px;
+      width: 22px; height: 22px;
+      border: 2px solid var(--ink);
+      background: var(--accent);
+      color: var(--on-accent);
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .card-picker-modal { width: min(1180px, 100%); }
+    .card-picker-search { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+    .card-picker-search .search-input { flex: 1 1 260px; }
+    .card-picker-search .form-select { width: auto; min-width: 120px; }
+    .card-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 16px;
+      max-height: 58vh;
+      overflow: auto;
+      padding: 4px 6px 8px 2px;
+    }
+    .card-option {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 8px;
+      border: 2px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 120ms, transform 120ms;
+    }
+    .card-option:hover { border-color: var(--text); transform: translateY(-2px); }
+    .card-option.is-hint { border-color: var(--graded); }
+    .card-option.is-current { border-color: var(--green); box-shadow: 0 0 0 2px var(--green); }
+    .card-option img { width: 100%; aspect-ratio: 245 / 337; object-fit: contain; background: var(--field); }
+    .card-option-name { font-size: 13px; font-weight: 700; line-height: 1.2; }
+    .card-option-set { font-size: 11px; color: var(--muted); line-height: 1.3; }
+    .card-picker-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 18px; }
+    .card-picker-credit { margin-left: auto; font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+
+    .media-viewer-backdrop { z-index: 60; }
+    .media-viewer {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: min(1100px, 100%);
+      max-height: 94vh;
+      padding: 14px;
+      background: var(--surface);
+      border: 3px solid var(--ink);
+      box-shadow: 10px 14px 0 var(--ink);
+    }
+    .media-viewer-stage { position: relative; display: flex; align-items: center; justify-content: center; min-height: 0; }
+    .media-viewer-stage img { max-width: 100%; max-height: calc(94vh - 110px); object-fit: contain; display: block; }
+    .media-nav {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      width: 40px; height: 56px;
+      border: 2px solid var(--ink);
+      background: rgba(15, 14, 13, 0.82);
+      color: var(--text);
+      font-size: 30px;
+      cursor: pointer;
+    }
+    .media-nav.prev { left: 6px; }
+    .media-nav.next { right: 6px; }
+    .media-viewer-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+    .media-viewer-caption { font-weight: 700; overflow-wrap: anywhere; }
+    .media-viewer-caption .muted { color: var(--muted); font-weight: 600; margin-left: 8px; }
+    .media-viewer-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .media-viewer-actions a.inline-btn { text-decoration: none; }
+    .media-viewer-actions .cancel-btn { min-height: 38px; }
 
     /* ── server sync banner ── */
     .sync-banner {
@@ -2030,6 +2175,7 @@
   <!-- main table -->
   <main class="main">
     <div class="setnames-reminder" id="setNamesReminder" hidden></div>
+    <div class="setnames-reminder" id="cardPicksReminder" hidden></div>
     <!-- Transactions view -->
     <div id="transactionsView">
       <div class="section-header">
@@ -2463,6 +2609,20 @@
       ></textarea>
     </div>
 
+    <div class="form-group">
+      <span class="form-label">Afbeeldingen <span class="form-label-note">optioneel · bijv. sealed of accessoires</span></span>
+      <div class="image-drop" id="fImagesDrop">
+        <div class="image-strip" id="fImagesStrip"></div>
+        <div class="image-drop-row">
+          <label class="inline-btn image-add-btn">
+            <input type="file" id="fImagesInput" accept="image/*" multiple hidden />
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2.4"/></svg>Foto
+          </label>
+          <span class="image-hint" id="fImagesHint">of plak / sleep een afbeelding hierheen</span>
+        </div>
+      </div>
+    </div>
+
     <div class="form-row toggle-row">
       <label class="toggle-switch" title="Kaartnaam en aantal worden uit de beschrijving gehaald.">
         <input type="checkbox" id="fHasCardName" />
@@ -2645,6 +2805,22 @@
   </div>
 </div>
 
+<div class="trade-detail-backdrop" id="cardPickerBackdrop">
+  <div class="trade-detail-modal card-picker-modal" role="dialog" aria-modal="true" aria-labelledby="cardPickerTitle">
+    <div class="section-header">
+      <span class="section-title" id="cardPickerTitle">Kaartafbeelding</span>
+      <button class="cancel-btn" id="closeCardPickerBtn">Sluiten</button>
+    </div>
+    <div id="cardPickerContent"></div>
+  </div>
+</div>
+
+<div class="trade-detail-backdrop media-viewer-backdrop" id="mediaViewerBackdrop">
+  <div class="media-viewer" role="dialog" aria-modal="true" aria-label="Afbeelding">
+    <div id="mediaViewerContent"></div>
+  </div>
+</div>
+
 <div class="trade-detail-backdrop" id="archiveBackdrop">
   <div class="trade-detail-modal archive-modal" role="dialog" aria-modal="true" aria-labelledby="archiveModalTitle">
     <div class="section-header">
@@ -2711,7 +2887,23 @@ import {
   updateTrade as updateStoredTrade,
   updateTransaction as updateStoredTransaction,
   validateTabName,
+  addAutoCardImages,
+  cardImageKey,
+  clearCardImage,
+  extractSetCode,
+  formatCardPicksForExport,
+  getCardImage,
+  getCustomCardPicks,
+  getSetName,
+  isCardPicksReminderDue,
+  normalizeTransactionImages,
+  parseCardReference,
+  SERVER_IMAGE_ID_PATTERN,
+  setCardImage,
+  snoozeCardPicksReminder,
+  MAX_TRANSACTION_IMAGES,
 } from './profit-monitor-core.mjs';
+import { cardImageUrl, createCardImageResolver } from './card-images.mjs';
 
 // Charts follow the app's dark theme and typeface.
 if (window.Chart) {
@@ -2955,7 +3147,11 @@ async function loadFromStorage() {
 function saveToStorage() {
   if (storage.mode === 'preview') return;
   if (storage.mode !== 'server') {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+    } catch {
+      showMessage(tabMsg, 'error', 'Opslaan in de browser is mislukt: de opslag is vol. Verwijder afbeeldingen of gebruik de server-versie (Docker).');
+    }
     return;
   }
   storage.dirty = true;
@@ -3269,6 +3465,487 @@ function renderTabs() {
     moveTabTo(activeId, openTabs.findIndex(tab => tab.id === activeId) + 1);
   });
 })();
+
+// ── images on transactions ─────────────────────────────────────────────
+let draftImages = [];
+let imageUploadsPending = 0;
+
+function imageSrc(value) {
+  if (SERVER_IMAGE_ID_PATTERN.test(value)) return `api/images/${value}`;
+  return String(value).startsWith('data:image/') ? value : '';
+}
+
+function setDraftImages(images) {
+  draftImages = normalizeTransactionImages(images);
+  renderDraftImages();
+}
+
+function renderDraftImages() {
+  const strip = document.getElementById('fImagesStrip');
+  const pending = Array.from({ length: imageUploadsPending }, () => '<span class="image-tile is-loading" aria-label="Uploaden…"></span>');
+  strip.innerHTML = draftImages.map((image, index) => `
+    <span class="image-tile">
+      <img src="${escAttr(imageSrc(image))}" alt="">
+      <button type="button" class="image-tile-remove" data-draft-remove="${index}" aria-label="Afbeelding verwijderen" title="Verwijderen">×</button>
+    </span>`).join('') + pending.join('');
+  strip.hidden = !draftImages.length && !imageUploadsPending;
+}
+
+function loadImageElement(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Geen geldige afbeelding')); };
+    img.src = url;
+  });
+}
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise(resolve => canvas.toBlob(resolve, type, quality));
+}
+
+// Photos are scaled down before they are stored: big enough to see details,
+// small enough that hundreds of them stay manageable.
+async function prepareImage(file) {
+  const onServer = storage.mode === 'server';
+  const maxSide = onServer ? 1600 : 900;
+  const quality = onServer ? 0.85 : 0.72;
+  const img = await loadImageElement(file);
+  const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+  canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+  let blob = await canvasToBlob(canvas, 'image/webp', quality);
+  if (!blob || blob.type !== 'image/webp') blob = await canvasToBlob(canvas, 'image/jpeg', quality);
+  if (!blob) throw new Error('Afbeelding kon niet worden verwerkt');
+
+  if (onServer) {
+    const response = await fetch('api/images', { method: 'POST', headers: { 'Content-Type': blob.type }, body: blob });
+    if (!response.ok) throw new Error(`Uploaden mislukt (${response.status})`);
+    return (await response.json()).id;
+  }
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Afbeelding kon niet worden gelezen'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function addImageFiles(fileList) {
+  const files = Array.from(fileList || []).filter(file => file.type.startsWith('image/'));
+  if (!files.length) return;
+  const room = MAX_TRANSACTION_IMAGES - draftImages.length - imageUploadsPending;
+  if (room <= 0) {
+    showMessage(formMsg, 'error', `Maximaal ${MAX_TRANSACTION_IMAGES} afbeeldingen per transactie.`);
+    return;
+  }
+  const accepted = files.slice(0, room);
+  imageUploadsPending += accepted.length;
+  renderDraftImages();
+  for (const file of accepted) {
+    try {
+      const image = await prepareImage(file);
+      draftImages = normalizeTransactionImages([...draftImages, image]);
+    } catch (error) {
+      showMessage(formMsg, 'error', error.message || 'Afbeelding toevoegen mislukt.');
+    } finally {
+      imageUploadsPending -= 1;
+      renderDraftImages();
+    }
+  }
+}
+
+document.getElementById('fImagesInput').addEventListener('change', event => {
+  addImageFiles(event.target.files);
+  event.target.value = '';
+});
+document.getElementById('fImagesStrip').addEventListener('click', event => {
+  const button = event.target.closest('[data-draft-remove]');
+  if (!button) return;
+  draftImages = draftImages.filter((_, index) => index !== Number(button.dataset.draftRemove));
+  renderDraftImages();
+});
+for (const element of [document.getElementById('fImagesDrop'), document.getElementById('fDesc')]) {
+  element.addEventListener('paste', event => {
+    const files = Array.from(event.clipboardData?.files || []).filter(file => file.type.startsWith('image/'));
+    if (!files.length) return;
+    event.preventDefault();
+    addImageFiles(files);
+  });
+}
+const imageDrop = document.getElementById('fImagesDrop');
+imageDrop.addEventListener('dragover', event => {
+  if (!Array.from(event.dataTransfer?.items || []).some(item => item.kind === 'file')) return;
+  event.preventDefault();
+  imageDrop.classList.add('is-over');
+});
+imageDrop.addEventListener('dragleave', () => imageDrop.classList.remove('is-over'));
+imageDrop.addEventListener('drop', event => {
+  event.preventDefault();
+  imageDrop.classList.remove('is-over');
+  addImageFiles(event.dataTransfer?.files);
+});
+
+// ── card images (TCGdex) ───────────────────────────────────────────────
+const cardResolver = createCardImageResolver({ storage: (() => { try { return localStorage; } catch { return null; } })() });
+const cardLookups = new Map(); // key → { status, candidates? }
+let pendingAutoMatches = {};
+let autoSaveTimer = null;
+
+function cardSetName(cardName) {
+  return getSetName(extractSetCode(cardName), customSetNames());
+}
+
+function queueCardLookup(cardName) {
+  const key = cardImageKey(cardName);
+  if (!key || cardLookups.has(key)) return;
+  cardLookups.set(key, { status: 'pending' });
+  cardResolver.resolve(cardName, { setName: cardSetName(cardName) }).then(result => {
+    if (result.status === 'found') {
+      pendingAutoMatches[cardName] = result.match;
+      cardLookups.set(key, { status: 'found' });
+      clearTimeout(autoSaveTimer);
+      autoSaveTimer = setTimeout(flushAutoMatches, 800);
+    } else {
+      cardLookups.set(key, result);
+    }
+    updateCardMedia(cardName);
+  });
+}
+
+function flushAutoMatches() {
+  const matches = pendingAutoMatches;
+  pendingAutoMatches = {};
+  const next = addAutoCardImages(appState, matches);
+  if (next === appState) return;
+  appState = next;
+  saveToStorage();
+  Object.keys(matches).forEach(updateCardMedia);
+}
+
+function matchFor(cardName) {
+  return getCardImage(appState, cardName) || (pendingAutoMatches[cardName] ? { ...pendingAutoMatches[cardName], source: 'auto' } : null);
+}
+
+function cardThumbHTML(cardName, { compact = false } = {}) {
+  if (!cardName) return '';
+  const entry = matchFor(cardName);
+  if (!entry?.image) return '';
+  return `<button type="button" class="media-thumb card-thumb${compact ? ' is-compact' : ''}" data-card-view="${escAttr(cardName)}"
+    title="${escAttr([entry.name, entry.setName].filter(Boolean).join(' · '))}"><img src="${escAttr(cardImageUrl(entry.image))}" alt="" loading="lazy"></button>`;
+}
+
+function cardMediaInnerHTML(cardName) {
+  const entry = matchFor(cardName);
+  if (entry?.source === 'none') return '';
+  if (entry?.image) {
+    return `${cardThumbHTML(cardName)}${IS_PREVIEW ? '' : `<button type="button" class="media-edit" data-card-pick="${escAttr(cardName)}" title="Andere kaartafbeelding kiezen" aria-label="Andere kaartafbeelding kiezen">✎</button>`}`;
+  }
+  const key = cardImageKey(cardName);
+  const lookup = cardLookups.get(key);
+  if (!lookup) queueCardLookup(cardName);
+  if (!lookup || lookup.status === 'pending') return '<span class="media-status">Kaartafbeelding zoeken…</span>';
+  if (IS_PREVIEW) return '';
+  if (lookup.status === 'ambiguous') {
+    return `<button type="button" class="media-status-btn" data-card-pick="${escAttr(cardName)}">Kies kaartafbeelding (${lookup.candidates.length})</button>`;
+  }
+  const label = lookup.status === 'error' ? 'Zoeken mislukt · opnieuw' : 'Geen afbeelding gevonden · zoeken';
+  return `<button type="button" class="media-status-btn subtle" data-card-pick="${escAttr(cardName)}">${label}</button>`;
+}
+
+function transactionMediaHTML(transaction) {
+  const showCard = transaction.cardName && !isBulkTransaction(transaction);
+  const images = normalizeTransactionImages(transaction.images);
+  if (!showCard && !images.length) return '';
+  const cardPart = showCard
+    ? `<span class="card-media" data-card-media="${escAttr(cardImageKey(transaction.cardName))}" data-card-name="${escAttr(transaction.cardName)}">${cardMediaInnerHTML(transaction.cardName)}</span>`
+    : '';
+  const imagePart = images.map((image, index) => `
+    <button type="button" class="media-thumb" data-image-view="${escAttr(transaction.id)}" data-image-index="${index}" title="Afbeelding bekijken">
+      <img src="${escAttr(imageSrc(image))}" alt="" loading="lazy">
+    </button>`).join('');
+  return `<div class="txn-media">${cardPart}${imagePart}</div>`;
+}
+
+function updateCardMedia(cardName) {
+  const key = cardImageKey(cardName);
+  document.querySelectorAll(`[data-card-media="${CSS.escape(key)}"]`).forEach(element => {
+    element.innerHTML = cardMediaInnerHTML(element.dataset.cardName);
+  });
+  if (activeView === 'profit' && matchFor(cardName)?.image) renderProfitTable();
+}
+
+// ── card picker ────────────────────────────────────────────────────────
+const picker = { cardName: '', candidates: [], loading: false, error: '' };
+
+function openCardPicker(cardName) {
+  picker.cardName = cardName;
+  picker.error = '';
+  const lookup = cardLookups.get(cardImageKey(cardName));
+  picker.candidates = lookup?.status === 'ambiguous' ? lookup.candidates : [];
+  document.getElementById('cardPickerBackdrop').classList.add('open');
+  renderCardPicker();
+  if (!picker.candidates.length) runPickerSearch(parseCardReference(cardName).name || cardName, 'en');
+  setTimeout(() => document.getElementById('cardPickerQuery')?.focus(), 0);
+}
+
+function closeCardPicker() {
+  document.getElementById('cardPickerBackdrop').classList.remove('open');
+  picker.cardName = '';
+}
+
+async function runPickerSearch(query, lang) {
+  picker.loading = true;
+  picker.error = '';
+  renderCardPicker({ keepQuery: true });
+  try {
+    picker.candidates = await cardResolver.search(query, { lang });
+  } catch {
+    picker.candidates = [];
+    picker.error = 'TCGdex is niet bereikbaar. Probeer het later opnieuw.';
+  }
+  picker.loading = false;
+  renderCardPicker({ keepQuery: true });
+}
+
+function renderCardPicker({ keepQuery = false } = {}) {
+  const content = document.getElementById('cardPickerContent');
+  const queryInput = document.getElementById('cardPickerQuery');
+  const query = keepQuery && queryInput ? queryInput.value : (parseCardReference(picker.cardName).name || picker.cardName);
+  const lang = keepQuery ? (document.getElementById('cardPickerLang')?.value || 'en') : 'en';
+  const current = getCardImage(appState, picker.cardName);
+  const ownPicks = Object.keys(getCustomCardPicks(appState)).length;
+  const parsed = parseCardReference(picker.cardName);
+
+  const grid = picker.loading
+    ? '<div class="archive-empty">Zoeken…</div>'
+    : picker.error
+      ? `<div class="archive-empty">${escHTML(picker.error)}</div>`
+      : picker.candidates.length
+        ? `<div class="card-picker-grid">${picker.candidates.map((card, index) => {
+            const numberMatch = parsed.number && card.localId && Number(card.localId) === Number(parsed.number);
+            return `
+            <button type="button" class="card-option${current?.id === card.id ? ' is-current' : ''}${numberMatch ? ' is-hint' : ''}" data-pick-index="${index}">
+              <img src="${escAttr(cardImageUrl(card.image))}" alt="" loading="lazy">
+              <span class="card-option-name">${escHTML(card.name)}</span>
+              <span class="card-option-set">${escHTML(card.setName || card.setId)} · #${escHTML(card.localId)}${card.lang === 'ja' ? ' · JP' : ''}</span>
+            </button>`;
+          }).join('')}</div>`
+        : '<div class="archive-empty">Geen kaarten gevonden. Probeer een kortere naam, of zoek in de Japanse database.</div>';
+
+  content.innerHTML = `
+    <p class="archive-intro">Voor <strong>${escHTML(picker.cardName)}</strong>${parsed.setCode ? ` · set ${escHTML(parsed.setCode)}${cardSetName(picker.cardName) ? ` (${escHTML(cardSetName(picker.cardName))})` : ''}` : ''}${parsed.number ? ` · nr. ${escHTML(parsed.number)}. Kaarten met dit nummer hebben een gouden rand` : ''}.</p>
+    <form class="card-picker-search" id="cardPickerSearch">
+      <input type="search" class="search-input" id="cardPickerQuery" value="${escAttr(query)}" placeholder="Kaartnaam" autocomplete="off">
+      <select class="form-select" id="cardPickerLang" aria-label="Database">
+        <option value="en"${lang === 'en' ? ' selected' : ''}>Engels</option>
+        <option value="ja"${lang === 'ja' ? ' selected' : ''}>Japans</option>
+      </select>
+      <button type="submit" class="inline-btn">Zoek</button>
+    </form>
+    ${grid}
+    <div class="card-picker-footer">
+      <button type="button" class="inline-btn" data-picker-action="none">Geen afbeelding tonen</button>
+      ${current && !current.builtIn ? '<button type="button" class="inline-btn" data-picker-action="reset">Keuze wissen</button>' : ''}
+      ${ownPicks ? `<button type="button" class="set-footnote-link" data-picker-action="export">${ownPicks} eigen ${ownPicks === 1 ? 'keuze' : 'keuzes'} kopiëren voor Claude</button>` : ''}
+      <span class="card-picker-credit">Afbeeldingen via TCGdex</span>
+    </div>`;
+}
+
+function applyCardChoice(nextState) {
+  const cardName = picker.cardName;
+  appState = nextState;
+  cardLookups.delete(cardImageKey(cardName));
+  cardResolver.forget(cardName);
+  saveToStorage();
+  closeCardPicker();
+  renderCardPicksReminder();
+  updateCardMedia(cardName);
+  if (activeView === 'profit') renderProfitTable();
+}
+
+document.getElementById('cardPickerContent').addEventListener('submit', event => {
+  if (event.target.id !== 'cardPickerSearch') return;
+  event.preventDefault();
+  runPickerSearch(document.getElementById('cardPickerQuery').value, document.getElementById('cardPickerLang').value);
+});
+document.getElementById('cardPickerContent').addEventListener('click', event => {
+  const option = event.target.closest('[data-pick-index]');
+  if (option) {
+    const card = picker.candidates[Number(option.dataset.pickIndex)];
+    if (card) applyCardChoice(setCardImage(appState, picker.cardName, card, 'user'));
+    return;
+  }
+  const action = event.target.closest('[data-picker-action]')?.dataset.pickerAction;
+  if (action === 'none') applyCardChoice(setCardImage(appState, picker.cardName, null, 'none'));
+  if (action === 'reset') applyCardChoice(clearCardImage(appState, picker.cardName));
+  if (action === 'export') {
+    cardPicksExportOpen = true;
+    closeCardPicker();
+    renderCardPicksReminder();
+    document.getElementById('cardPicksReminder').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+});
+document.getElementById('closeCardPickerBtn').addEventListener('click', closeCardPicker);
+document.getElementById('cardPickerBackdrop').addEventListener('click', event => {
+  if (event.target.id === 'cardPickerBackdrop') closeCardPicker();
+});
+
+// ── viewer for card images and photos ──────────────────────────────────
+const viewer = { items: [], index: 0 };
+
+function openViewer(items, index = 0) {
+  viewer.items = items;
+  viewer.index = index;
+  document.getElementById('mediaViewerBackdrop').classList.add('open');
+  renderViewer();
+}
+
+function closeViewer() {
+  document.getElementById('mediaViewerBackdrop').classList.remove('open');
+  document.getElementById('mediaViewerContent').innerHTML = '';
+}
+
+function renderViewer() {
+  const item = viewer.items[viewer.index];
+  if (!item) return;
+  const many = viewer.items.length > 1;
+  document.getElementById('mediaViewerContent').innerHTML = `
+    <div class="media-viewer-stage">
+      ${many ? '<button type="button" class="media-nav prev" data-viewer="prev" aria-label="Vorige">‹</button>' : ''}
+      <img src="${escAttr(item.src)}" alt="${escAttr(item.caption || '')}">
+      ${many ? '<button type="button" class="media-nav next" data-viewer="next" aria-label="Volgende">›</button>' : ''}
+    </div>
+    <div class="media-viewer-bar">
+      <span class="media-viewer-caption">${escHTML(item.caption || '')}${many ? ` <span class="muted">${viewer.index + 1} / ${viewer.items.length}</span>` : ''}</span>
+      <span class="media-viewer-actions">
+        ${item.cardmarket ? `<a class="inline-btn" href="${escAttr(item.cardmarket)}" target="_blank" rel="noopener noreferrer">Cardmarket</a>` : ''}
+        ${item.cardName && !IS_PREVIEW ? `<button type="button" class="inline-btn" data-viewer="pick">Andere kiezen</button>` : ''}
+        ${item.open ? `<a class="inline-btn" href="${escAttr(item.open)}" target="_blank" rel="noopener">Origineel</a>` : ''}
+        <button type="button" class="cancel-btn" data-viewer="close">Sluiten</button>
+      </span>
+    </div>`;
+}
+
+document.getElementById('mediaViewerBackdrop').addEventListener('click', event => {
+  const action = event.target.closest('[data-viewer]')?.dataset.viewer;
+  if (event.target.id === 'mediaViewerBackdrop' || action === 'close') { closeViewer(); return; }
+  if (action === 'prev' || action === 'next') {
+    viewer.index = (viewer.index + (action === 'next' ? 1 : -1) + viewer.items.length) % viewer.items.length;
+    renderViewer();
+  }
+  if (action === 'pick') {
+    const cardName = viewer.items[viewer.index].cardName;
+    closeViewer();
+    openCardPicker(cardName);
+  }
+});
+
+// Thumbnails anywhere in the page (transactions, profit table, archive preview).
+document.addEventListener('click', event => {
+  const cardButton = event.target.closest('[data-card-view]');
+  if (cardButton) {
+    const cardName = cardButton.dataset.cardView;
+    const entry = matchFor(cardName);
+    if (!entry?.image) return;
+    const search = parseCardReference(cardName).name || cardName;
+    openViewer([{
+      src: cardImageUrl(entry.image, 'high'),
+      caption: [entry.name, entry.setName].filter(Boolean).join(' · '),
+      cardName,
+      cardmarket: `https://www.cardmarket.com/en/Pokemon/Products/Search?searchString=${encodeURIComponent(search)}`,
+    }]);
+    return;
+  }
+  const pickButton = event.target.closest('[data-card-pick]');
+  if (pickButton && !pickButton.closest('#cardPickerBackdrop')) {
+    openCardPicker(pickButton.dataset.cardPick);
+    return;
+  }
+  const imageButton = event.target.closest('[data-image-view]');
+  if (imageButton) {
+    const id = Number(imageButton.dataset.imageView);
+    const transaction = appState.tabs.flatMap(tab => tab.transactions).find(txn => txn.id === id);
+    const images = normalizeTransactionImages(transaction?.images);
+    if (!images.length) return;
+    openViewer(images.map(image => ({
+      src: imageSrc(image),
+      caption: transaction.description.split('\n')[0],
+      open: SERVER_IMAGE_ID_PATTERN.test(image) ? imageSrc(image) : '',
+    })), Number(imageButton.dataset.imageIndex) || 0);
+  }
+});
+
+document.addEventListener('keydown', event => {
+  if (!document.getElementById('mediaViewerBackdrop').classList.contains('open')) {
+    if (event.key === 'Escape' && document.getElementById('cardPickerBackdrop').classList.contains('open')) closeCardPicker();
+    return;
+  }
+  if (event.key === 'Escape') closeViewer();
+  if (event.key === 'ArrowRight' && viewer.items.length > 1) { viewer.index = (viewer.index + 1) % viewer.items.length; renderViewer(); }
+  if (event.key === 'ArrowLeft' && viewer.items.length > 1) { viewer.index = (viewer.index - 1 + viewer.items.length) % viewer.items.length; renderViewer(); }
+});
+
+// ── monthly reminder: send hand-picked card images to Claude ───────────
+let cardPicksExportOpen = false;
+
+function renderCardPicksReminder() {
+  const banner = document.getElementById('cardPicksReminder');
+  if (IS_PREVIEW) { banner.hidden = true; return; }
+  const picks = getCustomCardPicks(appState);
+  const count = Object.keys(picks).length;
+  const show = count > 0 && (cardPicksExportOpen || isCardPicksReminderDue(appState));
+  banner.hidden = !show;
+  if (!show) { banner.innerHTML = ''; return; }
+  banner.innerHTML = `
+    <div class="setnames-reminder-head">
+      <span class="setnames-reminder-title">Eigen kaartkeuzes doorsturen</span>
+      <span class="setnames-reminder-text">Je hebt voor ${count} ${count === 1 ? 'kaart' : 'kaarten'} zelf de afbeelding gekozen. Kopieer de lijst en stuur hem naar Claude, dan worden ze vast in de app opgenomen.</span>
+    </div>
+    <textarea class="setnames-reminder-list" readonly rows="${Math.min(count, 6)}" aria-label="Eigen kaartkeuzes">${escHTML(formatCardPicksForExport(picks))}</textarea>
+    <div class="setnames-reminder-actions">
+      <button type="button" class="setnames-btn primary" data-cardpicks="copy">Kopieer lijst</button>
+      <button type="button" class="setnames-btn" data-cardpicks="later">Herinner me later</button>
+      <span class="setnames-reminder-msg" id="cardPicksReminderMsg" role="status"></span>
+    </div>`;
+}
+
+document.getElementById('cardPicksReminder').addEventListener('click', async event => {
+  const action = event.target.closest('[data-cardpicks]')?.dataset.cardpicks;
+  if (!action) return;
+  const banner = document.getElementById('cardPicksReminder');
+  if (action === 'copy') {
+    const textarea = banner.querySelector('.setnames-reminder-list');
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(textarea.value);
+      copied = true;
+    } catch {
+      textarea.focus();
+      textarea.select();
+      try { copied = document.execCommand('copy'); } catch { copied = false; }
+    }
+    if (!copied) {
+      document.getElementById('cardPicksReminderMsg').textContent = 'Kopiëren lukte niet. De lijst is geselecteerd, kopieer hem met Ctrl+C.';
+      return;
+    }
+    appState = snoozeCardPicksReminder(appState);
+    saveToStorage();
+    cardPicksExportOpen = false;
+    banner.innerHTML = '<div class="setnames-reminder-head"><span class="setnames-reminder-title">Gekopieerd</span><span class="setnames-reminder-text">Plak de lijst in je chat met Claude. Over een maand volgt de volgende herinnering.</span></div>';
+    setTimeout(() => renderCardPicksReminder(), 4000);
+    return;
+  }
+  if (action === 'later') {
+    appState = snoozeCardPicksReminder(appState, SET_NAMES_SNOOZE_DAYS);
+    saveToStorage();
+    cardPicksExportOpen = false;
+    renderCardPicksReminder();
+  }
+});
 
 // ── archive pop-up ─────────────────────────────────────────────────────
 const archiveView = { open: false, tabId: null, renderedTabId: null };
@@ -3735,6 +4412,7 @@ function rowHTML(transaction) {
         ${metaItems.join('')}
         ${orderLinksHTML}
       </div>
+      ${transactionMediaHTML(normalized)}
     </td>
     <td style="white-space:nowrap;vertical-align:middle;">
       <button class="edit-btn" data-id="${normalized.id}" title="Bewerken" aria-label="Bewerk transactie">
@@ -3876,7 +4554,7 @@ function renderProfitTable() {
   } else {
     tbody.innerHTML = rows.map(row => `
       <tr${row.gradingCompany && row.gradingValue ? ' class="is-graded"' : ''}>
-        <td><span class="profit-card-name">${escHTML(row.cardName)}${gradeBadgeHTML(row.gradingCompany, row.gradingValue)}</span></td>
+        <td><span class="profit-card-cell">${cardThumbHTML(row.cardName, { compact: true })}<span class="profit-card-name">${escHTML(row.cardName)}${gradeBadgeHTML(row.gradingCompany, row.gradingValue)}</span></span></td>
         <td>${row.boughtQty}</td>
         <td>${row.soldQty}</td>
         <td>${fmt(row.allocatedBuyCost)}</td>
@@ -5204,6 +5882,7 @@ document.getElementById('importFromTabBtn').addEventListener('click', () => {
 function refreshView() {
   syncTopbarTitle();
   renderSetNamesReminder();
+  renderCardPicksReminder();
   updateSortButtons();
   setSectionCollapsed('transactions', collapsedSections.transactions);
   setSectionCollapsed('profitTable', collapsedSections.profitTable);
@@ -5287,8 +5966,14 @@ document.getElementById('submitBtn').addEventListener('click', () => {
     ? normalizeQuantity(document.getElementById('fQuantity').value)
     : 1;
   const date = document.getElementById('fDate').value || todayISO();
+  const images = draftImages.slice();
 
   showMessage(formMsg);
+
+  if (imageUploadsPending > 0) {
+    showMessage(formMsg, 'error', 'Wacht tot de afbeeldingen zijn geüpload.');
+    return;
+  }
 
   const amount = Number.parseFloat(amountRaw.replace(',', '.'));
   if (!amountRaw || Number.isNaN(amount) || amount <= 0) {
@@ -5310,7 +5995,7 @@ document.getElementById('submitBtn').addEventListener('click', () => {
     // null → let normalizeTransaction infer from description
     // '' → explicitly no card name (no inference)
     const cardName = hasCardName ? null : '';
-    const txnData = { type, amount, description, cardName, quantity, date, gradingCompany, gradingValue };
+    const txnData = { type, amount, description, cardName, quantity, date, gradingCompany, gradingValue, images };
     appState = updateStoredTransaction(appState, editingId, txnData);
     saveToStorage();
     cancelEdit();
@@ -5321,7 +6006,7 @@ document.getElementById('submitBtn').addEventListener('click', () => {
     // When toggle is ON and description is multi-line, split into per-card transactions
     const parts = hasCardName ? splitMultiLineDescription(description, amount) : null;
     if (parts) {
-      const txns = parts.map(part => ({
+      const txns = parts.map((part, index) => ({
         type,
         amount: part.amount,
         description: part.description,
@@ -5330,6 +6015,8 @@ document.getElementById('submitBtn').addEventListener('click', () => {
         date,
         gradingCompany,
         gradingValue,
+        // Photos go with the first card of a split entry.
+        images: index === 0 ? images : [],
       }));
       appState = appendTransactions(appState, txns);
     } else {
@@ -5343,10 +6030,12 @@ document.getElementById('submitBtn').addEventListener('click', () => {
         date,
         gradingCompany,
         gradingValue,
+        images,
       });
     }
     saveToStorage();
     refreshView();
+    setDraftImages([]);
     document.getElementById('fAmount').value = '';
     document.getElementById('fDesc').value = '';
     document.getElementById('fHasCardName').checked = false;
@@ -5375,6 +6064,7 @@ function startEdit(transaction) {
   document.getElementById('fIsGraded').checked = Boolean(transaction.gradingCompany && transaction.gradingValue);
   document.getElementById('fGradingCompany').value = transaction.gradingCompany || '';
   document.getElementById('fDate').value = transaction.date;
+  setDraftImages(normalizeTransactionImages(transaction.images));
   syncDescriptionParsing();
   syncGradingParsing();
   if (transaction.gradingValue) {
@@ -5399,6 +6089,7 @@ function cancelEdit() {
   document.getElementById('fGradingCompany').value = '';
   document.getElementById('fGradingValue').value = '';
   document.getElementById('fDate').value = todayISO();
+  setDraftImages([]);
   syncDescriptionParsing();
   syncGradingParsing();
   showMessage(formMsg);

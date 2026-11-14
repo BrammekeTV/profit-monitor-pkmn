@@ -27,7 +27,8 @@ A profit tracker for Pokémon TCG trading. Use it straight from GitHub Pages (da
 - Aparte tab **Trades - Analyse** met trade-statistieken en performancegrafiek
 - Sold transactions with `#123456789` in the description show Cardmarket order links
 - **Import from `.xlsm` / `.xlsx`** — reads your existing spreadsheet client-side and merges the data into the active tab; rows that already exist there are skipped, so re-importing the same file is safe
-- Pokémon card image lookup: descriptions in the format `CardName (SETCODE NUMBER)` show images from the [Pokémon TCG API](https://pokemontcg.io), with links to Cardmarket
+- **Card images** are found automatically through [TCGdex](https://tcgdex.dev) (free, no key, English and Japanese sets). With `CardName (SETCODE NUMBER)` the exact card is fetched; with only a name, a unique match is used directly. When several cards fit, the row shows **Kies kaartafbeelding (n)** and you pick the right one. You can always change or hide an image with ✎. Hand-picked choices trigger a monthly reminder to send them to Claude, so they can be built into the app (`CARD_IMAGES` in `profit-monitor-core.mjs`)
+- **Photos on transactions** (e.g. sealed product or accessories): add them in the form with **+ Foto**, by pasting, or by dragging them in. They show after the description and open full size on click. They are scaled down before saving. On the server they are stored in `/data/images`; without a server they are kept in the browser, which only has room for a few dozen
 
 ## Data storage
 

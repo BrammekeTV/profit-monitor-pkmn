@@ -274,6 +274,7 @@ export function normalizeTransaction(transaction = {}, options = {}) {
   const gradingCompany = normalizeGradingCompany(transaction.gradingCompany);
   const gradingValue = normalizeGradingValue(gradingCompany, transaction.gradingValue);
 
+  const images = normalizeTransactionImages(transaction.images);
   return {
     id: transaction.id ?? null,
     type,
@@ -285,7 +286,29 @@ export function normalizeTransaction(transaction = {}, options = {}) {
     gradingCompany,
     gradingValue,
     gradingLabel: getGradeLabel(gradingCompany, gradingValue),
+    ...(images.length ? { images } : {}),
   };
+}
+
+// ── Images attached to a transaction (photos of sealed product, accessories…) ──
+// An entry is either the id of a file stored by the self-hosted server
+// ("img-<uuid>.webp") or, without a server, a small data: URL kept inline.
+export const MAX_TRANSACTION_IMAGES = 12;
+export const SERVER_IMAGE_ID_PATTERN = /^img-[a-f0-9-]{36}\.(?:webp|jpg|png|gif)$/;
+
+export function isValidTransactionImage(value) {
+  if (typeof value !== 'string') return false;
+  return SERVER_IMAGE_ID_PATTERN.test(value) || /^data:image\/(?:webp|jpeg|png|gif);base64,[A-Za-z0-9+/=]+$/.test(value);
+}
+
+export function normalizeTransactionImages(images) {
+  if (!Array.isArray(images)) return [];
+  const unique = [];
+  for (const image of images) {
+    if (isValidTransactionImage(image) && !unique.includes(image)) unique.push(image);
+    if (unique.length >= MAX_TRANSACTION_IMAGES) break;
+  }
+  return unique;
 }
 
 export function normalizeTradeItem(item = {}) {
@@ -499,7 +522,7 @@ export function ensureAppState(rawState, options = {}) {
 
   const legacyTrades = Array.isArray(parsed?.trades) ? parsed.trades : [];
   const { tabs } = normalizeTabs(parsed?.tabs, { ...options, legacyTrades });
-  const setNameFields = normalizeSetNameFields(parsed);
+  const setNameFields = { ...normalizeSetNameFields(parsed), ...normalizeCardImageFields(parsed) };
 
   if (!tabs.length) {
     const defaultTab = createTab(DEFAULT_TAB_NAME, {
@@ -1477,4 +1500,169 @@ export function computeCardmarketSurplus(transactions) {
     net: roundMoney(totalSold - totalBought),
     count: filtered.length,
   };
+}
+
+// ── Card images (TCGdex) ────────────────────────────────────────────────
+// Matches are stored per card name in state.cardImages:
+//   { id: 'sv03-125', image: 'https://assets.tcgdex.net/en/sv/sv03/125',
+//     name, setName, source: 'auto' | 'user' | 'none' }
+// 'auto' = found unambiguously, 'user' = picked by hand, 'none' = user chose
+// "no image". Hand-picked matches can be sent to Claude to become built-in.
+
+// Built-in matches, keyed by card key (see cardImageKey). Add entries here
+// from the "Eigen kaartkeuzes doorsturen" export.
+export const CARD_IMAGES = Object.freeze({
+});
+
+export const CARD_PICKS_REMINDER_DAYS = 30;
+const CARD_IMAGE_SOURCES = new Set(['auto', 'user', 'none']);
+const TCGDEX_ASSET_PATTERN = /^https:\/\/assets\.tcgdex\.net\/[A-Za-z0-9._/-]+$/;
+
+export function cardImageKey(cardName = '') {
+  return normalizeCardKey(cardName).replace(/\s+/g, ' ');
+}
+
+// "Charizard ex (OBF 125)" → { name: 'Charizard ex', setCode: 'OBF', number: '125' }
+// "Moltres (PPS9 PFL 014)"  → { name: 'Moltres', setCode: 'PPS9', number: '014' }
+export function parseCardReference(cardName = '') {
+  const text = normalizeTabName(cardName).replace(/\s+#\d+\s*$/, '');
+  const setCode = extractSetCode(text);
+  let number = '';
+  if (setCode) {
+    const bracket = text.match(new RegExp(`\\(${setCode}((?:\\s+[^\\s()]+)*)\\s*\\)`));
+    const tokens = (bracket?.[1] || '').trim().split(/\s+/).filter(Boolean);
+    const numberToken = tokens.reverse().find(token => /\d/.test(token));
+    if (numberToken) number = numberToken.split('/')[0];
+  }
+  const name = (setCode ? text.slice(0, text.indexOf('(')) : text.replace(/\([^)]*\)/g, ''))
+    .replace(/\s+/g, ' ')
+    .trim();
+  return { name, setCode, number };
+}
+
+export function normalizeCardImageEntry(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const source = CARD_IMAGE_SOURCES.has(raw.source) ? raw.source : 'auto';
+  if (source === 'none') return { source: 'none' };
+  const image = String(raw.image ?? '');
+  const id = String(raw.id ?? '').trim();
+  if (!TCGDEX_ASSET_PATTERN.test(image) || !id) return null;
+  return {
+    id: id.slice(0, 80),
+    image,
+    name: String(raw.name ?? '').trim().slice(0, 160),
+    setName: String(raw.setName ?? '').trim().slice(0, 160),
+    source,
+  };
+}
+
+export function normalizeCardImages(raw) {
+  const result = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return result;
+  for (const [key, value] of Object.entries(raw)) {
+    const cleanKey = cardImageKey(key);
+    const entry = normalizeCardImageEntry(value);
+    if (cleanKey && entry) result[cleanKey] = entry;
+  }
+  return result;
+}
+
+function normalizeCardImageFields(parsed) {
+  const cardImages = normalizeCardImages(parsed?.cardImages);
+  const fields = {};
+  if (Object.keys(cardImages).length) fields.cardImages = cardImages;
+  const reminder = parsed?.cardPicksReminderAt;
+  if (typeof reminder === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(reminder) && Object.keys(getCustomCardPicks({ cardImages })).length) {
+    fields.cardPicksReminderAt = reminder;
+  }
+  return fields;
+}
+
+function sameCardImage(left, right) {
+  if (!left || !right) return false;
+  if (left.source === 'none' || right.source === 'none') return left.source === right.source;
+  return left.id === right.id && left.image === right.image;
+}
+
+// The match to show for a card: the user's own choice wins, then built-in,
+// then an automatic match. Returns null when nothing is known yet.
+export function getCardImage(state, cardName) {
+  const key = cardImageKey(cardName);
+  if (!key) return null;
+  const own = state?.cardImages?.[key];
+  if (own && own.source !== 'auto') return own;
+  const builtIn = normalizeCardImageEntry(CARD_IMAGES[key] && { ...CARD_IMAGES[key], source: CARD_IMAGES[key].source ?? 'user' });
+  if (builtIn) return { ...builtIn, builtIn: true };
+  return own || null;
+}
+
+// Hand-picked choices that differ from the built-in list (to send to Claude).
+export function getCustomCardPicks(state) {
+  const picks = {};
+  for (const [key, entry] of Object.entries(state?.cardImages || {})) {
+    if (entry.source === 'auto') continue;
+    const builtIn = CARD_IMAGES[key] ? normalizeCardImageEntry({ ...CARD_IMAGES[key], source: CARD_IMAGES[key].source ?? 'user' }) : null;
+    if (!sameCardImage(entry, builtIn)) picks[key] = entry;
+  }
+  return picks;
+}
+
+export function setCardImage(state, cardName, match, source = 'user', options = {}) {
+  const key = cardImageKey(cardName);
+  if (!key) return state;
+  const entry = normalizeCardImageEntry(match ? { ...match, source } : { source: 'none' });
+  const cardImages = { ...(state.cardImages || {}) };
+  if (entry) cardImages[key] = entry;
+  else delete cardImages[key];
+  const next = { ...state, cardImages };
+  const hasPicks = Object.keys(getCustomCardPicks(next)).length > 0;
+  if (!hasPicks) delete next.cardPicksReminderAt;
+  else if (!next.cardPicksReminderAt) next.cardPicksReminderAt = addDaysISO(todayISO(options.now), CARD_PICKS_REMINDER_DAYS);
+  return next;
+}
+
+// Forget the choice for a card, so it is looked up automatically again.
+export function clearCardImage(state, cardName) {
+  const key = cardImageKey(cardName);
+  if (!state.cardImages?.[key]) return state;
+  const cardImages = { ...state.cardImages };
+  delete cardImages[key];
+  const next = { ...state, cardImages };
+  if (!Object.keys(getCustomCardPicks(next)).length) delete next.cardPicksReminderAt;
+  return next;
+}
+
+// Several automatic matches in one state update (avoids one save per card).
+export function addAutoCardImages(state, matches = {}) {
+  const cardImages = { ...(state.cardImages || {}) };
+  let changed = false;
+  for (const [cardName, match] of Object.entries(matches)) {
+    const key = cardImageKey(cardName);
+    if (!key || (cardImages[key] && cardImages[key].source !== 'auto')) continue;
+    const entry = normalizeCardImageEntry({ ...match, source: 'auto' });
+    if (!entry || sameCardImage(cardImages[key], entry)) continue;
+    cardImages[key] = entry;
+    changed = true;
+  }
+  return changed ? { ...state, cardImages } : state;
+}
+
+export function isCardPicksReminderDue(state, now = new Date()) {
+  if (!Object.keys(getCustomCardPicks(state)).length || !state.cardPicksReminderAt) return false;
+  return state.cardPicksReminderAt <= todayISO(now);
+}
+
+export function snoozeCardPicksReminder(state, days = CARD_PICKS_REMINDER_DAYS, now = new Date()) {
+  if (!Object.keys(getCustomCardPicks(state)).length) return state;
+  return { ...state, cardPicksReminderAt: addDaysISO(todayISO(now), days) };
+}
+
+// One line per card, ready to paste to Claude.
+export function formatCardPicksForExport(picks = {}) {
+  return Object.entries(picks)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, entry]) => (entry.source === 'none'
+      ? `${key} = geen afbeelding`
+      : `${key} = ${entry.id} | ${entry.image}${entry.setName ? ` | ${entry.setName}` : ''}`))
+    .join('\n');
 }

@@ -24,14 +24,22 @@ const PORT = Number.parseInt(process.env.PORT || '8080', 10);
 const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(APP_DIR, 'data-store'));
 const BACKUP_DIR = path.join(DATA_DIR, 'backups');
 const STATE_FILE = path.join(DATA_DIR, 'profit-monitor.json');
+const IMAGE_DIR = path.join(DATA_DIR, 'images');
 const BACKUP_KEEP = Math.max(1, Number.parseInt(process.env.BACKUP_KEEP || '30', 10) || 30);
 const MAX_BODY_BYTES = 50 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
+const IMAGE_TYPES = { 'image/webp': 'webp', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif' };
+const IMAGE_ID_PATTERN = /^img-[a-f0-9-]{36}\.(?:webp|jpg|png|gif)$/;
+// Unused images are removed, but only once they are a day old: a photo that
+// was just uploaded is not in the saved data until the form is submitted.
+const IMAGE_GRACE_MS = 24 * 60 * 60 * 1000;
+const IMAGE_CLEANUP_INTERVAL_MS = Number.parseInt(process.env.IMAGE_CLEANUP_INTERVAL_MS || '600000', 10);
 const AUTH_USER = process.env.AUTH_USER || '';
 const AUTH_PASSWORD = process.env.AUTH_PASSWORD || '';
 
 // Only these paths are served; everything else in the image (server code,
 // tests, Flask files) stays private.
-const STATIC_FILES = new Set(['/index.html', '/profit-monitor-core.mjs']);
+const STATIC_FILES = new Set(['/index.html', '/profit-monitor-core.mjs', '/card-images.mjs']);
 const STATIC_DIRS = ['/assets/', '/data/'];
 
 const MIME = {
@@ -44,6 +52,7 @@ const MIME = {
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
   '.webp': 'image/webp',
+  '.gif': 'image/gif',
   '.ico': 'image/x-icon',
   '.css': 'text/css; charset=utf-8',
 };
@@ -111,6 +120,105 @@ async function backupPreviousVersion() {
   }
 }
 
+let lastImageCleanup = 0;
+
+async function cleanupImages({ force = false } = {}) {
+  if (!force && Date.now() - lastImageCleanup < IMAGE_CLEANUP_INTERVAL_MS) return;
+  lastImageCleanup = Date.now();
+  let names;
+  try {
+    names = await fsp.readdir(IMAGE_DIR);
+  } catch {
+    return;
+  }
+  const used = JSON.stringify(current.state ?? {});
+  for (const name of names) {
+    if (!IMAGE_ID_PATTERN.test(name) || used.includes(name)) continue;
+    const file = path.join(IMAGE_DIR, name);
+    try {
+      const stat = await fsp.stat(file);
+      if (Date.now() - stat.mtimeMs > IMAGE_GRACE_MS) {
+        await fsp.unlink(file);
+        log(`Removed unused image ${name}`);
+      }
+    } catch { /* already gone */ }
+  }
+}
+
+function readBinaryBody(req, limit) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    req.on('data', chunk => {
+      size += chunk.length;
+      if (size > limit) {
+        reject(Object.assign(new Error('Image too large'), { status: 413 }));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
+
+// Checks the file's first bytes, so only real images are stored.
+function sniffImageType(buffer) {
+  if (buffer.length >= 12 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP') return 'webp';
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return 'jpg';
+  if (buffer.length >= 8 && buffer.toString('hex', 0, 8) === '89504e470d0a1a0a') return 'png';
+  if (buffer.length >= 6 && /^GIF8[79]a$/.test(buffer.toString('ascii', 0, 6))) return 'gif';
+  return '';
+}
+
+async function handleImages(req, res, pathname) {
+  if (pathname === '/api/images' && req.method === 'POST') {
+    const type = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+    if (!IMAGE_TYPES[type]) {
+      sendJson(res, 415, { error: 'Only WebP, JPEG, PNG or GIF images' });
+      return;
+    }
+    let buffer;
+    try {
+      buffer = await readBinaryBody(req, MAX_IMAGE_BYTES);
+    } catch (error) {
+      sendJson(res, error.status || 400, { error: error.message });
+      return;
+    }
+    const ext = sniffImageType(buffer);
+    if (!ext) {
+      sendJson(res, 415, { error: 'Not an image' });
+      return;
+    }
+    const id = `img-${crypto.randomUUID()}.${ext}`;
+    await fsp.mkdir(IMAGE_DIR, { recursive: true });
+    await writeAtomic(path.join(IMAGE_DIR, id), buffer);
+    sendJson(res, 201, { id });
+    return;
+  }
+
+  const id = pathname.slice('/api/images/'.length);
+  if (req.method === 'GET' && IMAGE_ID_PATTERN.test(id)) {
+    const file = path.join(IMAGE_DIR, id);
+    try {
+      const stat = await fsp.stat(file);
+      res.writeHead(200, {
+        'Content-Type': MIME[path.extname(id)] || 'application/octet-stream',
+        'Content-Length': stat.size,
+        // Ids are never reused, so the browser may keep them forever.
+        'Cache-Control': 'private, max-age=31536000, immutable',
+        'X-Content-Type-Options': 'nosniff',
+      });
+      fs.createReadStream(file).pipe(res);
+    } catch {
+      sendJson(res, 404, { error: 'Not found' });
+    }
+    return;
+  }
+  sendJson(res, 404, { error: 'Not found' });
+}
+
 function saveState(state, baseRevision, force) {
   const job = writeChain.then(async () => {
     if (!force && baseRevision !== current.revision) {
@@ -120,6 +228,7 @@ function saveState(state, baseRevision, force) {
     const next = { revision: current.revision + 1, updatedAt: new Date().toISOString(), state };
     await writeAtomic(STATE_FILE, JSON.stringify(next));
     current = next;
+    cleanupImages().catch(() => {});
     return { conflict: false, revision: next.revision, updatedAt: next.updatedAt };
   });
   writeChain = job.catch(() => {});
@@ -248,6 +357,11 @@ async function handle(req, res) {
     return;
   }
 
+  if (pathname === '/api/images' || pathname.startsWith('/api/images/')) {
+    await handleImages(req, res, pathname);
+    return;
+  }
+
   if (pathname.startsWith('/api/')) {
     sendJson(res, 404, { error: 'Not found' });
     return;
@@ -264,6 +378,7 @@ async function handle(req, res) {
 
 function prepareDataDir() {
   fs.mkdirSync(BACKUP_DIR, { recursive: true });
+  fs.mkdirSync(IMAGE_DIR, { recursive: true });
 
   // Started as root (the Docker default): hand the data folder to PUID:PGID
   // and drop privileges, so files on the share are not owned by root.
@@ -289,6 +404,7 @@ function prepareDataDir() {
 export function startServer({ port = PORT } = {}) {
   prepareDataDir();
   loadStateFile();
+  cleanupImages({ force: true }).catch(() => {});
   const server = http.createServer((req, res) => {
     handle(req, res).catch(error => {
       log('Request failed:', error);

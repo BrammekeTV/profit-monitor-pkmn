@@ -7,7 +7,8 @@ appdata share, instead of in the browser. Every device that opens the app
 
 ```
 /mnt/user/appdata/profit-monitor/
-├── profit-monitor.json          ← all your data (tabs, transactions, trades, set names)
+├── profit-monitor.json          ← all your data (tabs, transactions, trades, set names, card image choices)
+├── images/                      ← photos you added to transactions
 └── backups/
     ├── profit-monitor-2026-11-15.json
     └── …                        ← one backup per day you made changes, the last 30 are kept
@@ -145,6 +146,9 @@ A red bar means the server cannot be reached. The app keeps retrying every
 - The **Appdata Backup** plugin (Community Applications) also picks up this
   folder if you use it.
 - **JSON exporteren** in the app still works for an extra manual backup.
+  It contains all data, but not the photo files themselves. Those are in the
+  `images` folder, which the Appdata Backup plugin includes.
+- Photos you remove from a transaction are deleted from `images` after a day.
 
 ### Restoring a backup
 1. **Docker** tab → Profit Monitor → **Stop**.
