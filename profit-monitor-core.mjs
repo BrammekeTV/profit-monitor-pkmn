@@ -1516,10 +1516,30 @@ export const CARD_IMAGES = Object.freeze({
 
 export const CARD_PICKS_REMINDER_DAYS = 30;
 const CARD_IMAGE_SOURCES = new Set(['auto', 'user', 'none']);
-const TCGDEX_ASSET_PATTERN = /^https:\/\/assets\.tcgdex\.net\/[A-Za-z0-9._/-]+$/;
+// Image hosts used for automatic matches. A hand-picked image may also be any
+// https link, a photo stored by the server, or (without server) a data: URL.
+const CARD_IMAGE_HOST_PATTERN = /^https:\/\/(?:assets\.tcgdex\.net|images\.pokemontcg\.io|limitlesstcg\.nyc3\.cdn\.digitaloceanspaces\.com)\/[A-Za-z0-9._%/-]+$/;
+const FINISH_PATTERN = /\(\s*(?:reverse\s*holo(?:\s*version)?|holo(?:\s*version)?)\s*\)/gi;
 
+function isUserCardImage(value) {
+  return /^https:\/\/[^\s"'<>]+$/.test(value) || SERVER_IMAGE_ID_PATTERN.test(value)
+    || /^data:image\/(?:webp|jpeg|png|gif);base64,[A-Za-z0-9+/=]+$/.test(value);
+}
+
+// Finish variants share one image: "Pikachu (SVI 063) (Reverse Holo)" uses
+// the image of "Pikachu (SVI 063)", with the sheen drawn on top.
 export function cardImageKey(cardName = '') {
-  return normalizeCardKey(cardName).replace(/\s+/g, ' ');
+  return normalizeCardKey(String(cardName ?? '').replace(FINISH_PATTERN, ' ')).replace(/\s+/g, ' ').trim();
+}
+
+// What to draw on top of a card image.
+export function getCardFinish(cardName = '') {
+  const text = String(cardName ?? '');
+  return {
+    reverseHolo: /\(\s*reverse\s*holo/i.test(text),
+    holo: /\(\s*holo(?:\s*version)?\s*\)/i.test(text),
+    prizePack: /\(\s*PPS\d+\b/i.test(text),
+  };
 }
 
 // "Charizard ex (OBF 125)" → { name: 'Charizard ex', setCode: 'OBF', number: '125' }
@@ -1537,6 +1557,11 @@ export function parseCardReference(cardName = '') {
   const name = (setCode ? text.slice(0, text.indexOf('(')) : text.replace(/\([^)]*\)/g, ''))
     .replace(/\s+/g, ' ')
     .trim();
+  // Prize Pack cards are stamped reprints: "(PPS9 PFL 068)" is PFL 068.
+  if (/^PPS\d+$/i.test(setCode)) {
+    const inner = text.match(new RegExp(`\\(${setCode}\\s+([A-Za-z0-9]+)\\s+[^\\s()]*\\d`));
+    if (inner) return { name, setCode: inner[1], number, prizePack: setCode };
+  }
   return { name, setCode, number };
 }
 
@@ -1545,8 +1570,8 @@ export function normalizeCardImageEntry(raw) {
   const source = CARD_IMAGE_SOURCES.has(raw.source) ? raw.source : 'auto';
   if (source === 'none') return { source: 'none' };
   const image = String(raw.image ?? '');
-  const id = String(raw.id ?? '').trim();
-  if (!TCGDEX_ASSET_PATTERN.test(image) || !id) return null;
+  const id = String(raw.id ?? '').trim() || (source === 'user' ? 'eigen' : '');
+  if (!id || !(CARD_IMAGE_HOST_PATTERN.test(image) || (source === 'user' && isUserCardImage(image)))) return null;
   return {
     id: id.slice(0, 80),
     image,
@@ -1661,8 +1686,10 @@ export function snoozeCardPicksReminder(state, days = CARD_PICKS_REMINDER_DAYS, 
 export function formatCardPicksForExport(picks = {}) {
   return Object.entries(picks)
     .sort(([left], [right]) => left.localeCompare(right))
-    .map(([key, entry]) => (entry.source === 'none'
-      ? `${key} = geen afbeelding`
-      : `${key} = ${entry.id} | ${entry.image}${entry.setName ? ` | ${entry.setName}` : ''}`))
+    .map(([key, entry]) => {
+      if (entry.source === 'none') return `${key} = geen afbeelding`;
+      if (!/^https:/.test(entry.image)) return `${key} = eigen upload`;
+      return `${key} = ${entry.id} | ${entry.image}${entry.setName ? ` | ${entry.setName}` : ''}`;
+    })
     .join('\n');
 }
