@@ -432,6 +432,34 @@ export function createCardImageResolver({
     });
   }
 
+  // For an own image: does a database have a picture of this card now?
+  // Returns the match, or null. Checked at most every few days per card.
+  async function findDatabaseImage(cardName, entry, { setName = '' } = {}) {
+    const key = `upgrade:${String(cardName).trim().toLowerCase()}`;
+    const cached = cacheGet(key, LOOKUP_TTL_MS);
+    if (cached !== undefined) return cached;
+    const result = await schedule(async () => {
+      // The card was chosen in the picker: ask TCGdex for exactly that card.
+      if (entry?.id && entry.id !== 'eigen') {
+        const langs = entry.lang ? [entry.lang] : ['en', 'ja'];
+        for (const lang of langs) {
+          const card = await getJson(`/${lang}/cards/${encodeURIComponent(entry.id)}`).catch(() => null);
+          const candidate = card ? toCandidate(card, lang) : null;
+          if (candidate && await tcgdexImageLoads(candidate)) return candidate;
+        }
+      }
+      return null;
+    }).catch(() => undefined);
+    if (result === undefined) return null; // unreachable: try again next time
+    if (result) { cacheSet(key, result); return result; }
+    // Otherwise look it up the normal way (also finds Limitless images).
+    forget(cardName);
+    const found = await resolve(cardName, { setName });
+    const match = found.status === 'found' ? found.match : null;
+    if (found.status !== 'error') cacheSet(key, match);
+    return match;
+  }
+
   function forget(cardName) {
     const prefix = `lookup:${String(cardName).trim().toLowerCase()}|`;
     for (const key of [...memory.keys()]) if (key.startsWith(prefix)) memory.delete(key);
@@ -443,5 +471,5 @@ export function createCardImageResolver({
     } catch { /* ignore */ }
   }
 
-  return { resolve, search, categoryFor, forget };
+  return { resolve, search, categoryFor, findDatabaseImage, forget };
 }

@@ -650,6 +650,14 @@
     .card-option-tag.is-current { background: var(--green); }
     .card-own-image { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
     .card-own-image .search-input { flex: 1 1 260px; }
+    .image-update-list { display: flex; flex-direction: column; gap: 10px; }
+    .image-update-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 8px 0; border-top: 1px solid var(--line); }
+    .image-update-pair { display: inline-flex; align-items: center; gap: 8px; }
+    .image-update-pair img { width: 44px; height: 61px; object-fit: cover; border: 2px solid var(--border); background: var(--field); }
+    .image-update-arrow { color: var(--muted); font-weight: 700; }
+    .image-update-text { flex: 1 1 220px; font-size: 13px; color: var(--text2); overflow-wrap: anywhere; }
+    .image-update-text strong { color: var(--text); }
+    .image-update-actions { display: flex; flex-wrap: wrap; gap: 8px; }
     .card-own-image.is-highlighted { border-top-color: var(--green); }
     .card-own-image.is-highlighted .form-label { color: var(--text); }
     .card-option.is-selected { border-color: var(--green); box-shadow: 0 0 0 2px var(--green); }
@@ -2286,6 +2294,7 @@
   <main class="main">
     <div class="setnames-reminder" id="setNamesReminder" hidden></div>
     <div class="setnames-reminder" id="cardPicksReminder" hidden></div>
+    <div class="setnames-reminder" id="ownImageUpdates" hidden></div>
     <!-- Transactions view -->
     <div id="transactionsView">
       <div class="section-header">
@@ -3002,6 +3011,9 @@ import {
   clearCardImage,
   getCardFinish,
   setCardImageCategory,
+  getOwnCardImages,
+  keepOwnCardImage,
+  replaceOwnCardImage,
   extractSetCode,
   formatCardPicksForExport,
   getCardImage,
@@ -3952,7 +3964,7 @@ function ownCardImage(image) {
   const parsed = parseCardReference(picker.cardName);
   const card = picker.selected;
   return card
-    ? { id: card.id, image, name: card.name, setName: card.setName, ...(card.category ? { category: card.category } : {}) }
+    ? { id: card.id, image, name: card.name, setName: card.setName, lang: card.lang, ...(card.category ? { category: card.category } : {}) }
     : { id: 'eigen', image, name: parsed.name || picker.cardName, setName: cardSetName(picker.cardName) };
 }
 
@@ -4190,6 +4202,102 @@ document.getElementById('cardPicksReminder').addEventListener('click', async eve
     cardPicksExportOpen = false;
     renderCardPicksReminder();
   }
+});
+
+
+// ── own images that a card database now has a picture for ─────────────
+// Checked in the background a few seconds after opening the app (each card
+// at most every few days). Switching frees the stored upload.
+const ownImageUpdates = new Map(); // card key → database match
+let ownImageUpdatesHidden = false;
+
+async function checkOwnImages() {
+  if (IS_PREVIEW) return;
+  for (const { key, entry } of getOwnCardImages(appState).slice(0, 60)) {
+    const match = await cardResolver.findDatabaseImage(key, entry, { setName: cardSetName(key) }).catch(() => null);
+    const current = appState.cardImages?.[key];
+    if (match?.image && current && !current.keepOwn && current.image === entry.image) {
+      ownImageUpdates.set(key, match);
+      renderOwnImageUpdates();
+    }
+  }
+}
+setTimeout(checkOwnImages, 6000);
+
+// The card name as written in a transaction (keys are lowercase).
+function cardNameForKey(key) {
+  for (const tab of appState.tabs) {
+    for (const txn of tab.transactions) {
+      const name = normalizeTransaction(txn).cardName;
+      if (name && cardImageKey(name) === key) return name;
+    }
+  }
+  return key;
+}
+
+function renderOwnImageUpdates() {
+  const banner = document.getElementById('ownImageUpdates');
+  if (!banner) return;
+  // Drop suggestions that no longer apply (switched, kept, or changed meanwhile).
+  for (const key of [...ownImageUpdates.keys()]) {
+    const entry = appState.cardImages?.[key];
+    if (!entry || entry.keepOwn || entry.source !== 'user' || /^https:\/\/(assets\.tcgdex\.net|limitlesstcg\.)/.test(entry.image)) ownImageUpdates.delete(key);
+  }
+  const count = ownImageUpdates.size;
+  banner.hidden = IS_PREVIEW || ownImageUpdatesHidden || !count;
+  if (banner.hidden) { banner.innerHTML = ''; return; }
+  const rows = [...ownImageUpdates.entries()].map(([key, match]) => {
+    const own = appState.cardImages[key];
+    return `
+      <div class="image-update-row">
+        <span class="image-update-pair">
+          <img src="${escAttr(cardImageSrc(own.image))}" alt="Eigen afbeelding" title="Jouw afbeelding">
+          <span class="image-update-arrow" aria-hidden="true">→</span>
+          <img src="${escAttr(cardImageUrl(match.image))}" alt="Afbeelding uit de database" title="${escAttr(match.source === 'limitless' ? 'Limitless' : 'TCGdex')}">
+        </span>
+        <span class="image-update-text"><strong>${escHTML(cardNameForKey(key))}</strong><br>${escHTML([match.name, match.setName, match.localId && `#${match.localId}`].filter(Boolean).join(' · '))}</span>
+        <span class="image-update-actions">
+          <button type="button" class="setnames-btn primary" data-image-update="use" data-key="${escAttr(key)}">Gebruik ${match.source === 'limitless' ? 'Limitless' : 'TCGdex'}</button>
+          <button type="button" class="setnames-btn" data-image-update="keep" data-key="${escAttr(key)}">Eigen houden</button>
+        </span>
+      </div>`;
+  }).join('');
+  banner.innerHTML = `
+    <div class="setnames-reminder-head">
+      <span class="setnames-reminder-title">Nieuwe kaartafbeeldingen beschikbaar</span>
+      <span class="setnames-reminder-text">Voor ${count} ${count === 1 ? 'kaart' : 'kaarten'} met een eigen afbeelding is er nu een afbeelding in de database. Overzetten bespaart opslag: je eigen upload wordt daarna opgeruimd.</span>
+    </div>
+    <div class="image-update-list">${rows}</div>
+    <div class="setnames-reminder-actions">
+      ${count > 1 ? '<button type="button" class="setnames-btn primary" data-image-update="use-all">Alles overzetten</button>' : ''}
+      <button type="button" class="setnames-btn" data-image-update="later">Later</button>
+    </div>`;
+}
+
+document.getElementById('ownImageUpdates').addEventListener('click', event => {
+  const button = event.target.closest('[data-image-update]');
+  if (!button) return;
+  const action = button.dataset.imageUpdate;
+  if (action === 'later') {
+    ownImageUpdatesHidden = true;
+    renderOwnImageUpdates();
+    return;
+  }
+  const keys = action === 'use-all' ? [...ownImageUpdates.keys()] : [button.dataset.key];
+  let next = appState;
+  for (const key of keys) {
+    if (action === 'keep') next = keepOwnCardImage(next, key);
+    else next = replaceOwnCardImage(next, key, ownImageUpdates.get(key));
+    ownImageUpdates.delete(key);
+  }
+  if (next !== appState) {
+    appState = next;
+    saveToStorage();
+    keys.forEach(key => updateCardMedia(key));
+    if (activeView === 'profit') renderProfitTable();
+  }
+  renderOwnImageUpdates();
+  renderCardPicksReminder();
 });
 
 // ── archive pop-up ─────────────────────────────────────────────────────
@@ -6132,6 +6240,7 @@ function refreshView() {
   syncTopbarTitle();
   renderSetNamesReminder();
   renderCardPicksReminder();
+  renderOwnImageUpdates();
   updateSortButtons();
   setSectionCollapsed('transactions', collapsedSections.transactions);
   setSectionCollapsed('profitTable', collapsedSections.profitTable);
