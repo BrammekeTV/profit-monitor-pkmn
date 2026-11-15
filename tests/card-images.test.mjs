@@ -145,6 +145,9 @@ function fakeSources() {
     'en/30th-c': { id: '30th-c', name: '30th Classic Collection', cards: [
       { id: '30th-c-001', localId: '001', name: 'Charizard', image: `${T}/en/me/30th-c/001` },
       { id: '30th-c-017', localId: '017', name: 'Raikou', image: `${T}/en/me/30th-c/017` },
+      // In the set, but TCGdex has no picture yet:
+      { id: '30th-c-010', localId: '010', name: 'Uxie' },
+      { id: '30th-c-013', localId: '013', name: 'Buzzwole GX', image: `${T}/en/me/30th-c/013` },
     ] },
     'ja/M1L': { id: 'M1L', name: 'メガブレイブ', cards: [
       { id: 'M1L-001', localId: '001', name: 'フシギダネ', image: `${T}/ja/M/M1L/001` },
@@ -231,6 +234,18 @@ test('resolver: the cards that were reported missing', async () => {
   assert.equal((await found('Raikou (30C VIV 50)')).id, '30th-c-017');
   assert.equal((await resolver.resolve('Zapdos (30C FO 15)')).status, 'none', 'never a main-set card instead');
   assert.equal((await resolver.search('30C VIV 50', { name: 'Raikou' }))[0].id, '30th-c-017');
+
+  // Known card without a picture (none in the set, or a listed one that doesn't load):
+  // reported as such, and still offered in the picker so an own image can go with it.
+  const uxie = await resolver.resolve('Uxie Lv.55 (30C LA 43)');
+  assert.equal(uxie.status, 'noimage');
+  assert.equal(uxie.card.id, '30th-c-010');
+  assert.equal(uxie.card.image, '');
+  assert.equal((await resolver.resolve('Buzzwole GX (30C CIN 57)')).status, 'noimage');
+  const picked = await resolver.search('30C LA 43', { name: 'Uxie Lv.55' });
+  assert.deepEqual(picked.map(card => card.id), ['30th-c-010']);
+  // Unknown name: the whole Classic Collection to choose from, with and without pictures.
+  assert.equal((await resolver.search('30C XY 1', { name: 'Somebody' })).length, 4);
 
   // pokemontcg.io images are never used (it shows a card back for missing ones).
   assert.notEqual((await resolver.resolve('Pikachu (MCD21 25)')).match?.source, 'pokemontcg');

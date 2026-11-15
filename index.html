@@ -650,6 +650,9 @@
     .card-option-tag.is-current { background: var(--green); }
     .card-own-image { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
     .card-own-image .search-input { flex: 1 1 260px; }
+    .card-own-image.is-highlighted { border-top-color: var(--green); }
+    .card-own-image.is-highlighted .form-label { color: var(--text); }
+    .card-option.is-selected { border-color: var(--green); box-shadow: 0 0 0 2px var(--green); }
     .card-own-image label.inline-btn { cursor: pointer; }
     .card-media { display: inline-flex; align-items: center; gap: 6px; }
     .media-thumb {
@@ -3811,6 +3814,9 @@ function cardMediaInnerHTML(cardName) {
   if (lookup.status === 'ambiguous') {
     return `<button type="button" class="media-status-btn" data-card-pick="${escAttr(cardName)}">Kies kaartafbeelding (${lookup.candidates.length})</button>`;
   }
+  if (lookup.status === 'noimage') {
+    return `<button type="button" class="media-status-btn subtle" data-card-pick="${escAttr(cardName)}" title="${escAttr(`${lookup.card.name} · ${lookup.card.setName} #${lookup.card.localId}`)}">Kaart gevonden, nog geen afbeelding · eigen toevoegen</button>`;
+  }
   const label = lookup.status === 'error' ? 'Zoeken mislukt · opnieuw' : 'Geen afbeelding gevonden · zoeken';
   return `<button type="button" class="media-status-btn subtle" data-card-pick="${escAttr(cardName)}">${label}</button>`;
 }
@@ -3838,7 +3844,7 @@ function updateCardMedia(cardName) {
 }
 
 // ── card picker ────────────────────────────────────────────────────────
-const picker = { cardName: '', candidates: [], loading: false, error: '', query: null, lang: 'en' };
+const picker = { cardName: '', candidates: [], loading: false, error: '', query: null, lang: 'en', selected: null };
 
 function pickerStartQuery(cardName) {
   const parsed = parseCardReference(cardName);
@@ -3850,8 +3856,10 @@ function pickerStartQuery(cardName) {
 function openCardPicker(cardName) {
   picker.cardName = cardName;
   picker.error = '';
+  picker.query = null;
   const lookup = cardLookups.get(cardImageKey(cardName));
-  picker.candidates = lookup?.status === 'ambiguous' ? lookup.candidates : [];
+  picker.candidates = lookup?.status === 'ambiguous' ? lookup.candidates : lookup?.status === 'noimage' ? [lookup.card] : [];
+  picker.selected = lookup?.status === 'noimage' ? lookup.card : null;
   document.getElementById('cardPickerBackdrop').classList.add('open');
   renderCardPicker();
   if (!picker.candidates.length) runPickerSearch(pickerStartQuery(cardName), 'en');
@@ -3898,17 +3906,23 @@ function renderCardPicker({ keepQuery = false } = {}) {
       ? `<div class="archive-empty">${escHTML(picker.error)}</div>`
       : ordered.length
         ? `<div class="card-picker-grid">${ordered.map(card => `
-            <button type="button" class="card-option${current?.id === card.id ? ' is-current' : ''}" data-pick-index="${picker.candidates.indexOf(card)}">
-              <img src="${escAttr(cardImageUrl(card.image))}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'), { className: 'card-option-missing', textContent: 'Geen afbeelding' }))">
+            <button type="button" class="card-option${current?.id === card.id ? ' is-current' : ''}${picker.selected?.id === card.id ? ' is-selected' : ''}" data-pick-index="${picker.candidates.indexOf(card)}">
+              ${card.image
+                ? `<img src="${escAttr(cardImageUrl(card.image))}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'), { className: 'card-option-missing', textContent: 'Geen afbeelding' }))">`
+                : '<span class="card-option-missing">Geen afbeelding</span>'}
               <span class="card-option-name">${escHTML(card.name || parsed.name)}</span>
               <span class="card-option-set">${escHTML(card.setName || card.setId)} · #${escHTML(card.localId)}${card.lang === 'ja' ? ' · JP' : ''}</span>
               ${numbered.includes(card) ? '<span class="card-option-tag">Zelfde nummer</span>' : ''}
               ${current?.id === card.id ? '<span class="card-option-tag is-current">Huidige keuze</span>' : ''}
+              ${picker.selected?.id === card.id ? '<span class="card-option-tag is-current">Gekozen · voeg hieronder een afbeelding toe</span>' : ''}
             </button>`).join('')}</div>`
         : `<div class="archive-empty">Niets gevonden. Zoek op naam, of op setcode met nummer (bijv. <strong>M1L 087</strong> of <strong>MEP 063</strong>). Japanse kaarten vind je via hun setcode.</div>`;
 
   content.innerHTML = `
-    <p class="archive-intro">Voor <strong>${escHTML(picker.cardName)}</strong>${parsed.setCode ? ` · set ${escHTML(parsed.setCode)}${setName ? ` (${escHTML(setName)})` : ''}` : ''}${parsed.number ? ` · nr. ${escHTML(parsed.number)}` : ''}.</p>
+    <p class="archive-intro">Voor <strong>${escHTML(picker.cardName)}</strong>${parsed.originalSet
+      ? ` · ${escHTML(setName ? `${setName} Classic Collection` : `${parsed.setCode} Classic Collection`)}, origineel ${escHTML(parsed.originalSet)} ${escHTML(parsed.number)}`
+      : `${parsed.setCode ? ` · set ${escHTML(parsed.setCode)}${setName ? ` (${escHTML(setName)})` : ''}` : ''}${parsed.number ? ` · nr. ${escHTML(parsed.number)}` : ''}`}.
+      Kaarten zonder afbeelding kun je kiezen en dan een eigen afbeelding geven.</p>
     <form class="card-picker-search" id="cardPickerSearch">
       <input type="search" class="search-input" id="cardPickerQuery" value="${escAttr(query)}" placeholder="Naam, of setcode + nummer (M1L 087)" autocomplete="off">
       <select class="form-select" id="cardPickerLang" aria-label="Taal">
@@ -3918,8 +3932,8 @@ function renderCardPicker({ keepQuery = false } = {}) {
       <button type="submit" class="inline-btn">Zoek</button>
     </form>
     ${grid}
-    <form class="card-own-image" id="cardOwnImage">
-      <span class="form-label">Eigen afbeelding</span>
+    <form class="card-own-image${picker.selected ? ' is-highlighted' : ''}" id="cardOwnImage">
+      <span class="form-label">Eigen afbeelding${picker.selected ? ` voor ${escHTML(picker.selected.name)} · ${escHTML(picker.selected.setName || picker.selected.setId)} #${escHTML(picker.selected.localId)}` : ''}</span>
       <input type="url" class="search-input" id="cardOwnImageUrl" placeholder="Plak een afbeeldingslink (https://…)" autocomplete="off">
       <button type="submit" class="inline-btn">Gebruiken</button>
       <label class="inline-btn">Upload<input type="file" id="cardOwnImageFile" accept="image/*" hidden></label>
@@ -3928,13 +3942,18 @@ function renderCardPicker({ keepQuery = false } = {}) {
       <button type="button" class="inline-btn" data-picker-action="none">Geen afbeelding tonen</button>
       ${current && !current.builtIn ? '<button type="button" class="inline-btn" data-picker-action="reset">Keuze wissen</button>' : ''}
       ${ownPicks ? `<button type="button" class="set-footnote-link" data-picker-action="export">${ownPicks} eigen ${ownPicks === 1 ? 'keuze' : 'keuzes'} kopiëren voor Claude</button>` : ''}
-      <span class="card-picker-credit">Bronnen: TCGdex · pokemontcg.io · Limitless</span>
+      <span class="card-picker-credit">Afbeeldingen: TCGdex · Limitless</span>
     </div>`;
 }
 
+// Your own picture; when you chose a card without a picture first, it keeps
+// that card's details (set, number, Pokémon/Trainer for the stamp position).
 function ownCardImage(image) {
   const parsed = parseCardReference(picker.cardName);
-  return { id: 'eigen', image, name: parsed.name || picker.cardName, setName: cardSetName(picker.cardName) };
+  const card = picker.selected;
+  return card
+    ? { id: card.id, image, name: card.name, setName: card.setName, ...(card.category ? { category: card.category } : {}) }
+    : { id: 'eigen', image, name: parsed.name || picker.cardName, setName: cardSetName(picker.cardName) };
 }
 
 function applyCardChoice(nextState) {
@@ -3979,7 +3998,14 @@ document.getElementById('cardPickerContent').addEventListener('click', event => 
   const option = event.target.closest('[data-pick-index]');
   if (option) {
     const card = picker.candidates[Number(option.dataset.pickIndex)];
-    if (card) applyCardChoice(setCardImage(appState, picker.cardName, card, 'user'));
+    if (!card) return;
+    if (!card.image || option.querySelector('.card-option-missing')) {
+      picker.selected = card;
+      renderCardPicker({ keepQuery: true });
+      document.getElementById('cardOwnImageUrl')?.focus();
+      return;
+    }
+    applyCardChoice(setCardImage(appState, picker.cardName, card, 'user'));
     return;
   }
   const action = event.target.closest('[data-picker-action]')?.dataset.pickerAction;

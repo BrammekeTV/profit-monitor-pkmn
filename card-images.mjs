@@ -11,10 +11,13 @@
 // resolve(cardName) answers with one of:
 //   { status: 'found', match }            exactly one card fits → used automatically
 //   { status: 'ambiguous', candidates }   several fit → the user picks one
+//   { status: 'noimage', card }           the card is known, but no source has a picture
+//                                         → the user adds their own image to it
 //   { status: 'none' }                    nothing found
 //   { status: 'error' }                   unreachable (try again later)
 // A match / candidate: { id, name, localId, setId, setName, image, lang, source }
 // where image is a base URL; cardImageUrl() turns it into a small or large image.
+// image is '' for a card that has no picture anywhere (picker and 'noimage' only).
 
 import { parseCardReference } from './profit-monitor-core.mjs';
 
@@ -226,19 +229,19 @@ export function createCardImageResolver({
     return promise;
   }
 
-  async function searchByName(lang, name, { exact = true } = {}) {
+  async function searchByName(lang, name, { exact = true, allowNoImage = false } = {}) {
     const filter = exact ? `eq:${name}` : name;
     const cards = await getJson(`/${lang}/cards?name=${encodeURIComponent(filter)}&pagination:itemsPerPage=250`);
     if (!Array.isArray(cards)) return [];
     await setTable();
-    return cards.map(card => toCandidate(card, lang)).filter(Boolean);
+    return cards.map(card => toCandidate(card, lang, '', { allowNoImage })).filter(Boolean);
   }
 
   // All cards of one TCGdex set (used to browse Japanese sets in the picker).
   async function browseSet(lang, setId) {
     const set = await getJson(`/${lang}/sets/${encodeURIComponent(setId)}`);
     const cards = Array.isArray(set?.cards) ? set.cards : [];
-    return cards.map(card => toCandidate({ ...card, set: { id: setId, name: set.name } }, lang, setId)).filter(Boolean);
+    return cards.map(card => toCandidate({ ...card, set: { id: setId, name: set.name } }, lang, setId, { allowNoImage: true })).filter(Boolean);
   }
 
   // Images that exist as files only: build the address, check that it loads.
@@ -277,25 +280,31 @@ export function createCardImageResolver({
 
   // Classic Collection reprint ("Raikou (30C VIV 50)"): look for the name in
   // the Classic Collection set; the number is the one from the original set.
-  async function classicCard({ name, setCode, number }, table) {
+  // Returns { hits, noImage }: cards with a working picture, and the same kind
+  // of match for cards that exist but have no picture yet.
+  async function classicCard({ name }, table, setCode) {
     const code = simplify(setCode);
     const isClassic = set => /classic/i.test(set.name) && simplify(set.code).startsWith(code);
-    const results = [];
+    const hits = [];
+    const noImage = [];
     for (const set of (table?.tcgdex || []).filter(set => set.lang === 'en' && set.cards !== 0 && isClassic(set))) {
       const cards = await browseSet('en', set.id).catch(() => []);
       const exact = cards.filter(card => simplify(card.name) === simplify(name));
       for (const card of exact.length ? exact : cards.filter(card => namesMatch(name, card.name))) {
-        if (await tcgdexImageLoads(card)) results.push(card);
+        if (await tcgdexImageLoads(card)) hits.push(card);
+        else noImage.push({ ...card, image: '' });
       }
     }
-    return results;
+    return { hits, noImage };
   }
 
   // Exact card for a set code + number, from whichever source has it.
+  // Returns { hits, noImage } like classicCard.
   async function exactCard(reference, table, sets) {
     const { name, number } = reference;
     const accepted = [];
     const rejected = [];
+    const noImage = [];
     const skipSetNames = [];
     for (const set of [...sets.en, ...sets.asia]) {
       const card = await fetchTcgdexCard(set.lang, set.id, number);
@@ -307,14 +316,23 @@ export function createCardImageResolver({
         continue;
       }
       if (await tcgdexImageLoads(card)) accepted.push(card);
+      else noImage.push({ ...card, image: '' });
     }
-    if (accepted.length) return accepted;
+    if (accepted.length) return { hits: accepted, noImage };
     const fallback = skipSetNames.length && !sets.asia.length ? null : await fallbackImage(reference, sets);
     if (fallback) {
-      if (!fallback.category && name) fallback.category = await categoryFor(name) || undefined;
-      return [fallback];
+      if (!fallback.category) fallback.category = noImage[0]?.category || (name && await categoryFor(name)) || undefined;
+      return { hits: [fallback], noImage: [] };
     }
-    return rejected.filter(card => card.image);
+    return { hits: rejected.filter(card => card.image), noImage };
+  }
+
+  function outcome({ hits, noImage }) {
+    if (hits.length === 1) return { status: 'found', match: hits[0] };
+    if (hits.length > 1) return { status: 'ambiguous', candidates: hits };
+    if (noImage.length === 1) return { status: 'noimage', card: noImage[0] };
+    if (noImage.length > 1) return { status: 'ambiguous', candidates: noImage };
+    return null;
   }
 
   async function lookup(cardName, { setName = '' } = {}) {
@@ -325,18 +343,20 @@ export function createCardImageResolver({
     const sets = setCode ? findSets(table, setCode, { setName }) : { en: [], asia: [], pokemontcg: [], alias: '' };
 
     if (reference.originalSet) {
-      const hits = await classicCard(reference, table);
-      if (hits.length === 1) return { status: 'found', match: hits[0] };
-      if (hits.length > 1) return { status: 'ambiguous', candidates: hits };
-      return { status: 'none' };
+      return outcome(await classicCard(reference, table, setCode)) || { status: 'none' };
     }
 
     // 1. Set code + number: that exact card, from whichever source has it.
+    let knownWithoutImage = null;
     if (setCode && number) {
-      const hits = await exactCard(reference, table, sets);
-      if (hits.length === 1) return { status: 'found', match: hits[0] };
-      if (hits.length > 1) return { status: 'ambiguous', candidates: hits };
+      const result = outcome(await exactCard(reference, table, sets));
+      if (result?.status === 'noimage') knownWithoutImage = result;
+      else if (result) return result;
     }
+
+    // The exact card exists but has no picture: say so, rather than offering
+    // pictures of other prints with the same name.
+    if (knownWithoutImage) return knownWithoutImage;
 
     // 2. Search by name, narrowed down by set and number when known.
     if (!name) return { status: 'none' };
@@ -385,14 +405,21 @@ export function createCardImageResolver({
       const [first, second] = parts;
       // "30C VIV 50": a Classic Collection reprint.
       if (parts.length === 3 && /^[A-Za-z]/.test(second) && /\d/.test(parts[2])) {
-        const hits = await classicCard({ name, setCode: first, number: parts[2] }, table);
-        if (hits.length) return hits;
+        const { hits, noImage } = await classicCard({ name }, table, first);
+        if (hits.length || noImage.length) return [...hits, ...noImage];
+        // Unknown name: show the whole Classic Collection to choose from.
+        const code = simplify(first);
+        for (const set of (table?.tcgdex || []).filter(set => set.lang === 'en' && /classic/i.test(set.name) && simplify(set.code).startsWith(code))) {
+          const cards = await browseSet('en', set.id).catch(() => []);
+          if (cards.length) return cards;
+        }
       }
       const sets = findSets(table, first);
       const looksLikeCode = /\d|^[A-Z0-9-]+$/.test(first) && (!second || /\d/.test(second)) && parts.length <= 2;
       const known = [...sets.en, ...sets.asia];
       if (looksLikeCode && (known.length || second)) {
-        const exact = second ? await exactCard({ name, setCode: first, number: second }, table, sets) : [];
+        const found = second ? await exactCard({ name, setCode: first, number: second }, table, sets) : { hits: [], noImage: [] };
+        const exact = [...found.hits, ...found.noImage];
         const browseList = lang === 'en' ? [...sets.en, ...sets.asia] : [...sets.asia, ...sets.en];
         const browsed = [];
         for (const set of browseList.slice(0, 2)) browsed.push(...await browseSet(set.lang, set.id).catch(() => []));
@@ -400,7 +427,7 @@ export function createCardImageResolver({
         const results = [...exact, ...rest];
         if (results.length) return results;
       }
-      const byName = await searchByName(lang === 'ja' ? 'ja' : 'en', text, { exact: false });
+      const byName = await searchByName(lang === 'ja' ? 'ja' : 'en', text, { exact: false, allowNoImage: true });
       return byName.slice(0, MAX_CANDIDATES * 2);
     });
   }
