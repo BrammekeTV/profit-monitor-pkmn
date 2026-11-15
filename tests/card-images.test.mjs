@@ -145,6 +145,9 @@ function fakeSources() {
     'en/30th-c': { id: '30th-c', name: '30th Classic Collection', cards: [
       { id: '30th-c-001', localId: '001', name: 'Charizard', image: `${T}/en/me/30th-c/001` },
       { id: '30th-c-017', localId: '017', name: 'Raikou', image: `${T}/en/me/30th-c/017` },
+      // In the set, but TCGdex has no picture yet:
+      { id: '30th-c-010', localId: '010', name: 'Uxie' },
+      { id: '30th-c-013', localId: '013', name: 'Buzzwole GX', image: `${T}/en/me/30th-c/013` },
     ] },
     'ja/M1L': { id: 'M1L', name: 'メガブレイブ', cards: [
       { id: 'M1L-001', localId: '001', name: 'フシギダネ', image: `${T}/ja/M/M1L/001` },
@@ -231,6 +234,18 @@ test('resolver: the cards that were reported missing', async () => {
   assert.equal((await found('Raikou (30C VIV 50)')).id, '30th-c-017');
   assert.equal((await resolver.resolve('Zapdos (30C FO 15)')).status, 'none', 'never a main-set card instead');
   assert.equal((await resolver.search('30C VIV 50', { name: 'Raikou' }))[0].id, '30th-c-017');
+
+  // Known card without a picture (none in the set, or a listed one that doesn't load):
+  // reported as such, and still offered in the picker so an own image can go with it.
+  const uxie = await resolver.resolve('Uxie Lv.55 (30C LA 43)');
+  assert.equal(uxie.status, 'noimage');
+  assert.equal(uxie.card.id, '30th-c-010');
+  assert.equal(uxie.card.image, '');
+  assert.equal((await resolver.resolve('Buzzwole GX (30C CIN 57)')).status, 'noimage');
+  const picked = await resolver.search('30C LA 43', { name: 'Uxie Lv.55' });
+  assert.deepEqual(picked.map(card => card.id), ['30th-c-010']);
+  // Unknown name: the whole Classic Collection to choose from, with and without pictures.
+  assert.equal((await resolver.search('30C XY 1', { name: 'Somebody' })).length, 4);
 
   // pokemontcg.io images are never used (it shows a card back for missing ones).
   assert.notEqual((await resolver.resolve('Pikachu (MCD21 25)')).match?.source, 'pokemontcg');
@@ -320,4 +335,39 @@ test('built-in picks, and pokemontcg.io links are dropped', () => {
   } });
   assert.equal(loaded.cardImages, undefined);
   assert.equal(setCardImage(state, 'X', { id: 'x', image: 'https://images.pokemontcg.io/a/1' }, 'user').cardImages.x, undefined);
+});
+
+test('own image → database image once one exists', async () => {
+  const { getOwnCardImages, keepOwnCardImage, replaceOwnCardImage } = await import('../profit-monitor-core.mjs');
+  // Own upload attached to a TCGdex card that had no picture.
+  let state = setCardImage(ensureAppState(null), 'Uxie Lv.55 (30C LA 43)',
+    { id: '30th-c-010', image: SERVER_IMG, name: 'Uxie', setName: '30th Classic Collection', lang: 'en', category: 'Pokemon' }, 'user');
+  state = setCardImage(state, 'Scyther (CLV 006)', { id: 'eigen', image: 'https://example.com/s.jpg' }, 'user');
+  state = setCardImage(state, 'Mew ex', { id: 'sv03.5-151', image: `${T}/en/sv/sv03.5/151` }, 'user');
+  assert.deepEqual(getOwnCardImages(state).map(item => item.key), ['uxie lv.55 (30c la 43)', 'scyther (clv 006)']);
+  assert.equal(state.cardImages['uxie lv.55 (30c la 43)'].lang, 'en');
+
+  // TCGdex now has Uxie's picture.
+  const sources = fakeSources();
+  const resolver = newResolver({
+    ...sources,
+    fetchImpl: async url => (url.endsWith('/en/cards/30th-c-010')
+      ? { ok: true, status: 200, json: async () => ({ id: '30th-c-010', localId: '010', name: 'Uxie', image: `${T}/en/me/30th-c/010`, category: 'Pokemon', set: { id: '30th-c', name: '30th Classic Collection' } }) }
+      : sources.fetchImpl(url)),
+    probeImage: async url => url === `${T}/en/me/30th-c/010/low.webp` || sources.probeImage(url),
+  });
+  const own = state.cardImages['uxie lv.55 (30c la 43)'];
+  const match = await resolver.findDatabaseImage('uxie lv.55 (30c la 43)', own);
+  assert.equal(match.image, `${T}/en/me/30th-c/010`);
+  assert.equal(await resolver.findDatabaseImage('scyther (clv 006)', state.cardImages['scyther (clv 006)']), null);
+
+  const switched = replaceOwnCardImage(state, 'uxie lv.55 (30c la 43)', match);
+  assert.equal(switched.cardImages['uxie lv.55 (30c la 43)'].image, `${T}/en/me/30th-c/010`);
+  assert.equal(switched.cardImages['uxie lv.55 (30c la 43)'].source, 'auto');
+  assert.ok(!JSON.stringify(switched).includes(SERVER_IMG), 'the upload is no longer referenced, so the server cleans it up');
+
+  const kept = keepOwnCardImage(state, 'uxie lv.55 (30c la 43)');
+  assert.equal(kept.cardImages['uxie lv.55 (30c la 43)'].keepOwn, true);
+  assert.deepEqual(getOwnCardImages(kept).map(item => item.key), ['scyther (clv 006)']);
+  assert.equal(ensureAppState(JSON.parse(JSON.stringify(kept))).cardImages['uxie lv.55 (30c la 43)'].keepOwn, true);
 });

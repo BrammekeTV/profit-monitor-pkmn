@@ -1524,6 +1524,7 @@ export const CARD_IMAGES = Object.freeze({
 export const CARD_PICKS_REMINDER_DAYS = 30;
 const CARD_IMAGE_SOURCES = new Set(['auto', 'user', 'none']);
 export const CARD_CATEGORIES = ['Pokemon', 'Trainer', 'Energy'];
+const CARD_LANGS = ['en', 'ja', 'zh-tw', 'zh-cn', 'ko', 'th', 'id'];
 // Image hosts used for automatic matches. A hand-picked image may also be any
 // https link, a photo stored by the server, or (without server) a data: URL.
 const CARD_IMAGE_HOST_PATTERN = /^https:\/\/(?:assets\.tcgdex\.net|limitlesstcg\.nyc3\.cdn\.digitaloceanspaces\.com)\/[A-Za-z0-9._%/-]+$/;
@@ -1598,6 +1599,10 @@ export function normalizeCardImageEntry(raw) {
     source,
     // Pokémon and Trainer cards have their artwork in a different place.
     ...(CARD_CATEGORIES.includes(raw.category) ? { category: raw.category } : {}),
+    // TCGdex language of the card, to check it again later.
+    ...(CARD_LANGS.includes(raw.lang) ? { lang: raw.lang } : {}),
+    // "Keep my own image" was chosen when a database image became available.
+    ...(raw.keepOwn === true ? { keepOwn: true } : {}),
   };
 }
 
@@ -1664,6 +1669,35 @@ export function setCardImage(state, cardName, match, source = 'user', options = 
   if (!hasPicks) delete next.cardPicksReminderAt;
   else if (!next.cardPicksReminderAt) next.cardPicksReminderAt = addDaysISO(todayISO(options.now), CARD_PICKS_REMINDER_DAYS);
   return next;
+}
+
+// An image the user supplied (link or upload), not one from a card database.
+export function isOwnCardImage(entry) {
+  return Boolean(entry) && entry.source === 'user' && Boolean(entry.image) && !CARD_IMAGE_HOST_PATTERN.test(entry.image);
+}
+
+// Own images that could be replaced by a database image once one exists.
+export function getOwnCardImages(state) {
+  return Object.entries(state?.cardImages || {})
+    .filter(([, entry]) => isOwnCardImage(entry) && !entry.keepOwn)
+    .map(([key, entry]) => ({ key, entry }));
+}
+
+// Use the database image instead of the own one (frees the stored upload).
+export function replaceOwnCardImage(state, cardName, match) {
+  const key = cardImageKey(cardName);
+  const entry = state.cardImages?.[key];
+  if (!isOwnCardImage(entry)) return state;
+  const next = setCardImage(state, cardName, { ...match, category: match.category || entry.category }, 'auto');
+  return next.cardImages?.[key]?.source === 'auto' ? next : state;
+}
+
+// Keep the own image and don't suggest a database image for it again.
+export function keepOwnCardImage(state, cardName) {
+  const key = cardImageKey(cardName);
+  const entry = state.cardImages?.[key];
+  if (!isOwnCardImage(entry) || entry.keepOwn) return state;
+  return { ...state, cardImages: { ...state.cardImages, [key]: { ...entry, keepOwn: true } } };
 }
 
 // Records whether a card is a Pokémon, Trainer or Energy card (keeps the image).
