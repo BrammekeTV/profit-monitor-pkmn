@@ -78,9 +78,12 @@
       --chart-area-faint: rgba(47, 154, 91, 0.02);
       --chart-bar-hover: #2F9A5B;
       --chart-neg-bar: rgba(210, 88, 78, 0.72);
-      --chart-neutral: rgba(17, 17, 17, 0.12);
-      --chart-neutral-hover: rgba(17, 17, 17, 0.22);
-      --chart-neutral-line: #8C8C8C;
+      --chart-sales: rgba(47, 154, 91, 0.26);
+      --chart-sales-hover: rgba(47, 154, 91, 0.42);
+      --chart-sales-line: rgba(47, 154, 91, 0.7);
+      --chart-purchases: rgba(210, 88, 78, 0.24);
+      --chart-purchases-hover: rgba(210, 88, 78, 0.40);
+      --chart-purchases-line: rgba(210, 88, 78, 0.7);
 
       --logo-filter: brightness(0) invert(1);
       --th-logo-filter: brightness(0);
@@ -156,9 +159,12 @@
       --chart-area-faint: rgba(95, 216, 138, 0.01);
       --chart-bar-hover: #5FD88A;
       --chart-neg-bar: rgba(220, 107, 98, 0.75);
-      --chart-neutral: rgba(243, 240, 234, 0.16);
-      --chart-neutral-hover: rgba(243, 240, 234, 0.28);
-      --chart-neutral-line: #8A847C;
+      --chart-sales: rgba(95, 216, 138, 0.24);
+      --chart-sales-hover: rgba(95, 216, 138, 0.40);
+      --chart-sales-line: rgba(95, 216, 138, 0.65);
+      --chart-purchases: rgba(220, 107, 98, 0.26);
+      --chart-purchases-hover: rgba(220, 107, 98, 0.42);
+      --chart-purchases-line: rgba(220, 107, 98, 0.7);
 
       --logo-filter: brightness(0) invert(1);
       --th-logo-filter: brightness(0) invert(1);
@@ -3005,7 +3011,7 @@
         </div>
 
         <div class="chart-wrap" id="monthlyChartWrap" style="display:none;">
-          <div class="chart-title">Omzet en winst per maand</div>
+          <div class="chart-title">Verkoop, inkoop en winst per maand</div>
           <div class="chart-canvas chart-canvas-sm"><canvas id="monthlyProfitChart"></canvas></div>
         </div>
       </div>
@@ -3118,10 +3124,10 @@
           </div>
         </div>
 
-        <!-- Widget: Omzet en winst per maand (chart) -->
+        <!-- Widget: Verkoop, inkoop en winst per maand (chart) -->
         <div class="widget widget-chart" id="widgetMonthly">
           <div class="widget-header">
-            <span class="widget-title">Omzet en winst per maand</span>
+            <span class="widget-title">Verkoop, inkoop en winst per maand</span>
             <button class="widget-expand-btn" data-widget="widgetMonthly" title="Vergroot">⤢</button>
           </div>
           <div class="widget-body widget-body-chart">
@@ -3662,9 +3668,12 @@ const CT = {
   get pillText() { return cssVar('--on-inverse'); },
   get tooltipBg() { return cssVar('--surface'); },
   get tooltipBorder() { return cssVar('--border'); },
-  get neutral() { return cssVar('--chart-neutral'); },
-  get neutralHover() { return cssVar('--chart-neutral-hover'); },
-  get neutralLine() { return cssVar('--chart-neutral-line'); },
+  get sales() { return cssVar('--chart-sales'); },
+  get salesHover() { return cssVar('--chart-sales-hover'); },
+  get salesLine() { return cssVar('--chart-sales-line'); },
+  get purchases() { return cssVar('--chart-purchases'); },
+  get purchasesHover() { return cssVar('--chart-purchases-hover'); },
+  get purchasesLine() { return cssVar('--chart-purchases-line'); },
 };
 
 function applyChartDefaults() {
@@ -3772,21 +3781,24 @@ function barDataset(label, values, extra = {}) {
   };
 }
 
-// Omzet is context for the profit figure, so it gets a quiet neutral colour.
-function revenueBarDataset(values) {
-  return barDataset('Omzet', values, {
-    backgroundColor: CT.neutral,
-    hoverBackgroundColor: CT.neutralHover,
+// Verkoop and inkoop are context for the profit figure: soft tints of green
+// and coral, so the solid winst bar or line stays the one that stands out.
+// Inkoop is negative (like "Gekocht"), so it hangs below the zero line.
+function flowBarDataset(label, values, color, hover) {
+  return barDataset(label, values, {
+    backgroundColor: color,
+    hoverBackgroundColor: hover,
+    stack: 'flow',
     order: 2,
   });
 }
 
-function revenueLineDataset(values) {
+function flowLineDataset(label, values, color) {
   return {
     type: 'line',
-    label: 'Omzet',
+    label,
     data: values,
-    borderColor: CT.neutralLine,
+    borderColor: color,
     borderWidth: 1.5,
     borderDash: [4, 4],
     tension: 0.35,
@@ -3794,19 +3806,22 @@ function revenueLineDataset(values) {
     fill: false,
     pointRadius: 0,
     pointHoverRadius: 4,
-    pointBackgroundColor: CT.neutralLine,
+    pointBackgroundColor: color,
     order: 1,
   };
 }
 
-// Small legend for the omzet + winst charts. `kind` is 'bar' or 'line'.
-function omzetWinstLegend(kind) {
-  const omzet = kind === 'bar'
-    ? { text: 'Omzet', fillStyle: CT.neutral, strokeStyle: CT.neutral, pointStyle: 'circle', lineWidth: 0 }
-    : { text: 'Omzet', fillStyle: CT.neutralLine, strokeStyle: CT.neutralLine, pointStyle: 'line', lineWidth: 2 };
-  const winst = kind === 'bar'
-    ? { text: 'Winst', fillStyle: CT.bar, strokeStyle: CT.bar, pointStyle: 'circle', lineWidth: 0 }
-    : { text: 'Winst', fillStyle: CT.line, strokeStyle: CT.line, pointStyle: 'line', lineWidth: 2 };
+// Legend for the verkoop / inkoop / winst charts. `kind` is 'bar' or 'line'.
+function flowLegend(kind) {
+  const bar = kind === 'bar';
+  const item = (text, color) => (bar
+    ? { text, fillStyle: color, strokeStyle: color, pointStyle: 'circle', lineWidth: 0 }
+    : { text, fillStyle: color, strokeStyle: color, pointStyle: 'line', lineWidth: 2 });
+  const items = [
+    item('Verkoop', bar ? CT.sales : CT.salesLine),
+    item('Inkoop', bar ? CT.purchases : CT.purchasesLine),
+    item('Winst', bar ? CT.bar : CT.line),
+  ];
   return {
     display: true,
     position: 'top',
@@ -3818,7 +3833,7 @@ function omzetWinstLegend(kind) {
       boxHeight: 8,
       padding: 12,
       font: { size: 11, weight: '500' },
-      generateLabels: () => [omzet, winst].map(item => ({ ...item, fontColor: CT.text2 })),
+      generateLabels: () => items.map(entry => ({ ...entry, fontColor: CT.text2 })),
     },
   };
 }
@@ -5638,7 +5653,8 @@ function renderMonthlyChart(transactions) {
   const monthly = computeMonthlyData(transactions);
   const labels = monthly.map(m => m.month);
   const values = monthly.map(m => m.profit);
-  const revenue = monthly.map(m => m.revenue);
+  const sales = monthly.map(m => m.revenue);
+  const purchases = monthly.map(m => m.purchases);
 
   if (!values.length) {
     wrap.style.display = 'none';
@@ -5656,14 +5672,15 @@ function renderMonthlyChart(transactions) {
       labels: labels.map(formatMonthLabel),
       datasets: [
         signedLineDataset('Winst', values),
-        revenueLineDataset(revenue),
+        flowLineDataset('Verkoop', sales, CT.salesLine),
+        flowLineDataset('Inkoop', purchases, CT.purchasesLine),
       ],
     },
     plugins: [valueLabelsPlugin],
     options: chartOptions({
       tooltipLabel: context => `${context.dataset.label}: ${fmt(context.parsed.y)}`,
       padding: { top: 6, right: 6 },
-      plugins: { legend: omzetWinstLegend('line') },
+      plugins: { legend: flowLegend('line') },
     }),
   });
 }
@@ -6143,7 +6160,14 @@ function renderMonthlyCompareChart(monthly) {
 
   const labels = monthly.map(m => formatMonthLabel(m.month));
   const profit = monthly.map(m => m.profit);
-  const revenue = monthly.map(m => m.revenue);
+  const sales = monthly.map(m => m.revenue);
+  const purchases = monthly.map(m => m.purchases);
+
+  // Verkoop and inkoop share one stacked column (up and down from zero);
+  // winst stands in its own column next to it.
+  const scales = chartScales();
+  scales.x.stacked = true;
+  scales.y.stacked = true;
 
   const ctx = el.getContext('2d');
   monthlyCompareChart = new Chart(ctx, {
@@ -6151,17 +6175,19 @@ function renderMonthlyCompareChart(monthly) {
     data: {
       labels,
       datasets: [
-        revenueBarDataset(revenue),
-        barDataset('Winst', profit, { valueLabels: 'all' }),
+        flowBarDataset('Verkoop', sales, CT.sales, CT.salesHover),
+        flowBarDataset('Inkoop', purchases, CT.purchases, CT.purchasesHover),
+        barDataset('Winst', profit, { valueLabels: 'all', stack: 'net' }),
       ],
     },
     plugins: [valueLabelsPlugin],
     options: chartOptions({
       tooltipLabel: context => `${context.dataset.label}: ${fmt(context.parsed.y)}`,
+      scales,
       padding: { top: 6, right: 6 },
       plugins: {
         valueLabels: { format: fmtAxis },
-        legend: omzetWinstLegend('bar'),
+        legend: flowLegend('bar'),
       },
     }),
   });
