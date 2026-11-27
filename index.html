@@ -78,6 +78,9 @@
       --chart-area-faint: rgba(47, 154, 91, 0.02);
       --chart-bar-hover: #2F9A5B;
       --chart-neg-bar: rgba(210, 88, 78, 0.72);
+      --chart-neutral: rgba(17, 17, 17, 0.12);
+      --chart-neutral-hover: rgba(17, 17, 17, 0.22);
+      --chart-neutral-line: #8C8C8C;
 
       --logo-filter: brightness(0) invert(1);
       --th-logo-filter: brightness(0);
@@ -153,6 +156,9 @@
       --chart-area-faint: rgba(95, 216, 138, 0.01);
       --chart-bar-hover: #5FD88A;
       --chart-neg-bar: rgba(220, 107, 98, 0.75);
+      --chart-neutral: rgba(243, 240, 234, 0.16);
+      --chart-neutral-hover: rgba(243, 240, 234, 0.28);
+      --chart-neutral-line: #8A847C;
 
       --logo-filter: brightness(0) invert(1);
       --th-logo-filter: brightness(0) invert(1);
@@ -1828,7 +1834,7 @@
 
     .analyse-kpi-row {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(7, minmax(0, 1fr));
       gap: 16px;
       margin-bottom: 16px;
       align-items: stretch;
@@ -2482,7 +2488,7 @@
     .trade-detail-modal .trade-total { margin-top: auto; padding-top: 12px; }
 
     @media (max-width: 1400px) {
-      .analyse-kpi-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .analyse-kpi-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
       .analyse-widget-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .trade-analysis-layout { grid-template-columns: 1fr; }
       .summary-row { grid-template-columns: repeat(4, minmax(130px, auto)); }
@@ -2686,8 +2692,13 @@
     .widget { border-radius: var(--radius-md); }
     .widget-header, .widget-kpi .widget-header { min-height: 30px; padding: 6px 8px 0 12px; }
     .widget-title { font-size: 13px; }
-    .widget-kpi .widget-title { font-size: 12px; }
+    .widget-kpi .widget-title { font-size: 12px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .widget-expand-btn { width: 22px; height: 22px; font-size: 12px; }
+    /* KPI cards are narrow: the expand button floats over the corner instead of
+       taking width from the title, so every title stays on one line. */
+    .widget-kpi { position: relative; }
+    .widget-kpi .widget-header { padding-right: 12px; }
+    .widget-kpi .widget-expand-btn { position: absolute; top: 4px; right: 4px; background: var(--surface); }
     .widget-body { padding: 2px 12px 8px; }
     .widget-kpi .widget-body { padding: 0 12px 10px; }
     .kpi-value { font-size: 22px; }
@@ -2994,7 +3005,7 @@
         </div>
 
         <div class="chart-wrap" id="monthlyChartWrap" style="display:none;">
-          <div class="chart-title">Netto resultaat per maand</div>
+          <div class="chart-title">Omzet en winst per maand</div>
           <div class="chart-canvas chart-canvas-sm"><canvas id="monthlyProfitChart"></canvas></div>
         </div>
       </div>
@@ -3029,6 +3040,30 @@
           <div class="widget-body">
             <div class="kpi-value neutral" id="kpiCurrentMonth">—</div>
             <div class="kpi-sub" id="kpiCurrentMonthSub"></div>
+          </div>
+        </div>
+
+        <!-- Widget: Verkopen huidige maand (KPI) -->
+        <div class="widget widget-kpi" id="widgetKpiCurrentMonthSales">
+          <div class="widget-header">
+            <span class="widget-title">Verkopen deze maand</span>
+            <button class="widget-expand-btn" data-widget="widgetKpiCurrentMonthSales" title="Vergroot">⤢</button>
+          </div>
+          <div class="widget-body">
+            <div class="kpi-value neutral" id="kpiCurrentMonthSales">—</div>
+            <div class="kpi-sub" id="kpiCurrentMonthSalesSub"></div>
+          </div>
+        </div>
+
+        <!-- Widget: Inkopen huidige maand (KPI) -->
+        <div class="widget widget-kpi" id="widgetKpiCurrentMonthPurchases">
+          <div class="widget-header">
+            <span class="widget-title">Inkopen deze maand</span>
+            <button class="widget-expand-btn" data-widget="widgetKpiCurrentMonthPurchases" title="Vergroot">⤢</button>
+          </div>
+          <div class="widget-body">
+            <div class="kpi-value neutral" id="kpiCurrentMonthPurchases">—</div>
+            <div class="kpi-sub" id="kpiCurrentMonthPurchasesSub"></div>
           </div>
         </div>
 
@@ -3083,10 +3118,10 @@
           </div>
         </div>
 
-        <!-- Widget: Netto resultaat per maand (chart) -->
+        <!-- Widget: Omzet en winst per maand (chart) -->
         <div class="widget widget-chart" id="widgetMonthly">
           <div class="widget-header">
-            <span class="widget-title">Netto resultaat per maand</span>
+            <span class="widget-title">Omzet en winst per maand</span>
             <button class="widget-expand-btn" data-widget="widgetMonthly" title="Vergroot">⤢</button>
           </div>
           <div class="widget-body widget-body-chart">
@@ -3627,6 +3662,9 @@ const CT = {
   get pillText() { return cssVar('--on-inverse'); },
   get tooltipBg() { return cssVar('--surface'); },
   get tooltipBorder() { return cssVar('--border'); },
+  get neutral() { return cssVar('--chart-neutral'); },
+  get neutralHover() { return cssVar('--chart-neutral-hover'); },
+  get neutralLine() { return cssVar('--chart-neutral-line'); },
 };
 
 function applyChartDefaults() {
@@ -3731,6 +3769,57 @@ function barDataset(label, values, extra = {}) {
     categoryPercentage: 0.72,
     barPercentage: 0.9,
     ...extra,
+  };
+}
+
+// Omzet is context for the profit figure, so it gets a quiet neutral colour.
+function revenueBarDataset(values) {
+  return barDataset('Omzet', values, {
+    backgroundColor: CT.neutral,
+    hoverBackgroundColor: CT.neutralHover,
+    order: 2,
+  });
+}
+
+function revenueLineDataset(values) {
+  return {
+    type: 'line',
+    label: 'Omzet',
+    data: values,
+    borderColor: CT.neutralLine,
+    borderWidth: 1.5,
+    borderDash: [4, 4],
+    tension: 0.35,
+    cubicInterpolationMode: 'monotone',
+    fill: false,
+    pointRadius: 0,
+    pointHoverRadius: 4,
+    pointBackgroundColor: CT.neutralLine,
+    order: 1,
+  };
+}
+
+// Small legend for the omzet + winst charts. `kind` is 'bar' or 'line'.
+function omzetWinstLegend(kind) {
+  const omzet = kind === 'bar'
+    ? { text: 'Omzet', fillStyle: CT.neutral, strokeStyle: CT.neutral, pointStyle: 'circle', lineWidth: 0 }
+    : { text: 'Omzet', fillStyle: CT.neutralLine, strokeStyle: CT.neutralLine, pointStyle: 'line', lineWidth: 2 };
+  const winst = kind === 'bar'
+    ? { text: 'Winst', fillStyle: CT.bar, strokeStyle: CT.bar, pointStyle: 'circle', lineWidth: 0 }
+    : { text: 'Winst', fillStyle: CT.line, strokeStyle: CT.line, pointStyle: 'line', lineWidth: 2 };
+  return {
+    display: true,
+    position: 'top',
+    align: 'end',
+    labels: {
+      color: CT.text2,
+      usePointStyle: true,
+      boxWidth: 8,
+      boxHeight: 8,
+      padding: 12,
+      font: { size: 11, weight: '500' },
+      generateLabels: () => [omzet, winst].map(item => ({ ...item, fontColor: CT.text2 })),
+    },
   };
 }
 
@@ -5546,16 +5635,10 @@ function renderMonthlyChart(transactions) {
     return;
   }
 
-  const monthMap = new Map();
-  transactions.forEach(transaction => {
-    const normalized = normalizeTransaction(transaction);
-    const monthKey = normalized.date.slice(0, 7);
-    monthMap.set(monthKey, roundMoney((monthMap.get(monthKey) || 0) + normalized.amount));
-  });
-
-  const entries = Array.from(monthMap.entries()).sort(([left], [right]) => left.localeCompare(right));
-  const labels = entries.map(([month]) => month);
-  const values = entries.map(([, value]) => value);
+  const monthly = computeMonthlyData(transactions);
+  const labels = monthly.map(m => m.month);
+  const values = monthly.map(m => m.profit);
+  const revenue = monthly.map(m => m.revenue);
 
   if (!values.length) {
     wrap.style.display = 'none';
@@ -5571,10 +5654,17 @@ function renderMonthlyChart(transactions) {
     type: 'line',
     data: {
       labels: labels.map(formatMonthLabel),
-      datasets: [signedLineDataset('Netto resultaat', values)],
+      datasets: [
+        signedLineDataset('Winst', values),
+        revenueLineDataset(revenue),
+      ],
     },
     plugins: [valueLabelsPlugin],
-    options: chartOptions(),
+    options: chartOptions({
+      tooltipLabel: context => `${context.dataset.label}: ${fmt(context.parsed.y)}`,
+      padding: { top: 6, right: 6 },
+      plugins: { legend: omzetWinstLegend('line') },
+    }),
   });
 }
 
@@ -5627,16 +5717,27 @@ function renderProfitTable() {
 }
 
 // ── Analytics ─────────────────────────────────────────────────────────
+// Per month: net profit (all transactions), omzet (sales only, same rule as the
+// "Verkocht" total) and purchases (negative, like "Gekocht"), with their counts.
 function computeMonthlyData(transactions) {
   const monthMap = new Map();
   transactions.forEach(t => {
     const normalized = normalizeTransaction(t);
     const key = normalized.date.slice(0, 7);
-    monthMap.set(key, roundMoney((monthMap.get(key) || 0) + normalized.amount));
+    const entry = monthMap.get(key) || { profit: 0, revenue: 0, purchases: 0, salesCount: 0, purchaseCount: 0 };
+    entry.profit = roundMoney(entry.profit + normalized.amount);
+    if (normalized.type === 'Verkocht') {
+      entry.revenue = roundMoney(entry.revenue + normalized.amount);
+      entry.salesCount += 1;
+    } else {
+      entry.purchases = roundMoney(entry.purchases + normalized.amount);
+      entry.purchaseCount += 1;
+    }
+    monthMap.set(key, entry);
   });
   return Array.from(monthMap.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([month, profit]) => ({ month, profit }));
+    .map(([month, entry]) => ({ month, ...entry }));
 }
 
 function renderAnalytics() {
@@ -5663,6 +5764,19 @@ function renderAnalytics() {
     kpiCurrentMonth.className = 'kpi-value neutral';
     kpiCurrentMonthSub.textContent = `geen data voor ${formatMonthLabel(nowKey)}`;
   }
+
+  // KPI: Sales and purchases this month
+  const countLabel = (count, one, many) => `${count} ${count === 1 ? one : many}`;
+  const kpiSales = document.getElementById('kpiCurrentMonthSales');
+  const kpiPurchases = document.getElementById('kpiCurrentMonthPurchases');
+  kpiSales.textContent = fmt(currentMonthData?.revenue ?? 0);
+  kpiSales.className = `kpi-value ${currentMonthData?.revenue ? 'positive' : 'neutral'}`;
+  document.getElementById('kpiCurrentMonthSalesSub').textContent =
+    `${countLabel(currentMonthData?.salesCount ?? 0, 'verkoop', 'verkopen')} · ${formatMonthLabel(nowKey)}`;
+  kpiPurchases.textContent = fmt(currentMonthData?.purchases ?? 0);
+  kpiPurchases.className = `kpi-value ${currentMonthData?.purchases ? 'negative' : 'neutral'}`;
+  document.getElementById('kpiCurrentMonthPurchasesSub').textContent =
+    `${countLabel(currentMonthData?.purchaseCount ?? 0, 'inkoop', 'inkopen')} · ${formatMonthLabel(nowKey)}`;
 
   // KPI: Best month
   const bestMonthData = monthly.slice().sort((a, b) => b.profit - a.profit)[0] ?? null;
@@ -6028,14 +6142,28 @@ function renderMonthlyCompareChart(monthly) {
   if (!monthly.length) return;
 
   const labels = monthly.map(m => formatMonthLabel(m.month));
-  const values = monthly.map(m => m.profit);
+  const profit = monthly.map(m => m.profit);
+  const revenue = monthly.map(m => m.revenue);
 
   const ctx = el.getContext('2d');
   monthlyCompareChart = new Chart(ctx, {
     type: 'bar',
-    data: { labels, datasets: [barDataset('Netto resultaat', values, { valueLabels: 'all' })] },
+    data: {
+      labels,
+      datasets: [
+        revenueBarDataset(revenue),
+        barDataset('Winst', profit, { valueLabels: 'all' }),
+      ],
+    },
     plugins: [valueLabelsPlugin],
-    options: chartOptions({ plugins: { valueLabels: { format: fmtAxis } } }),
+    options: chartOptions({
+      tooltipLabel: context => `${context.dataset.label}: ${fmt(context.parsed.y)}`,
+      padding: { top: 6, right: 6 },
+      plugins: {
+        valueLabels: { format: fmtAxis },
+        legend: omzetWinstLegend('bar'),
+      },
+    }),
   });
 }
 
